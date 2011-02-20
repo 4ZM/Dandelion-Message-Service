@@ -10,6 +10,7 @@ MS.2) meddelandesyntax utvidgad med avsändare:
 MSGID    : Som MS.1
 MSG      : Som MS.1
 SENDERID : Avsändar-ID. Kan använda pulik nyckel (ex. DSA 1024 bit) eller fingeravtryck av nyckel.
+            Not. Om inte fullständigt id används kan inte signaturen valideras enbart med hjälp av meddelandet.
 SIGN     : Signatur (ex. DSA) av [MSG] och [SENDERID].
 
 Kommando "ISay" -> [MSGID][MSG][SENDERID][SIGN]
@@ -44,5 +45,31 @@ För att minska datamängden:
 Det är möjligt att trunkera SHA256 hashar på ett deterministiskt sätt utan att öka risken för kollisioner dramatiskt. Detta kan användas för ex. [MSGID] och fingeravtryck på nycklar.
 
 Kan använda "fly weight" mönster för att spara utrymme och minska trafik genom att ersätta nod ID med fingeravtryck av nod ID och ha en separat lista med fullständiga nod ID vid sidan om. Dessa listor av fullständiga nod IDn måste då utbytas mellan noder vid synkronisering.
+
+ID-fält, signaturer och krypterad data kan skickas binärt. Detta sparar bandbredd men gör avlusning och testning svårare.
+
+
+
+Kommunikationssyntax, client (C) server (S)
+
+CMD.1) Efterfråga serverns protokollversion
+
+C: GET VER
+S: X.X.X
+
+CMD.2) Efterfråga serverns nod-ID
+
+C: GET ID
+S: TBD ID-format ej bestämt
+
+CMD.3) Efterfråga en lista på meddelanden (meddelande-ID) av servern
+
+C: GET MSGLIST [X]
+S: MSGID;MSGID;MSGID;...;MSGID;
+
+CMD.4) Efterfråga meddelanden från servern
+
+C: GET MESSAGES [MSGID;MSGID;MSGID;...;MSGID]
+S: MSG;MSG;MSG;...;MSG;
 
 
