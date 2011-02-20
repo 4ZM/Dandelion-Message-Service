@@ -1,0 +1,48 @@
+MS.1) meddelandesyntax:
+
+MSGID : SHA256 hash av alla fält i meddelandet.
+MSG   : Textmeddelande med fast längd. Ex. 160 tecken.
+
+Kommando "Say" -> [MSGID][MSG] 
+
+MS.2) meddelandesyntax utvidgad med avsändare:
+
+MSGID    : Som MS.1
+MSG      : Som MS.1
+SENDERID : Avsändar-ID. Kan använda pulik nyckel (ex. DSA 1024 bit) eller fingeravtryck av nyckel.
+SIGN     : Signatur (ex. DSA) av [MSG] och [SENDERID].
+
+Kommando "ISay" -> [MSGID][MSG][SENDERID][SIGN]
+
+MS.3) meddelandesyntax utvidgad med mottagare:
+
+MSGID  : Som MS.1
+MSG    : Som MS.1. Okrypterad text. Pseudofält som inte finns inte med i meddelandet.
+#MSG#  : Krypterat textmeddelande [MSG].
+          Not. Det krypterade meddelanden kommer att vara längre än den fasta textlängden.
+RECVID : Mottagar-ID. Kan använda fingeravtryck av nyckel (ex. RSA). 
+          Not. Ingen poäng att använda hela nyckel som mottagarfält.
+          Not. Kan inte använda DSA för kryptering (går däremot bra att använda RSA för signering).
+
+Kommando "SayTo" -> [MSGID][#MSG#][RECEIVERID]
+
+MS.4) meddelandesyntax med både sändare och mottagare:
+
+MSGID      : Som MS.1
+MSG        : Som MS.3
+#MSG#      : Som MS.3
+RECVID     : Som MS.3
+SENDERID   : Som MS.2
+SIGN       : Som MS.2 men innefattar även de fältet [RECVID].
+
+Kommando "ISayTo" -> [MSGID][#MSG#][RECVID][SENDERID][SIGN]
+
+
+
+För att minska datamängden: 
+
+Det är möjligt att trunkera SHA256 hashar på ett deterministiskt sätt utan att öka risken för kollisioner dramatiskt. Detta kan användas för ex. [MSGID] och fingeravtryck på nycklar.
+
+Kan använda "fly weight" mönster för att spara utrymme och minska trafik genom att ersätta nod ID med fingeravtryck av nod ID och ha en separat lista med fullständiga nod ID vid sidan om. Dessa listor av fullständiga nod IDn måste då utbytas mellan noder vid synkronisering.
+
+
