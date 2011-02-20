@@ -48,36 +48,58 @@ public class MessageDB {
         
 
     public void addMessage(String text, boolean sign) throws Message.MessageException {
-        Message msg;
-
+        Message msg = new Message(text);
+        
         if (sign) {
             try {
                 Signature dsa = Signature.getInstance("SHA1withDSA");
                 dsa.initSign(keyPair_.getPrivate());
                 dsa.update(text.getBytes("UTF-8"));
                 dsa.update(getId().getBytes("UTF-8"));
-                msg = new Message(text, getPubKey(), dsa.sign());
+                msg.sign(getPubKey(), dsa.sign());
             } catch (Exception e) {
                 throw new Message.MessageException("Error creating signature");
             }
-        } else {
-            msg = new Message(text);
         }
-
+        
         addMessage(msg);        
     }
 
     public boolean contains(String s) {
         for (Message m : msgList_) {
-            if (m.getId() == s)
+            if (m.getId().equals(s))
                 return true;
         }
         return false;
     }
 
     public Message[] getMessages() {
-        Message[] msgs = new Message[msgList_.size()];
-        return msgList_.toArray(msgs);
+        return getMessages(null);
+    }
+
+    public Message getMessage(String id) {
+        for (Message m : msgList_) {
+            if (m.getId().equals(id))
+                return m;
+        }
+        return null;
+    }
+
+    
+    public Message[] getMessages(String[] msgIds) {
+        if (msgIds == null) {
+            Message[] msgs = new Message[msgList_.size()];
+            return msgList_.toArray(msgs);
+        }
+        
+        ArrayList<Message> msglist = new ArrayList<Message>();
+        for (String msgId : msgIds) {
+            Message m = getMessage(msgId);
+            if (m != null)
+                msglist.add(m);
+        }
+        Message[] msgs = new Message[msglist.size()];
+        return msglist.toArray(msgs);
     }
 
     public String getId() {
@@ -127,6 +149,8 @@ public class MessageDB {
                 throw new MessageException("Message text too long (max: " + MAX_LENGTH + ")");
 
             msgText_ = msg;
+            msgText_ = String.format("%-" + MAX_LENGTH + "s", msgText_);
+
             hash_ = computeHash();
         }
 
@@ -135,9 +159,17 @@ public class MessageDB {
                 throw new MessageException("Message text too long (max: " + MAX_LENGTH + ")");
 
             msgText_ = msg;
+            msgText_ = String.format("%-" + MAX_LENGTH + "s", msgText_);
+            
             senderId_ = sender;
             senderSignature_ = signature;
 
+            hash_ = computeHash();
+        }
+
+        public void sign(byte[] sender, byte[] signature) throws MessageException {
+            senderId_ = sender;
+            senderSignature_ = signature;
             hash_ = computeHash();
         }
 
@@ -193,7 +225,7 @@ public class MessageDB {
                 return new Message(parts[1]);
             }
             else if (parts.length == 4) {
-                return new Message(parts[1]); // TODO: Should include sender + sign here 
+                return new Message(parts[1], HexFormater.fromHex(parts[2]), HexFormater.fromHex(parts[3]));  
             }
             else {
                 throw new MessageException("Invalid msg format");

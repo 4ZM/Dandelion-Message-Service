@@ -15,13 +15,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the RCMS.  If not, see <http://www.gnu.org/licenses/>.
 
-import java.awt.List;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 
 public class MessageClient {
     private String server_;
@@ -46,17 +46,30 @@ public class MessageClient {
     int getMessages() throws MessageClientException {
         String msgList = request("GET LIST");
         String[] msgIds = msgList.split(";");
-        List newMsgIds = new List();
+        ArrayList<String> newMsgIds = new ArrayList<String>();
         int newCnt = 0;
         for (String s : msgIds) {
             if (!db_.contains(s)) {
                 newMsgIds.add(s);
-                System.out.println("DEBUG: New message " + s);
                 newCnt++;
             }
         }
+
+        // Nothing new
+        if (newCnt == 0)
+            return newCnt;
         
-        String newMsgs = request("GET MSGS");
+        StringBuilder sb = new StringBuilder("GET MSGS");
+    
+        // We don't need all messages
+        if (newCnt < msgIds.length) {
+            sb.append(" ");
+            sb.append(newMsgIds.get(0));
+            for (int i = 1; i < newMsgIds.size(); ++i)
+                sb.append(";").append(newMsgIds.get(i));
+        }
+        
+        String newMsgs = request(sb.toString());
         String[] msgs = newMsgs.split(";");
         for (String m : msgs) {
             try {

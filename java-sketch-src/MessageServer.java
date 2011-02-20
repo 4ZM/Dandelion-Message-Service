@@ -107,9 +107,13 @@ public class MessageServer extends Thread {
                     out.println(getServerId());
                 else if (inputLine.startsWith("GET LIST"))
                     sendList(out);
-                else if (inputLine.startsWith("GET MSGS"))
-                    sendMsg(out);
-                else
+                else if (inputLine.equals("GET MSGS")) {
+                    sendMsg(out, null);
+                }
+                else if (inputLine.startsWith("GET MSGS")) {
+                    String[] msgIds = inputLine.substring("GET MSGS".length()).trim().split(";");
+                    sendMsg(out, msgIds);
+                } else
                     out.println("SYNTAX ERROR");
 
                 out.close();
@@ -129,11 +133,13 @@ public class MessageServer extends Thread {
         }
     }
 
-    private void sendMsg(PrintWriter out) {
-        MessageDB.Message[] msgs = db_.getMessages();
-        out.print(msgs[0].toString());
-        for (int i = 1; i < msgs.length; ++i) {
-            out.print(";" + msgs[i].toString());
+    private void sendMsg(PrintWriter out, String[] ids) {
+        MessageDB.Message[] msgs = db_.getMessages(ids);
+        if (msgs != null && msgs.length > 0) {
+            out.print(msgs[0].toString());
+            for (int i = 1; i < msgs.length; ++i) {
+                out.print(";" + msgs[i].toString());
+            }
         }
     }
 

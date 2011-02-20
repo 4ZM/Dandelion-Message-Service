@@ -16,12 +16,13 @@
 // along with the RCMS.  If not, see <http://www.gnu.org/licenses/>.
 
 public class HexFormater {
+    final static String HEXES = "0123456789ABCDEF";
+    
     public static String toHex(byte[] array) {
         return toHex(array, null);
     }
     
     public static String toHex(byte[] array, String byteSeparator) {
-        final String HEXES = "0123456789ABCDEF";
         final StringBuilder hex = new StringBuilder(2 * array.length);
         for (final byte b : array) {
             hex.append(HEXES.charAt((b & 0xF0) >> 4)).append(HEXES.charAt((b & 0x0F)));
@@ -29,5 +30,19 @@ public class HexFormater {
                 hex.append(byteSeparator);
         }
         return hex.toString();
+    }
+    
+    public static byte[] fromHex(String hex) {
+        return fromHex(hex, "");
+    }
+    
+    public static byte[] fromHex(String hex, String byteSeparator) {
+        String tightHex = hex.replaceAll(byteSeparator, "");
+        int noBytes = (tightHex.length() + 1) / 2;
+        byte[] bytes = new byte[noBytes];
+        for (int i = 0; i < noBytes; ++i) {
+            bytes[i] = (byte) ((HEXES.indexOf(tightHex.charAt(i*2)) << 4) | (HEXES.indexOf(tightHex.charAt(i*2+1))));
+        }
+        return bytes;
     }
 }
