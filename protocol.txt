@@ -1,75 +1,259 @@
-MS.1) meddelandesyntax:
+Design Document XXX (TBD)
 
-MSGID : SHA256 hash av alla fält i meddelandet.
-MSG   : Textmeddelande med fast längd. Ex. 160 tecken.
-
-Kommando "Say" -> [MSGID][MSG] 
-
-MS.2) meddelandesyntax utvidgad med avsändare:
-
-MSGID    : Som MS.1
-MSG      : Som MS.1
-SENDERID : Avsändar-ID. Kan använda pulik nyckel (ex. DSA 1024 bit) eller fingeravtryck av nyckel.
-            Not. Om inte fullständigt id används kan inte signaturen valideras enbart med hjälp av meddelandet.
-SIGN     : Signatur (ex. DSA) av [MSG] och [SENDERID].
-
-Kommando "ISay" -> [MSGID][MSG][SENDERID][SIGN]
-
-MS.3) meddelandesyntax utvidgad med mottagare:
-
-MSGID  : Som MS.1
-MSG    : Som MS.1. Okrypterad text. Pseudofält som inte finns inte med i meddelandet.
-#MSG#  : Krypterat textmeddelande [MSG].
-          Not. Det krypterade meddelanden kommer att vara längre än den fasta textlängden.
-RECVID : Mottagar-ID. Kan använda fingeravtryck av nyckel (ex. RSA). 
-          Not. Ingen poäng att använda hela nyckel som mottagarfält.
-          Not. Kan inte använda DSA för kryptering (går däremot bra att använda RSA för signering).
-
-Kommando "SayTo" -> [MSGID][#MSG#][RECEIVERID]
-
-MS.4) meddelandesyntax med både sändare och mottagare:
-
-MSGID      : Som MS.1
-MSG        : Som MS.3
-#MSG#      : Som MS.3
-RECVID     : Som MS.3
-SENDERID   : Som MS.2
-SIGN       : Som MS.2 men innefattar även de fältet [RECVID].
-
-Kommando "ISayTo" -> [MSGID][#MSG#][RECVID][SENDERID][SIGN]
+Draft version 1.0
 
 
 
-För att minska datamängden: 
+Concepts and Terminology
+========================
 
-Det är möjligt att trunkera SHA256 hashar på ett deterministiskt sätt utan att öka risken för kollisioner dramatiskt. Detta kan användas för ex. [MSGID] och fingeravtryck på nycklar.
-
-Kan använda "fly weight" mönster för att spara utrymme och minska trafik genom att ersätta nod ID med fingeravtryck av nod ID och ha en separat lista med fullständiga nod ID vid sidan om. Dessa listor av fullständiga nod IDn måste då utbytas mellan noder vid synkronisering.
-
-ID-fält, signaturer och krypterad data kan skickas binärt. Detta sparar bandbredd men gör avlusning och testning svårare.
+DBID : Data Base ID. A random 128 bit number that will identify a data base. 
 
 
+User Identity Syntax
+====================
 
-Kommunikationssyntax, client (C) server (S)
+PUBUID : Public user ID. 
+Identifies one unique individual or organization that can establish afk trust relationships. It contains the fingerprint and public key parts of the encryption and signing keys.
 
-CMD.1) Efterfråga serverns protokollversion
-
-C: GET VER
-S: X.X.X
-
-CMD.2) Efterfråga serverns nod-ID
-
-C: GET ID
-S: TBD ID-format ej bestämt
-
-CMD.3) Efterfråga en lista på meddelanden (meddelande-ID) av servern
-
-C: GET MSGLIST [X]
-S: MSGID;MSGID;MSGID;...;MSGID;
-
-CMD.4) Efterfråga meddelanden från servern
-
-C: GET MESSAGES [MSGID;MSGID;MSGID;...;MSGID]
-S: MSG;MSG;MSG;...;MSG;
+UIDFP   : The least significant 16 bytes of the SHA256 of the public signing and encryption keys. Since it can be deterministically generated from the key pair, it can also be used to verify data integrity.
+PUBSGN  : Public signing key, 1024 bit DSA
+PUBENC  : Public encryption key, 2048 bit RSA
 
 
+PRIVUID : Private user ID. 
+Is the same as the PUBUID with the additional private keys (fingerprint is the same - only computed from public keys) 
+(TBD: use GPG key format?)
+
+UIDFP   : Same as PUBUID.
+PUBSGN  : Same as PUBUID.
+PUBENC  : Same as PUBUID.
+PRIVSGN : Private signing key, 1024 bit DSA
+PRIVENC : Private encryption key, 2048 bit RSA
+
+
+
+http://wiki.python.org/moin/GnuPrivacyGuard
+
+Ref.
+[1] https://secure.wikimedia.org/wikipedia/en/wiki/Birthday_problem
+
+
+Message Syntax
+==============
+
+There are four types of messages as described by MS.1 to MS.4. 
+
+The MSGTYPE filed is a single character code to identify which sort of message it is.
+	'N' (Neither sender nor receiver)
+	'S' (only Sender)
+	'R' (only Receiver)
+	'B' (Both sender and receiver)
+
+MS.1) Message without sender or receiver
+
+MSGID   : Message ID. The least significant 16 bytes of the SHA256 of the remaining fields in the message. A number that uniquely identifies this message. Since it can be deterministically generated from the message, it can also be used to verify data integrity.
+MSGTYPE : 'N' 
+MSGLEN  : Size of MSG in bytes.
+MSG     : Message payload. Text string (TBD should we extend message content?)
+
+Typical command: "Say" -> [MSGID][MSGLEN][MSG] 
+
+MS.2) Message with sender but without receiver 
+
+MSGID    : Same as in MS.1 but including the SENDERID and SIGN fields
+MSGTYPE  : 'S' 
+MSGLEN   : Same as in MS.1 
+MSG      : Same as in MS.1 
+SENDERID : Sender ID fingerprint (UIDFP).
+SIGN     : Signature of MSGLEN, MSG and SENDERID (not MSGID).
+
+Typical command: "ISay" -> [MSGID][MSGLEN][MSG][SENDERID][SIGN]
+
+MS.3) Message with receiver but without sender
+
+MSGID   : Same as in MS.1 but including the RECVID field
+MSGTYPE : 'R' 
+MSG     : Same as in MS.1. This is the unencrypted text (not included explicitly in the MS.3 message). 
+MSGLEN  : Size of #MSG# in bytes, not of MSG as in MS.1
+#MSG#   : The MSG encrypted with the recipients public encryption key.
+RECVID  : Receiver ID fingerprint (UIDFP).
+
+Typical command: "SayTo" -> [MSGID][MSGLEN][#MSG#][RECVID]
+
+Note.3.1 :  Requirements on message length, allowed characters, etc. apply to the MSG (implicit) string. They are not applicable to the #MSG# string. 
+Note.3.2 :  There is no point in using the more than fingerprint as the recipient field since that is enough information for one specific node to identifying the message as hers. The message will be meaningless for all other nodes.
+
+MS.4) Message with both sender and receiver 
+
+MSGID      : Same as in MS.1 but including the SENDERID, SIGN and RECVID fields.
+MSGTYPE    : 'B' 
+MSG        : Same as in MS.3
+MSGLEN     : Same as in MS.3
+#MSG#      : Same as in MS.3
+RECVID     : Same as in MS.3
+SENDERID   : Same as in MS.2
+SIGN       : Same as in MS.2 but for fields: MSGLEN, #MSG#, RECVID and SENDERID (not MSGID).
+
+Typical command: "ISayTo" -> [MSGID][MSGLEN][#MSG#][RECVID][SENDERID][SIGN]
+
+
+
+Communication Protocol
+======================
+
+This section describes the XXX communication protocol version 1.0
+
+It is a constrained RESTful[1] protocol with immutable data (i.e. implicitly cachable) but without Code-On-Demand remote execution property.
+
+All data is transmitted as clear text UTF-8 encoded strings without BOM.
+
+Malformed messages, unexpected or infinite data streams, client or server disconnects must never put either the client or the server in an inconsistent state and must not significantly effect the concurrent communication with other clients or servers.
+
+Ref.
+[1]	http://www.ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm
+
+Communicaion Transactions:
+
+CT.1)
+
+Connect and greeting. The server sends the greeting message upon connection from a client.
+
+   [C]                                                    [S]
+    |                                                      | 
+    |                       connect                        | 
+    |----------------------------------------------------->| 
+    |                                                      | 
+    |     <protocol cookie>;<protocol version>;<db id>     | 
+    |<-----------------------------------------------------| 
+    |                                                      | 
+    |                                                      | 
+
+Data Specification: 
+  Fileld separator     : ';' (semicolon)
+  <protocol cookie>    : The exact string 'XXX' TBD. Identifies the protocol as XXX.
+  <protocol version>   : A string of format [0-9]+\.[0-9]+
+  <db id>              : A hexadecimal representation of the DBID
+
+CT.2)
+
+The client requests a list of the servers message. This could be a complete or partial listing. If the client has not previously synchronized with the server, it will request a complete list by omitting the <time cookies> field.
+
+   [C]                                                    [S]
+    |                                                      | 
+    |             GETMESSAGELIST [<time cookie>]           | 
+    |----------------------------------------------------->| 
+    |                                                      | 
+    |       <time cookie>;<msgid>;<msgid>;...;<msgid>      | 
+    |<-----------------------------------------------------| 
+    |                                                      | 
+    |                                                      | 
+
+Data Specification: 
+  Fileld separator  : ';' (semicolon)
+  <time cookie>     : A hexadecimal string (preferably short) that represents a moment in time for the server.
+  <msgid>           : An hexadecimal representation of the MSGID
+
+Note.2.1 If there are no messages on the server since <time cookie> it should respond with only a new <time cookie>
+Note.2.2 If the server can not parse the <time cookie>, it should hang up the connection. (TBD is this what we want?).
+
+CT.3)
+
+The client requests one or more messages from the server by asking for them using their MSGIDs. 
+	
+   [C]                                                    [S]
+    |                                                      | 
+    |    GETMESSAGES [[[<msgid>];<msgid>];...;<msgid>]     | 
+    |----------------------------------------------------->| 
+    |                                                      | 
+    |              <msg>;<msg>;...;<msg>;                  | 
+    |<-----------------------------------------------------| 
+    |                                                      | 
+    |                                                      | 
+
+Data Specification: 
+  Fileld separator  : ';' (semicolon)
+  <msgid>           : An hexadecimal representation of the MSGID
+  <msg>             : A string describing a message. 
+
+
+Message encoding for the communication protocol:
+Fileld separator  : '|' (pipe)
+
+  MSGID     : 8 byte fingerprint encoded as hex string (16 bytes) 
+  MSGTYPE   : Single character
+  MSGLEN    : Hex representation of payload data in bytes (0 is an empty message)
+  MSG       : MSGLEN bytes of data (TBD require UTF-8 + fix length?)
+  #MSG#     : MSGLEN bytes of binary data. Base64 encoded.
+  RECVID    : 16 byte UIDFP encoded as hex string 
+  SENDERID  : 16 byte UIDFP encoded as hex string 
+  SIGN      : Base64 encoded signature
+	
+Note.3.1 The client can not assume that the messages that are sent by the server are the same (or the same number) as the ones requested. For cooperative servers, this will typically be the case, but messages could have been removed from the server database between GETMESSAGELIST and GETMESSAGES request. The server could also be an adversary trying to disrupt communications.
+
+
+
+CT.4)
+
+The client requests a list of the servers user id fingerprints. This could be a complete or partial listing. If the client has not previously synchronized with the server, it will request a complete list by omitting the <time cookies> field.
+
+   [C]                                                    [S]
+    |                                                      | 
+    |               GETUIDLIST [<time cookie>]             | 
+    |----------------------------------------------------->| 
+    |                                                      | 
+    |    <time cookie>;<uid fp>;<uid fp>;...;<uid fp>      | 
+    |<-----------------------------------------------------| 
+    |                                                      | 
+    |                                                      | 
+
+Data Specification: 
+  Fileld separator  : ';' (semicolon)
+  <time cookie>     : A hexadecimal string (preferably short) that represents a moment in time for the server.
+  <uid fp>          : An hexadecimal representation of the UIDFP
+
+Note.2.1 If there are no new uids on the server since <time cookie> it should respond with only a new <time cookie>
+Note.2.2 If the server can not parse the <time cookie>, it should hang up the connection. (TBD is this what we want?).
+
+CT.5)
+
+The client requests one or more UIDs from the server by asking for them using their UIDFPs. 
+	
+   [C]                                                    [S]
+    |                                                      | 
+    |     GETUIDS [[[<uid fp>];<uid fp>];...;<uid fp>]     | 
+    |----------------------------------------------------->| 
+    |                                                      | 
+    |              <uid>;<uid>;...;<uid>;                  | 
+    |<-----------------------------------------------------| 
+    |                                                      | 
+    |                                                      | 
+
+Data Specification: 
+  Fileld separator  : ';' (semicolon)
+  <uid fp>          : An hexadecimal representation of the UIDFP
+  <uid>             : A string describing a UID 
+
+
+UID encoding for the communication protocol:
+Fileld separator  : '|' (pipe)
+
+  UIDFP            : 16 byte UIDFP encoded as hex string 
+  PUBSIGNKEY       : Base64 representation of the public signing key
+  PUBENCRYPTKEY    : Base64 representation of the public encryption key
+
+  
+  
+
+Appendix. Fingerprint considerations
+
+Here are some considerations on fingerprint and hash size. The problem of finding an appropriate size can be modelled using the birthday problem.[1] The probability of at least one collision when drawing n numbers from a uniformly distributed set of size 2^b is: 
+p(n,b) = 1 - n! * (Binomial(2^b, n) / 2^(b * n))
+
+Samples:
+n         b=64      b=128
+0.01E6    2.71E-12  -
+0.10E6    2.71E-10  1.47E-29
+1.00E6    2.71E-8   1.47E-27
+
+It seems that 128 bit hashes are a good fit for our typical domain of n's. Using 256 bits would be overkill. 
