@@ -1,4 +1,6 @@
-Design Document XXX (TBD)
+Design Document
+
+Dandelion Message Service 
 
 Draft version 1.0
 
@@ -102,7 +104,7 @@ Typical command: "ISayTo" -> [MSGID][MSGLEN][#MSG#][RECVID][SENDERID][SIGN]
 Communication Protocol
 ======================
 
-This section describes the XXX communication protocol version 1.0
+This section describes the DMS communication protocol version 1.0
 
 It is a constrained RESTful[1] protocol with immutable data (i.e. implicitly cachable) but without Code-On-Demand remote execution property.
 
@@ -131,7 +133,7 @@ Connect and greeting. The server sends the greeting message upon connection from
 
 Data Specification: 
   Fileld separator     : ';' (semicolon)
-  <protocol cookie>    : The exact string 'XXX' TBD. Identifies the protocol as XXX.
+  <protocol cookie>    : The exact string 'DMS'. Identifies the protocol as Dandelion Message Service.
   <protocol version>   : A string of format [0-9]+\.[0-9]+
   <db id>              : A hexadecimal representation of the DBID
 
