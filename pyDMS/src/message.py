@@ -4,7 +4,7 @@ import binascii
 class Message:
     """A DMS Message"""
     
-    ID_LENGTH_BYTES = 16
+    _ID_LENGTH_BYTES = 16
     MAX_TEXT_LENGTH = 160 
     
     def __init__(self, text, signer=None, encrypter=None):
@@ -19,7 +19,7 @@ class Message:
         
         h = hashlib.sha256()
         h.update(text)
-        self._id = h.digest()[- Message.ID_LENGTH_BYTES:] # Least significant bytes
+        self._id = h.digest()[- Message._ID_LENGTH_BYTES:] # Least significant bytes
                 
     @property
     def id(self):

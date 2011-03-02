@@ -4,7 +4,7 @@ import message
 class DataBase: 
     """Message data base for the Dandelion Message Service"""
     
-    ID_LENGTH_BYTES = 16
+    _ID_LENGTH_BYTES = 16
     
     def __init__(self):
         """Create a new data base with a random id"""
@@ -12,7 +12,7 @@ class DataBase:
         # Using a naive in-memory db for now
         # TODO Should use some not so naive data structure here to get better access complexity  
         self._messages = []
-        self._id = bytearray([int(random.random() * 255) for _ in range(DataBase.ID_LENGTH_BYTES)])
+        self._id = bytearray([int(random.random() * 255) for _ in range(DataBase._ID_LENGTH_BYTES)])
         self._rev = 0
         
         
