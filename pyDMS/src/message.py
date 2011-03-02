@@ -2,15 +2,15 @@ import hashlib
 import binascii
 
 class Message:
-    '''A Message'''
+    """A DMS Message"""
     
     ID_LENGTH_BYTES = 16
     MAX_TEXT_LENGTH = 160 
     
     def __init__(self, text, signer=None, encrypter=None):
-        '''Create a message without sender and recipient'''
+        """Create a message without sender and recipient"""
         
-        if text == None or len(text) > Message.MAX_TEXT_LENGTH:
+        if text is None or len(text) > Message.MAX_TEXT_LENGTH:
             raise ValueError
          
         self._text = text
@@ -19,34 +19,50 @@ class Message:
         
         h = hashlib.sha256()
         h.update(text)
-        self._id = h.digest()[-Message.ID_LENGTH_BYTES:]
+        self._id = h.digest()[- Message.ID_LENGTH_BYTES:] # Least significant bytes
                 
-    def GetId(self):
-        '''Returns the message Id'''
+    @property
+    def id(self):
+        """Message Id"""
         return self._id
-        
-    def GetText(self):
-        '''Get the text message string'''
+    
+    @property    
+    def text(self):
+        """Message text string"""
         return self._text
+
+    @property
+    def sender(self):
+        """The sender of the message
         
-    def HasSender(self):
-        '''Returns true if the message has a sender'''
-        return self._sender != None
+        I.e. the UserId finger print for the sender
         
-    def HasReceiver(self):
-        '''Returns true if the message has a receiver'''
-        return self._receiver != None
+        """
         
-    def GetSender(self):
-        '''Returns the sender field of the message (i.e. the UserId fingerprint for the sender)'''
         return self._sender    
 
-    def GetReceiver(self):
-        '''Returns the receiver field of the message (i.e. the UserId fingerprint for the receiver)'''
+    @property
+    def receiver(self):
+        """The receiver of the message
+        
+        I.e. the UserId finger print for the receiver
+        
+        """
+        
         return self._receiver
-         
+    
+        
+    def has_sender(self):
+        """Returns true if the message has a sender"""
+        return self._sender is not None
+        
+    def has_receiver(self):
+        """Returns true if the message has a receiver"""
+        return self._receiver is not None
+        
+     
     def __str__(self):
-        '''String conversion ID-hex'''
+        """String conversion is message ID as hex"""
         return binascii.b2a_hex(self._id)
          
     def __eq__(self, other):

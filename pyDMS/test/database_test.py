@@ -1,138 +1,145 @@
 import unittest
 import binascii
-import message
-import database
+from message import Message
+from database import DataBase
 
 class DatabaseTest(unittest.TestCase):
+    """Unit test suite for the DataBase class"""
     
     def test_id(self):
-        '''Test data base id'''
+        """Test data base id format"""
         
-        db = database.DataBase()
-        id = db.GetId()
+        db = DataBase()
+        id = db.id
         self.assertNotEqual(id, None)
-        self.assertEqual(len(id), database.DataBase.ID_LENGTH_BYTES)
+        self.assertEqual(len(id), DataBase.ID_LENGTH_BYTES)
         
         # Another data base gets another id
-        self.assertNotEqual(id, database.DataBase().GetId())
+        self.assertNotEqual(id, DataBase().id)
         
     def test_single_message_interface(self):
-        '''Test functions relating to storing and recovering single messages'''
-        db = database.DataBase()
+        """Test functions relating to storing and recovering single messages"""
         
-        firstMsg = message.Message('A Single Message')
+        db = DataBase()
+        
+        first_msg = Message("A message")
 
         # Try to add junk
-        self.assertRaises(ValueError, db.AddMessage, None)
-        self.assertRaises(ValueError, db.AddMessage, 23)
-        self.assertRaises(ValueError, db.AddMessage, [None])
+        self.assertRaises(ValueError, db.add_message, None)
+        self.assertRaises(ValueError, db.add_message, 23)
+        self.assertRaises(ValueError, db.add_message, [None])
 
         # Add a single message        
-        db.AddMessage(firstMsg)
-        self.assertNotEqual(db.MessageCount, None)
-        self.assertEqual(db.MessageCount(), 1)
-        self.assertTrue(db.ContainsMessage(firstMsg))
+        db.add_message(first_msg)
+        self.assertNotEqual(db.message_count, None)
+        self.assertEqual(db.message_count(), 1)
+        self.assertTrue(db.contains_message(first_msg))
 
         # And for another message? 
-        secondMsg = message.Message("A new message")
-        self.assertFalse(db.ContainsMessage(secondMsg))
+        second_msg = Message("A new message")
+        self.assertFalse(db.contains_message(second_msg))
         
         # Adding a second message
-        db.AddMessage(secondMsg)
-        self.assertEqual(db.MessageCount(), 2)
-        self.assertTrue(db.ContainsMessage(firstMsg))
-        self.assertTrue(db.ContainsMessage(secondMsg))
+        db.add_message(second_msg)
+        self.assertEqual(db.message_count(), 2)
+        self.assertTrue(db.contains_message(first_msg))
+        self.assertTrue(db.contains_message(second_msg))
 
         # Nothing special about the particular instances (it's the id that counts)
-        self.assertTrue(db.ContainsMessage(message.Message("A new message")))
+        self.assertTrue(db.contains_message(Message("A new message")))
 
         # Remove a single message
-        db.RemoveMessage(firstMsg)
-        self.assertEqual(db.MessageCount(), 1)
-        self.assertFalse(db.ContainsMessage(firstMsg))
+        db.remove_message(first_msg)
+        self.assertEqual(db.message_count(), 1)
+        self.assertFalse(db.contains_message(first_msg))
 
         # Remove same single message
-        db.RemoveMessage(firstMsg)
-        self.assertEqual(db.MessageCount(), 1)
-        self.assertFalse(db.ContainsMessage(firstMsg))
+        db.remove_message(first_msg)
+        self.assertEqual(db.message_count(), 1)
+        self.assertFalse(db.contains_message(first_msg))
         
         # Remove all messages
-        db.RemoveMessage()
-        self.assertEqual(db.MessageCount(), 0)
-        self.assertFalse(db.ContainsMessage(firstMsg))
-        self.assertFalse(db.ContainsMessage(secondMsg))
+        db.remove_message()
+        self.assertEqual(db.message_count(), 0)
+        self.assertFalse(db.contains_message(first_msg))
+        self.assertFalse(db.contains_message(second_msg))
         
     def test_list_message_interface(self):
-        '''Test functions relating to storing and recovering single messages'''
-        db = database.DataBase()
+        """Test functions relating to storing and recovering single messages"""
         
-        firstMsgList = [message.Message('A'), message.Message('B')]
+        db = DataBase()
+        
+        first_msg_list = [Message('A'), Message('B')]
 
         # Add a message list        
-        db.AddMessage(firstMsgList)
-        self.assertNotEqual(db.MessageCount, None)
-        self.assertEqual(db.MessageCount(), len(firstMsgList))
-        self.assertEqual(db.ContainsMessage(firstMsgList), [True, True])
+        db.add_message(first_msg_list)
+        self.assertNotEqual(db.message_count, None)
+        self.assertEqual(db.message_count(), len(first_msg_list))
+        self.assertEqual(db.contains_message(first_msg_list), [True, True])
 
         # And for another message list? 
-        secondMsgList = [message.Message('C'), message.Message('A')]
-        self.assertEqual(db.ContainsMessage(secondMsgList), [False, True])
+        second_msg_list = [Message('C'), Message('A')]
+        self.assertEqual(db.contains_message(second_msg_list), [False, True])
         
         # Adding the second message list
-        db.AddMessage(secondMsgList)
-        self.assertEqual(db.MessageCount(), 3)
-        self.assertEqual(db.ContainsMessage(firstMsgList), [True, True])
-        self.assertEqual(db.ContainsMessage(secondMsgList), [True, True])
+        db.add_message(second_msg_list)
+        self.assertEqual(db.message_count(), 3)
+        self.assertEqual(db.contains_message(first_msg_list), [True, True])
+        self.assertEqual(db.contains_message(second_msg_list), [True, True])
 
         # Remove a list
-        db.RemoveMessage(firstMsgList)
-        self.assertEqual(db.MessageCount(), 1)
-        self.assertEqual(db.ContainsMessage(firstMsgList), [False, False])
-        self.assertEqual(db.ContainsMessage(secondMsgList), [True, False])
+        db.remove_message(first_msg_list)
+        self.assertEqual(db.message_count(), 1)
+        self.assertEqual(db.contains_message(first_msg_list), [False, False])
+        self.assertEqual(db.contains_message(second_msg_list), [True, False])
 
         # Remove same message list 
-        db.RemoveMessage(firstMsgList)
-        self.assertEqual(db.MessageCount(), 1)
-        self.assertEqual(db.ContainsMessage(firstMsgList), [False, False])
-        self.assertEqual(db.ContainsMessage(secondMsgList), [True, False])
+        db.remove_message(first_msg_list)
+        self.assertEqual(db.message_count(), 1)
+        self.assertEqual(db.contains_message(first_msg_list), [False, False])
+        self.assertEqual(db.contains_message(second_msg_list), [True, False])
         
         # Remove all messages
-        db.RemoveMessage()
-        self.assertEqual(db.MessageCount(), 0)
-        self.assertEqual(db.ContainsMessage(firstMsgList), [False, False])
-        self.assertEqual(db.ContainsMessage(secondMsgList), [False, False])
+        db.remove_message()
+        self.assertEqual(db.message_count(), 0)
+        self.assertEqual(db.contains_message(first_msg_list), [False, False])
+        self.assertEqual(db.contains_message(second_msg_list), [False, False])
 
     def test_uid_storage(self):
-        '''Test function relating to storing and recovering user identities'''
+        """Test function relating to storing and recovering user identities"""
+        #TODO 
         
     def test_time_cookies(self):
-        '''Test the time cookies functionality''' 
-        db = database.DataBase()
+        """Test the data base time cookies (revision) functionality""" 
+        
+        db = DataBase()
 
         # Adding a message        
-        firstMsg = message.Message('A Single Message')
-        firstCookie = db.AddMessage(firstMsg)
-        self.assertNotEqual(firstCookie, None)
+        first_msg = Message('A Single Message')
+        first_cookie = db.add_message(first_msg)
+        self.assertNotEqual(first_cookie, None)
 
         # Same message again
-        self.assertEqual(firstCookie, db.AddMessage(firstMsg))
+        self.assertEqual(first_cookie, db.add_message(first_msg))
 
         # New message, new cookie
-        secondMsg = message.Message('Another Single Message')
-        secondCookie = db.AddMessage(secondMsg)
-        self.assertNotEqual(secondCookie, None)
-        self.assertNotEqual(secondCookie, firstCookie)
+        second_msg = Message('Another Single Message')
+        second_cookie = db.add_message(second_msg)
+        self.assertNotEqual(second_cookie, None)
+        self.assertNotEqual(second_cookie, first_cookie)
 
         # Since first should only be second
-        someMessages = db.MessagesSince(firstCookie)
-        self.assertNotEqual(someMessages, None)
-        self.assertEqual(len(someMessages), 1)
-        self.assertEqual(someMessages[0], secondMsg)
+        some_messages = db.messages_since(first_cookie)
+        self.assertNotEqual(some_messages, None)
+
+        self.assertEqual(len(some_messages), 1)
+        self.assertEqual(some_messages[0], second_msg)
         
         # Nothing new since last message was added
-        lastMessages = db.MessagesSince(secondCookie)
-        self.assertNotEqual(lastMessages, None)
-        self.assertEqual(len(lastMessages), 0)
+        last_messages = db.messages_since(second_cookie)
+        self.assertNotEqual(last_messages, None)
+        self.assertEqual(len(last_messages), 0)
+        
 
 if __name__ == '__main__':
     unittest.main()
