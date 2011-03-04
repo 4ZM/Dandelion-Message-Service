@@ -20,7 +20,8 @@ class DataBase:
     def id(self):
         """The data base id"""
         return self._id
-        
+    
+    # TODO TimeCookie should be long number?
     def add_message(self, msg):
         """Add a message or a list of messages to the data base.
         
