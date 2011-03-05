@@ -1,5 +1,26 @@
+"""
+Copyright (c) 2011 Anders Sundman <anders@4zm.org>
+
+This file is part of pydms
+
+pydms is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+pydms is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with pydms.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 import random
-import message
+import pickle
+
+from dandelion.message import Message
 
 class DataBase: 
     """Message data base for the Dandelion Message Service"""
@@ -12,87 +33,85 @@ class DataBase:
         # Using a naive in-memory db for now
         # TODO Should use some not so naive data structure here to get better access complexity  
         self._messages = []
-        self._id = bytearray([int(random.random() * 255) for _ in range(DataBase._ID_LENGTH_BYTES)])
+        self._id = bytes([int(random.random() * 255) for _ in range(DataBase._ID_LENGTH_BYTES)])
         self._rev = 0
         
         
     @property
     def id(self):
-        """The data base id"""
+        """The data base id (bytes)"""
         return self._id
     
     # TODO TimeCookie should be long number?
-    def add_message(self, msg):
-        """Add a message or a list of messages to the data base.
+    def add_messages(self, msgs):
+        """Add a a list of messages to the data base.
         
         Will add all messages, not already in the data base to the data base and return a 
-        time cookie that represents the point in time after the messages have been added.
+        time cookie (bytes) that represents the point in time after the messages have been added.
         If no messages were added, it just returns the current time cookie. 
         
         """
         
-        if msg is None:
+        if msgs is None:
             raise ValueError
         
-        # Put it in a list if it isn't already
-        # TODO require list
-        if not hasattr(msg,'__iter__'):
-            msg = [msg]
+        if not hasattr(msgs,'__iter__'):
+            raise TypeError
         
         # Make sure the list only contains messages
-        for m in msg:
-            if not isinstance(m, message.Message):
-                raise ValueError
+        for m in msgs:
+            if not isinstance(m, Message):
+                raise TypeError
         
         # Add the messages not already present to the data base
         untagged_messages = [m for (_, m) in self._messages]
-        new_msgs = [(self._rev, m) for m in msg if m not in untagged_messages]
+        new_msgs = [(self._rev, m) for m in msgs if m not in untagged_messages]
         
         if len(new_msgs) > 0:
             self._messages.extend(new_msgs)
             self._rev += 1
             
-        return self._rev
+        #pickle.loads(binascii.a2b_hex(binascii.b2a_hex(pickle.dumps(123))))
+            
+        return pickle.dumps(self._rev)
         
+    @property
     def message_count(self):
-        """Returns the number of messages currently in the data base"""
+        """Returns the number of messages currently in the data base (int)"""
         
         return len(self._messages)
         
-    def contains_message(self, msg):
-        """Returns a True if the message is in the data base or a list of boolean values if the argument is a list of messages"""
+    def contains_messages(self, msgs):
+        """Returns a list of boolean values where True indicates that the argument at 
+        that position in the argument message list is in the data base.
         
-        if not hasattr(msg,'__iter__'):
-            msg = [msg]
+        """
+        
+        if not hasattr(msgs,'__iter__'):
+            raise TypeError
             
         untagged_messages = [m for (_, m) in self._messages]
-        l = [m in untagged_messages for m in msg]
-        
-        if len(l) == 1:
-            return l[0]
+        l = [m in untagged_messages for m in msgs]
         
         return l 
     
-    def remove_message(self, msg=None):
+    def remove_messages(self, msgs=None):
         """Removes messages from the data base.
         
-        The specified messages or list of messages will be removed from the data base. 
+        The specified list of messages will be removed from the data base. 
         If the message parameter is omitted, all messages in the data base will be removed.
         
         """
         
-        if msg == None:
+        if msgs == None:
             self._messages = []
             return
         
-        if not hasattr(msg,'__iter__'):
-            msg = [msg]
+        if not hasattr(msgs,'__iter__'):
+            raise TypeError
         
-        to_delete = []
-        for m in self._messages:
-            if m[1] in msg:
-                to_delete.append(m)
-                
+        to_delete = [(tc,m) for tc, m in self._messages if m in msgs]
+                        
         for m in to_delete:
             self._messages.remove(m)
             
@@ -110,9 +129,13 @@ class DataBase:
         if time_cookie == None:
             return [m for (_, m) in self._messages]
 
+        if not isinstance(time_cookie, bytes):
+            raise TypeError 
+
+        tc_num = pickle.loads(time_cookie)
         msgs = []
         for tc, m in self._messages:
-            if tc >= time_cookie:
+            if tc >= tc_num:
                 msgs.append(m)
         
         return msgs

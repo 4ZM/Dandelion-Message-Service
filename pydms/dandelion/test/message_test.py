@@ -1,6 +1,25 @@
+"""
+Copyright (c) 2011 Anders Sundman <anders@4zm.org>
+
+This file is part of pydms
+
+pydms is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+pydms is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with pydms.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 import unittest
 import binascii
-from message import Message 
+from dandelion.message import Message 
 
 class MessageTest(unittest.TestCase):
     """Unit test suite for the DMS Message class"""
@@ -11,7 +30,6 @@ class MessageTest(unittest.TestCase):
     def test_globals(self):
         """Testing for sane message constants"""
         
-        self.assertTrue(Message.ID_LENGTH_BYTES > 0)
         self.assertTrue(Message.MAX_TEXT_LENGTH > 0)
     
     def test_basic_construction(self):
@@ -22,6 +40,7 @@ class MessageTest(unittest.TestCase):
         self.assertEqual(self._sample_message, msg_text)
 
         self.assertNotEqual(msg.id, None)
+        self.assertTrue(len(msg.id) > 0)
 
         self.assertFalse(msg.has_sender())
         self.assertEqual(msg.sender, None)
@@ -48,15 +67,15 @@ class MessageTest(unittest.TestCase):
         id = msg.id
         
         # Check  id length
-        self.assertEqual(len(id), Message.ID_LENGTH_BYTES)
+        self.assertEqual(len(id), Message._ID_LENGTH_BYTES)
 
         # LSB SHA256         
-        self.assertEqual(id, binascii.a2b_hex(self._sample_message_sha256)[- Message.ID_LENGTH_BYTES:])
+        self.assertEqual(id, binascii.a2b_hex(self._sample_message_sha256)[- Message._ID_LENGTH_BYTES:])
 
         # Deterministic Id generation        
         self.assertEqual(Message("Some String or other").id, Message("Some String or other").id) 
         
-        # Just a sanity check
+        # Unique Id generation
         self.assertNotEqual(Message("Some String").id, Message("Some other String").id)
 
     def test_message_comparisson(self):
@@ -80,7 +99,7 @@ class MessageTest(unittest.TestCase):
         self.assertTrue(len(corner_case_str) == Message.MAX_TEXT_LENGTH)
         Message(corner_case_str)
         
-        corner_case_str = ''.join(['x' for c in range(Message.MAX_TEXT_LENGTH + 1)])
+        corner_case_str = ''.join(['x' for _ in range(Message.MAX_TEXT_LENGTH + 1)])
         self.assertTrue(len(corner_case_str) > Message.MAX_TEXT_LENGTH)
         self.assertRaises(ValueError, Message, corner_case_str)
         
@@ -88,7 +107,7 @@ class MessageTest(unittest.TestCase):
         """Testing the message to string conversion"""
         
         msg = Message(self._sample_message)
-        self.assertEqual(str(msg), binascii.b2a_hex(msg.id));         
+        self.assertEqual(str(msg), self._sample_message_sha256[- 2*Message._ID_LENGTH_BYTES:])         
 
 
 if __name__ == '__main__':
