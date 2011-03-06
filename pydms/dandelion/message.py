@@ -1,20 +1,20 @@
 """
 Copyright (c) 2011 Anders Sundman <anders@4zm.org>
 
-This file is part of pydms
+This file is part of dandelionpy
 
-pydms is free software: you can redistribute it and/or modify
+dandelionpy is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-pydms is distributed in the hope that it will be useful,
+dandelionpy is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with pydms.  If not, see <http://www.gnu.org/licenses/>.
+along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import hashlib
@@ -55,7 +55,6 @@ class Message:
         """The sender of the message (bytes)
         
         I.e. the UserId finger print for the sender
-        
         """
         
         return self._sender    
@@ -65,7 +64,6 @@ class Message:
         """The receiver of the message (bytes)
         
         I.e. the UserId finger print for the receiver
-        
         """
         
         return self._receiver
