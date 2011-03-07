@@ -112,6 +112,19 @@ class Protocol:
         return dbid 
         
     @classmethod
+    def is_message_id_list_request(cls, msgstr):
+        """Check if the string is a message id request."""
+
+        if msgstr is None:
+            raise ValueError
+        
+        if not isinstance(msgstr, str):
+            raise TypeError
+        
+        return msgstr.startswith(Protocol._GETMESSAGELIST)
+    
+        
+    @classmethod
     def create_message_id_list_request(cls, time_cookie=None):
         """Create the message id request string.
         
@@ -144,11 +157,8 @@ class Protocol:
         Raises a ProtocolParseError if the string can't be parsed.
         """
         
-        if msgstr is None:
-            raise ValueError
-        
-        if not isinstance(msgstr, str):
-            raise TypeError
+        if not cls.is_message_id_list_request(msgstr):
+            raise ProtocolParseError
         
         match = re.search(''.join([r'^', 
                                    Protocol._GETMESSAGELIST, 
@@ -222,6 +232,18 @@ class Protocol:
         
         return (cls._s2b(tc), [cls._s2b(m) for m in msgstr.split(';')[1:]])
 
+    @classmethod
+    def is_message_list_request(cls, msgstr):
+        """Check if the string is a message request"""
+
+        if msgstr is None:
+            raise ValueError
+        
+        if not isinstance(msgstr, str):
+            raise TypeError
+        
+        return msgstr.startswith(cls._GETMESSAGES)
+
         
     @classmethod
     def create_message_list_request(cls, msg_ids=None):
@@ -253,12 +275,9 @@ class Protocol:
         
         Raises a ProtocolParseError if the string can't be parsed.
         """
-                
-        if msgstr is None:
-            raise ValueError
-        
-        if not isinstance(msgstr, str):
-            raise TypeError
+
+        if not cls.is_message_list_request(msgstr):
+            raise ProtocolParseError
         
         match = re.search(''.join([r'^',
                                    cls._GETMESSAGES, 

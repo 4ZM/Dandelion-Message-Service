@@ -22,7 +22,6 @@ import binascii
 import re
 from dandelion.message import Message 
 from dandelion.protocol import Protocol, ProtocolParseError, ProtocolVersionError
-from pickle import PROTO
 
 class ProtocolTest(unittest.TestCase):
     """Unit test suite for the DMS Protocol class"""
@@ -94,10 +93,12 @@ class ProtocolTest(unittest.TestCase):
 
         s = Protocol.create_message_id_list_request()
         self.assertEqual(s, 'GETMESSAGELIST')
+        self.assertTrue(Protocol.is_message_id_list_request(s))
         
         tc = b'\x01\x03\x03\x07'
         s = Protocol.create_message_id_list_request(tc)
         self.assertEqual(s, ' '.join(['GETMESSAGELIST', _b2s(tc)])) 
+        self.assertTrue(Protocol.is_message_id_list_request(s))
         
         """Testing bad input"""
         self.assertRaises(TypeError, Protocol.create_message_id_list_request, 0)
@@ -111,9 +112,12 @@ class ProtocolTest(unittest.TestCase):
         
         tc_bin = b'\x01\x03\x03\x07'
         tc_str = _b2s(tc_bin)
+        
+        self.assertTrue(Protocol.is_message_id_list_request(' '.join(['GETMESSAGELIST', tc_str])))
         tc = Protocol.parse_message_id_list_request(' '.join(['GETMESSAGELIST', tc_str]))
         self.assertEqual(tc, tc_bin)
 
+        self.assertTrue(Protocol.is_message_id_list_request('GETMESSAGELIST'))
         tc = Protocol.parse_message_id_list_request('GETMESSAGELIST')
         self.assertEqual(tc, None)
 
@@ -164,11 +168,11 @@ class ProtocolTest(unittest.TestCase):
         msg3 = Message('M3')
         
         tc = b'\x01\x03\x03\x07'
-        tc_str = _b2s(tc)
+        tc_str_ok = _b2s(tc)
         
         str_ = Protocol.create_message_id_list(tc, [msg1, msg2, msg3])
         tc_str, m1_str, m2_str, m3_str = str_.split(';')
-        self.assertEqual(tc_str, tc_str)
+        self.assertEqual(tc_str, tc_str_ok)
         self.assertEqual(msg1.id, _s2b(m1_str))
         self.assertEqual(msg2.id, _s2b(m2_str))
         self.assertEqual(msg3.id, _s2b(m3_str))
@@ -272,10 +276,13 @@ class ProtocolTest(unittest.TestCase):
         m2_str = _b2s(m2)
         m3_str = _b2s(m3)
         
+        self.assertTrue(Protocol.is_message_list_request('GETMESSAGES'))
+        self.assertFalse(Protocol.is_message_list_request('GETMES_XXX_SAGES'))
         self.assertEqual(Protocol.create_message_list_request(), 'GETMESSAGES')
         self.assertEqual(Protocol.create_message_list_request([]), 'GETMESSAGES')
         
         str_ = Protocol.create_message_list_request([m1, m2, m3])
+        self.assertTrue(Protocol.is_message_list_request(str_))
         self.assertTrue(str_.startswith('GETMESSAGES '))
         self.assertEquals(str_.count(';'), 2)
         self.assertTrue(m1_str in str_)
