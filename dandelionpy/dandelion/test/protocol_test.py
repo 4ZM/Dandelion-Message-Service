@@ -42,7 +42,7 @@ class ProtocolTest(unittest.TestCase):
         ex_database_id_str = _b2s(ex_database_id_bin)
 
         greeting = Protocol.create_greeting_message(ex_database_id_bin)
-        pc, pv, dbid = greeting.split(';')
+        pc, pv, dbid = greeting[8:].split(';')
         
         self.assertEqual(pc, "DMS")
         self.assertTrue(re.match('^[0-9]+\.[0-9]+$', pv))
@@ -59,7 +59,7 @@ class ProtocolTest(unittest.TestCase):
         ex_database_id_bin = b'\x01\x03\x03\x07'
         ex_database_id_str = _b2s(ex_database_id_bin)
 
-        dbid = Protocol.parse_greeting_message(';'.join(['DMS', Protocol.PROTOCOL_VERSION, ex_database_id_str]))
+        dbid = Protocol.parse_greeting_message(_add_size(';'.join(['DMS', Protocol.PROTOCOL_VERSION, ex_database_id_str])))
         self.assertEqual(dbid, ex_database_id_bin)
         
         self.assertRaises(ProtocolParseError, Protocol.parse_greeting_message, '')
@@ -67,18 +67,18 @@ class ProtocolTest(unittest.TestCase):
         self.assertRaises(TypeError, Protocol.parse_greeting_message, 1337)    
 
         self.assertRaises(ProtocolParseError, Protocol.parse_greeting_message, 
-                          ';'.join(['XXX', '1.0', ex_database_id_str]))
+                          _add_size(';'.join(['XXX', '1.0', ex_database_id_str])))
         self.assertRaises(ProtocolParseError, Protocol.parse_greeting_message, 
-                          ';'.join(['XXX', 'XXX', '1.0', ';', ex_database_id_str]))
+                          _add_size(';'.join(['XXX', 'XXX', '1.0', ';', ex_database_id_str])))
         self.assertRaises(ProtocolParseError, Protocol.parse_greeting_message, 
-                          ';'.join(['DMS', '10', ex_database_id_str]))
+                          _add_size(';'.join(['DMS', '10', ex_database_id_str])))
         self.assertRaises(ProtocolParseError, Protocol.parse_greeting_message, 
-                          ';'.join(['DMS', '1.0', '???']))
+                          _add_size(';'.join(['DMS', '1.0', '???'])))
         self.assertRaises(ProtocolParseError, Protocol.parse_greeting_message, 
-                          ''.join(['DMS', ';', '1.0', ';']))
+                          _add_size(''.join(['DMS', ';', '1.0', ';'])))
         
         self.assertRaises(ProtocolVersionError, Protocol.parse_greeting_message, 
-                          ';'.join(['DMS', '2.0', ex_database_id_str]))
+                          _add_size(';'.join(['DMS', '2.0', ex_database_id_str])))
         
     
     def test_roundtrip_greeting_message(self):
@@ -92,20 +92,20 @@ class ProtocolTest(unittest.TestCase):
         """Test message ID list request creation"""
 
         s = Protocol.create_message_id_list_request()
-        self.assertEqual(s, 'GETMESSAGELIST')
+        self.assertTrue('GETMESSAGELIST' in s)
         self.assertTrue(Protocol.is_message_id_list_request(s))
         
         tc = b'\x01\x03\x03\x07'
         s = Protocol.create_message_id_list_request(tc)
-        self.assertEqual(s, ' '.join(['GETMESSAGELIST', _b2s(tc)])) 
+        self.assertTrue(' '.join(['GETMESSAGELIST', _b2s(tc)]) in s) 
         self.assertTrue(Protocol.is_message_id_list_request(s))
         
         """Testing bad input"""
         self.assertRaises(TypeError, Protocol.create_message_id_list_request, 0)
         self.assertRaises(TypeError, Protocol.create_message_id_list_request, -1337)
         self.assertRaises(TypeError, Protocol.create_message_id_list_request, [])
-        self.assertRaises(TypeError, Protocol.create_message_id_list_request, "1337")
-        self.assertRaises(TypeError, Protocol.create_message_id_list_request, "XXX")
+        self.assertRaises(TypeError, Protocol.create_message_id_list_request, _add_size("1337"))
+        self.assertRaises(TypeError, Protocol.create_message_id_list_request, _add_size("XXX"))
                           
     def test_parse_message_id_list_request(self):
         """Test parsing the message ID list request string"""
@@ -113,12 +113,12 @@ class ProtocolTest(unittest.TestCase):
         tc_bin = b'\x01\x03\x03\x07'
         tc_str = _b2s(tc_bin)
         
-        self.assertTrue(Protocol.is_message_id_list_request(' '.join(['GETMESSAGELIST', tc_str])))
-        tc = Protocol.parse_message_id_list_request(' '.join(['GETMESSAGELIST', tc_str]))
+        self.assertTrue(Protocol.is_message_id_list_request(_add_size(' '.join(['GETMESSAGELIST', tc_str]))))
+        tc = Protocol.parse_message_id_list_request(_add_size(' '.join(['GETMESSAGELIST', tc_str])))
         self.assertEqual(tc, tc_bin)
 
-        self.assertTrue(Protocol.is_message_id_list_request('GETMESSAGELIST'))
-        tc = Protocol.parse_message_id_list_request('GETMESSAGELIST')
+        self.assertTrue(Protocol.is_message_id_list_request(_add_size('GETMESSAGELIST')))
+        tc = Protocol.parse_message_id_list_request(_add_size('GETMESSAGELIST'))
         self.assertEqual(tc, None)
 
         """Testing bad input"""
@@ -132,23 +132,23 @@ class ProtocolTest(unittest.TestCase):
         
         self.assertRaises(ProtocolParseError, 
                           Protocol.parse_message_id_list_request, 
-                          'BAD')
+                          _add_size('BAD'))
         
         self.assertRaises(ProtocolParseError, 
                           Protocol.parse_message_id_list_request, 
-                          'BAD BAD')
+                          _add_size('BAD BAD'))
         
         self.assertRaises(ProtocolParseError, 
                           Protocol.parse_message_id_list_request, 
-                          'GETMESSAGELIST ???')
+                          _add_size('GETMESSAGELIST ???'))
         
         self.assertRaises(ProtocolParseError, 
                           Protocol.parse_message_id_list_request, 
-                          'GETMESSAGELIST 01030307 01030307')
+                          _add_size('GETMESSAGELIST 01030307 01030307'))
         
         self.assertRaises(ProtocolParseError, 
                           Protocol.parse_message_id_list_request, 
-                          'GETMESSAGELISTXXX 01030307')
+                          _add_size('GETMESSAGELISTXXX 01030307'))
 
     def test_roundtrip_create_message_id_list_request(self):
         """Test message ID list request creation / parsing by a round trip"""
@@ -170,17 +170,17 @@ class ProtocolTest(unittest.TestCase):
         tc = b'\x01\x03\x03\x07'
         tc_str_ok = _b2s(tc)
         
-        str_ = Protocol.create_message_id_list(tc, [msg1, msg2, msg3])
+        str_ = Protocol.create_message_id_list(tc, [msg1, msg2, msg3])[8:]
         tc_str, m1_str, m2_str, m3_str = str_.split(';')
         self.assertEqual(tc_str, tc_str_ok)
         self.assertEqual(msg1.id, _s2b(m1_str))
         self.assertEqual(msg2.id, _s2b(m2_str))
         self.assertEqual(msg3.id, _s2b(m3_str))
 
-        str_ = Protocol.create_message_id_list(tc, None)
+        str_ = Protocol.create_message_id_list(tc, None)[8:]
         self.assertEqual(str_, tc_str)
         
-        str_ = Protocol.create_message_id_list(tc, [])
+        str_ = Protocol.create_message_id_list(tc, [])[8:]
         self.assertEqual(str_, tc_str)
 
         """Testing bad input"""
@@ -206,14 +206,14 @@ class ProtocolTest(unittest.TestCase):
         m2_str = _b2s(m2)
         m1_str = _b2s(m1)
 
-        parsed_tc, msgidlist = Protocol.parse_message_id_list(';'.join([tc_str, m1_str, m2_str, m3_str]))
+        parsed_tc, msgidlist = Protocol.parse_message_id_list(_add_size(';'.join([tc_str, m1_str, m2_str, m3_str])))
         self.assertEqual(parsed_tc, tc)
         self.assertEqual(len(msgidlist), 3)
         self.assertTrue(m1 in msgidlist)
         self.assertTrue(m2 in msgidlist)
         self.assertTrue(m3 in msgidlist)
         
-        parsed_tc, msgidlist = Protocol.parse_message_id_list(tc_str)
+        parsed_tc, msgidlist = Protocol.parse_message_id_list(_add_size(tc_str))
         self.assertEqual(parsed_tc, tc)
         self.assertEqual(len(msgidlist), 0)
         
@@ -276,14 +276,14 @@ class ProtocolTest(unittest.TestCase):
         m2_str = _b2s(m2)
         m3_str = _b2s(m3)
         
-        self.assertTrue(Protocol.is_message_list_request('GETMESSAGES'))
-        self.assertFalse(Protocol.is_message_list_request('GETMES_XXX_SAGES'))
-        self.assertEqual(Protocol.create_message_list_request(), 'GETMESSAGES')
-        self.assertEqual(Protocol.create_message_list_request([]), 'GETMESSAGES')
+        self.assertTrue(Protocol.is_message_list_request(_add_size('GETMESSAGES')))
+        self.assertFalse(Protocol.is_message_list_request(_add_size('GETMES_XXX_SAGES')))
+        self.assertEqual(Protocol.create_message_list_request(), _add_size('GETMESSAGES'))
+        self.assertEqual(Protocol.create_message_list_request([]), _add_size('GETMESSAGES'))
         
         str_ = Protocol.create_message_list_request([m1, m2, m3])
         self.assertTrue(Protocol.is_message_list_request(str_))
-        self.assertTrue(str_.startswith('GETMESSAGES '))
+        self.assertTrue('GETMESSAGES ' in str_)
         self.assertEquals(str_.count(';'), 2)
         self.assertTrue(m1_str in str_)
         self.assertTrue(m2_str in str_)
@@ -298,7 +298,7 @@ class ProtocolTest(unittest.TestCase):
     def test_parse_message_list_request(self):
         """Test parsing the message list request string"""
         
-        msgs = Protocol.parse_message_list_request('GETMESSAGES')
+        msgs = Protocol.parse_message_list_request(_add_size('GETMESSAGES'))
         self.assertEqual(msgs, None)
         
         m1 = b'42'
@@ -308,7 +308,7 @@ class ProtocolTest(unittest.TestCase):
         m2_str = _b2s(m2)
         m1_str = _b2s(m1)
        
-        msgs_ret = Protocol.parse_message_list_request(' '.join(['GETMESSAGES', ';'.join([m1_str, m2_str, m3_str])]))
+        msgs_ret = Protocol.parse_message_list_request(_add_size(' '.join(['GETMESSAGES', ';'.join([m1_str, m2_str, m3_str])])))
         self.assertEquals(len(msgs_ret), 3)
         self.assertTrue(m1 in msgs_ret)
         self.assertTrue(m2 in msgs_ret)
@@ -409,13 +409,20 @@ class ProtocolTest(unittest.TestCase):
 def _b2s(b):
     """bytes to string"""
     #return binascii.b2a_base64(b)[:-1].decode()
-    return binascii.b2a_hex(b).decode().upper()
+    return binascii.b2a_hex(b).decode('utf-8').upper()
     
 def _s2b(s):
     """string to bytes"""
     
     #return bytes(binascii.a2b_base64(s.encode()))
-    return bytes(binascii.a2b_hex(s.encode()))
+    return bytes(binascii.a2b_hex(s.encode('utf-8')))
+
+def _add_size(s):
+    """add size padding"""
+    
+    hx = hex(len(s))[2:].upper()
+    zeros = ''.join(['0' for _ in range(8 - len(hx))])
+    return ''.join([zeros, hx, s])
 
 if __name__ == '__main__':
     unittest.main()

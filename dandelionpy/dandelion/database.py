@@ -20,9 +20,9 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 import random
 import pickle
 
-from dandelion.message import Message
+from message import Message
 
-class DataBase: 
+class ContentDB: 
     """Message data base for the Dandelion Message Service"""
     
     _ID_LENGTH_BYTES = 16
@@ -33,7 +33,7 @@ class DataBase:
         # Using a naive in-memory db for now
         # TODO Should use some not so naive data structure here to get better access complexity  
         self._messages = []
-        self._id = bytes([int(random.random() * 255) for _ in range(DataBase._ID_LENGTH_BYTES)])
+        self._id = bytes([int(random.random() * 255) for _ in range(ContentDB._ID_LENGTH_BYTES)])
         self._rev = 0
         
         
@@ -103,7 +103,7 @@ class DataBase:
         
         """
         
-        if msgs == None:
+        if msgs is None:
             self._messages = []
             return
         
@@ -114,7 +114,17 @@ class DataBase:
                         
         for m in to_delete:
             self._messages.remove(m)
-            
+
+    def get_messages(self, msgids=None):
+        """Get a list of all messages with specified message id"""
+        
+        if msgids is None:
+            return [m for _, m in self._messages]
+        
+        if not hasattr(msgids,'__iter__'):
+            raise TypeError
+               
+        return [m for _, m in self._messages if m.id in msgids]
 
     def messages_since(self, time_cookie=None):
         """Get messages from the data base.
@@ -126,17 +136,17 @@ class DataBase:
         
         """
         
-        if time_cookie == None:
-            return [m for (_, m) in self._messages]
-
+        if time_cookie is None:
+            return (pickle.dumps(self._rev), [m for (_, m) in self._messages])
+        
         if not isinstance(time_cookie, bytes):
             raise TypeError 
-
+        
         tc_num = pickle.loads(time_cookie)
         msgs = []
         for tc, m in self._messages:
             if tc >= tc_num:
                 msgs.append(m)
         
-        return msgs
+        return (pickle.dumps(self._rev), msgs)
     

@@ -39,6 +39,7 @@ class Protocol:
     """
     
     PROTOCOL_VERSION = '1.0'
+    MESSAGE_LENGTH_BYTES = 4
     
     _PROTOCOL_COOKIE = 'DMS'
     _FIELD_SEPARATOR = ';'
@@ -67,9 +68,9 @@ class Protocol:
         if not isinstance(dbid, bytes):
             raise TypeError
         
-        return cls._FIELD_SEPARATOR.join([cls._PROTOCOL_COOKIE, 
+        return cls._add_size_pading(cls._FIELD_SEPARATOR.join([cls._PROTOCOL_COOKIE, 
                                           cls.PROTOCOL_VERSION, 
-                                          cls._b2s(dbid)]) 
+                                          cls._b2s(dbid)])) 
 
     @classmethod
     def parse_greeting_message(cls, msgstr):
@@ -86,6 +87,8 @@ class Protocol:
         
         if not isinstance(msgstr, str):
             raise TypeError
+        
+        msgstr = cls._strip_size_pading(msgstr)
         
         match = re.search(
           ''.join([r'^', 
@@ -121,7 +124,7 @@ class Protocol:
         if not isinstance(msgstr, str):
             raise TypeError
         
-        return msgstr.startswith(Protocol._GETMESSAGELIST)
+        return cls._strip_size_pading(msgstr).startswith(Protocol._GETMESSAGELIST)
     
         
     @classmethod
@@ -139,12 +142,16 @@ class Protocol:
         """ 
         
         if time_cookie is None:
-            return cls._GETMESSAGELIST
+            return cls._add_size_pading(cls._GETMESSAGELIST)
     
         if not isinstance(time_cookie, bytes):
             raise TypeError
         
-        return ' '.join([cls._GETMESSAGELIST, cls._b2s(time_cookie)])
+        msg = ' '.join([cls._GETMESSAGELIST, cls._b2s(time_cookie)])
+        
+        msg = cls._add_size_pading(msg)
+        
+        return msg 
         
         
     @classmethod
@@ -157,9 +164,17 @@ class Protocol:
         Raises a ProtocolParseError if the string can't be parsed.
         """
         
+        if msgstr is None:
+            raise ValueError
+        
+        if not isinstance(msgstr, str):
+            raise TypeError
+        
         if not cls.is_message_id_list_request(msgstr):
             raise ProtocolParseError
-        
+
+        msgstr = cls._strip_size_pading(msgstr)
+                
         match = re.search(''.join([r'^', 
                                    Protocol._GETMESSAGELIST, 
                                    r'( ([a-zA-Z0-9+/=]+))?$']), msgstr)
@@ -203,7 +218,7 @@ class Protocol:
         """TOOO How to do this in a pythonic way?"""
         msgparts = [tc_str]
         msgparts.extend([cls._b2s(msg.id) for msg in messages])
-        return Protocol._FIELD_SEPARATOR.join(msgparts)
+        return cls._add_size_pading(Protocol._FIELD_SEPARATOR.join(msgparts))
 
         
     @classmethod
@@ -218,6 +233,8 @@ class Protocol:
         
         if not isinstance(msgstr, str):
             raise TypeError
+        
+        msgstr = cls._strip_size_pading(msgstr)
         
         match = re.search(''.join([r'^', 
                                    r'([a-zA-Z0-9+/=]+)', 
@@ -242,7 +259,7 @@ class Protocol:
         if not isinstance(msgstr, str):
             raise TypeError
         
-        return msgstr.startswith(cls._GETMESSAGES)
+        return cls._strip_size_pading(msgstr).startswith(cls._GETMESSAGES)
 
         
     @classmethod
@@ -263,11 +280,11 @@ class Protocol:
             raise TypeError
 
         if len(msg_ids) == 0:
-            return cls._GETMESSAGES
+            return cls._add_size_pading(cls._GETMESSAGES)
         
         msgid_str = cls._FIELD_SEPARATOR.join([cls._b2s(mid) for mid in msg_ids])
         
-        return ' '.join([cls._GETMESSAGES, msgid_str])
+        return cls._add_size_pading(' '.join([cls._GETMESSAGES, msgid_str]))
         
     @classmethod
     def parse_message_list_request(cls, msgstr):
@@ -278,6 +295,8 @@ class Protocol:
 
         if not cls.is_message_list_request(msgstr):
             raise ProtocolParseError
+        
+        msgstr = cls._strip_size_pading(msgstr)
         
         match = re.search(''.join([r'^',
                                    cls._GETMESSAGES, 
@@ -321,7 +340,8 @@ class Protocol:
             msgstrings.extend([cls._message2string(msg)])
         
         msg = cls._FIELD_SEPARATOR.join(msgstrings)
-        return msg
+        
+        return cls._add_size_pading(msg)
 
     @classmethod
     def _message2string(cls, msg):
@@ -348,6 +368,8 @@ class Protocol:
         if not isinstance(msgstr, str):
             raise TypeError
 
+        msgstr = cls._strip_size_pading(msgstr)
+
         match = re.search(''.join([r'^(.+)(', cls._FIELD_SEPARATOR, r'.+)*$']),
                           msgstr)
 
@@ -357,7 +379,69 @@ class Protocol:
         parts = msgstr.split(cls._FIELD_SEPARATOR)
         
         return [cls._string2message(m) for m in parts]
+    
+    @classmethod
+    def parse_size_str(cls, size_str):
+        """Parse the size string and return an integer"""
         
+        if size_str is None:
+            raise ValueError
+        
+        if not isinstance(size_str, str):
+            raise TypeError
+
+        if not re.match('[A-F0-9]{8}', size_str):
+            raise ProtocolParseError
+
+        return cls._s2i(size_str)
+    
+    @classmethod    
+    def _add_size_pading(cls, msgstr):
+        """Add a size padding to the start of the message.
+        
+        The size padding is encoded with a fixed length hex 32-bit field.
+        The size of the length padding is not included in the length padding 
+        itself.  
+        """
+
+        if msgstr is None:
+            raise ValueError
+        
+        if not isinstance(msgstr, str):
+            raise TypeError
+
+        
+
+        num = cls._i2s(len(msgstr))
+        zeros = ''.join(['0' for _ in range(cls.MESSAGE_LENGTH_BYTES * 2 - len(num))])
+        padded = ''.join([zeros, num, msgstr])
+        
+        return padded
+        
+    @classmethod    
+    def _strip_size_pading(cls, msgstr):
+        """Remove the message size padding from the start of the message.
+        
+        Will also raise ProtocolParseError if the size does not match the 
+        acctual message length. 
+        """
+
+        if msgstr is None:
+            raise ValueError
+        
+        if not isinstance(msgstr, str):
+            raise TypeError
+
+        if not re.match('[A-F0-9]{8}', msgstr):
+            raise ProtocolParseError
+
+        size = cls._s2i(msgstr[:cls.MESSAGE_LENGTH_BYTES * 2])
+        
+        if len(msgstr) - cls.MESSAGE_LENGTH_BYTES * 2 != size:
+            raise ProtocolParseError
+
+        return msgstr[cls.MESSAGE_LENGTH_BYTES * 2:]
+    
     @classmethod
     def _string2message(cls, mstr):
         """Parse the string and create a message"""
@@ -406,7 +490,7 @@ class Protocol:
         
         try:
             #s = binascii.b2a_base64(b)[:-1].decode()
-            s = binascii.b2a_hex(b).decode().upper()
+            s = binascii.b2a_hex(b).decode('utf-8').upper()
         except binascii.Error:
             raise ValueError()
         
@@ -418,7 +502,7 @@ class Protocol:
         
         try:
             #b = bytes(binascii.a2b_base64(s.encode()))
-            b = bytes(binascii.a2b_hex(s.encode()))
+            b = bytes(binascii.a2b_hex(s.encode('utf-8')))
         except binascii.Error:
             raise ValueError()
         

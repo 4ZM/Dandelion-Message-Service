@@ -19,27 +19,27 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 
 import unittest
 from dandelion.message import Message
-from dandelion.database import DataBase
+from dandelion.database import ContentDB
 
 class DatabaseTest(unittest.TestCase):
-    """Unit test suite for the DataBase class"""
+    """Unit test suite for the ContentDB class"""
     
     def test_id(self):
         """Test data base id format"""
         
-        db = DataBase()
+        db = ContentDB()
         id = db.id
         self.assertNotEqual(id, None)
         self.assertTrue(len(id) > 0)
         self.assertTrue(isinstance(db.id, bytes))
         
         # Another data base gets another id
-        self.assertNotEqual(id, DataBase().id)
+        self.assertNotEqual(id, ContentDB().id)
         
     def test_single_message_interface(self):
         """Test functions relating to storing and recovering single messages"""
         
-        db = DataBase()
+        db = ContentDB()
         
         first_msg = Message("A message")
 
@@ -56,7 +56,7 @@ class DatabaseTest(unittest.TestCase):
     def test_list_message_interface(self):
         """Test functions relating to storing and recovering single messages"""
         
-        db = DataBase()
+        db = ContentDB()
         
         first_msg_list = [Message('A'), Message('B')]
 
@@ -101,7 +101,7 @@ class DatabaseTest(unittest.TestCase):
     def test_time_cookies(self):
         """Test the data base time cookies (revision) functionality""" 
         
-        db = DataBase()
+        db = ContentDB()
 
         # Adding a message        
         first_msg = Message('A Single Message')
@@ -118,17 +118,40 @@ class DatabaseTest(unittest.TestCase):
         self.assertNotEqual(second_cookie, first_cookie)
 
         # Since first should only be second
-        some_messages = db.messages_since(first_cookie)
+        tc, some_messages = db.messages_since(first_cookie)
         self.assertNotEqual(some_messages, None)
+        self.assertEqual(tc, second_cookie)
 
         self.assertEqual(len(some_messages), 1)
         self.assertEqual(some_messages[0], second_msg)
         
         # Nothing new since last message was added
-        last_messages = db.messages_since(second_cookie)
+        tc, last_messages = db.messages_since(second_cookie)
         self.assertNotEqual(last_messages, None)
         self.assertEqual(len(last_messages), 0)
+        self.assertEqual(tc, second_cookie)
         
+    def test_get_messages(self):
+        """Test the message retrieval from msg id list"""
+        
+        db = ContentDB()
 
+        m1 = Message('M1')
+        m2 = Message('M2')
+        m3 = Message('M3')
+        
+        db.add_messages([m1, m2, m3])
+        
+        mlist = db.get_messages()
+        self.assertTrue(m1 in mlist)
+        self.assertTrue(m2 in mlist)
+        self.assertTrue(m3 in mlist)
+        
+        mlist = db.get_messages([m1.id, m3.id])
+        self.assertTrue(m1 in mlist)
+        self.assertFalse(m2 in mlist)
+        self.assertTrue(m3 in mlist)
+        
+        
 if __name__ == '__main__':
     unittest.main()
