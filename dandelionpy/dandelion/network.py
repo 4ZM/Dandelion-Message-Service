@@ -22,7 +22,6 @@ import threading
 import socketserver
 from dandelion.protocol import Protocol, ProtocolParseError
 from dandelion.database import ContentDB
-import sys
 import socket
 from dandelion.service import Service
     
@@ -52,6 +51,7 @@ class SocketTransaction(Transaction):
     """A transaction that uses sockets for communication"""
     
     def __init__(self, sock):
+        print("SOCKTRANSACTION: created")
         self._sock = sock
     
     def _read(self):
@@ -60,22 +60,29 @@ class SocketTransaction(Transaction):
             s = self._sock.recv(Protocol.MESSAGE_LENGTH_BYTES*2).decode()
             d = Protocol.parse_size_str(s)
             data = self._sock.recv(d).decode()
+            print("SOCKTRANSACTION: read: ", ''.join([s, data]))
             return ''.join([s, data])
     
-        except Exception:
+        except Exception as e:
+            print("SOCKTRANSACTION: reading Exception: ", e)
             return None
     
     def _write(self, data):
+        print("SOCKTRANSACTION: write: ", data)
         self._sock.sendall(data)
     
     
 class DandelionServerTransaction(SocketTransaction):
     """The server communication transaction logic for the dandelion communication protocol."""
      
-    def __init__(self, db):
+    def __init__(self, sock, db):
+        super().__init__(sock)
         self._db = db
      
     def process(self):
+        
+            print("SERVER TRANSACTION: Starting server transaction")
+
             data = self._read()
             
             if data is None:
@@ -174,36 +181,39 @@ class _DandelionServerHandler(socketserver.BaseRequestHandler):
 
     def setup(self):
         self.request.settimeout(10.0)
-        print("S: Sending greeting")
-        self.request.send(Protocol.create_greeting_message(self.server.db.id).encode())
         #self.request.setblocking(False)
         
     def handle(self):
 
-        print("S: Handle")
-        
-        while True:
-        
-            comm_transaction = DandelionServerTransaction(self.server.db)
-            comm_transaction.process() 
+        print("SERVER: In handler")
+
+        self.request.send(Protocol.create_greeting_message(self.server.db.id).encode())
+
+        comm_transaction = DandelionServerTransaction(self.request, self.server.db)
+        comm_transaction.process() 
 
 
 class DandelionClientTransaction(SocketTransaction):
     """The client communication transaction logic for the dandelion communication protocol."""
      
-    def __init__(self, db):
+    def __init__(self, sock, db):
+        super().__init__(sock)
         self._db = db
      
     def process(self):
-        dbid = Protocol.parse_greeting_message(self._read())
-        print("C: greeting db: ", dbid)
+        print("CLIENT TRANSACTION: starting")
         
-        print("C sending id list req")
+        dbid = Protocol.parse_greeting_message(self._read())
+        
+        print("CLIENT TRANSACTION: greeting db: ", dbid)
+        
+        print("CLIENT TRANSACTION: sending id list req")
+
         self._write(Protocol.create_message_id_list_request().encode())
         
         s = self._read()
-        print("C: msg id response: ", s)
 
+        print("CLIENT TRANSACTION: msg id response: ", s)
 
 
 class DandelionClient:
@@ -214,55 +224,17 @@ class DandelionClient:
     
     def __enter__(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print("C: connecting")
+        self._sock.settimeout(10.0)
+        print("CLIENT: connecting")
         self._sock.connect((self._host, self._port))
         return self
     
     def __exit__(self, type, value, traceback):
-        print("C: disconnecting")
+        print("CLIENT: disconnecting")
         self._sock.close()
 
     def execute_transaction(self):
-        comm_transaction = DandelionClientTransaction(self._db)
+        comm_transaction = DandelionClientTransaction(self._sock, self._db)
         comm_transaction.process()
 
 
-
-
-
-
-
-        
-
-if __name__ == "__main__":
-    # Port 0 means to select an arbitrary unused port
-    HOST, PORT = "localhost", 1337
-
-    db = ContentDB()
-
-    server = DandelionServer(HOST, PORT, db)
-    ip, port = server.server_address
-    server.start()
- 
- 
-    with DandelionClient(HOST, PORT, db) as client:
-        client.execute_transaction()
-    
-    # Start a thread with the server -- that thread will then start one
-    # more thread for each request
-    #server_thread = threading.Thread(target=server.serve_forever)
-    # Exit the server thread when the main thread terminates
-    #server_thread.setDaemon(True)
-    #server_thread.start()
-    #print("Server loop running in thread:", server_thread.name)
-
-#    client(ip, port, b"GETMESSAGELIST")
-#    client(ip, port, b"GETMESSAGES")
-#    client(ip, port, b"Hello World 3")
-
-    print('Press enter to exit...')
-    sys.stdin.readline()
-    #server.shutdown()
-    #server_thread.join(None)
-    server.shutdown()
-    print("exiting")

@@ -20,6 +20,8 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 from service import Service
 from discoverer import Discoverer
 from threading import Thread
+from network import DandelionClient
+import time
 
 class Synchronizer(Service):
     
@@ -67,6 +69,23 @@ class Synchronizer(Service):
     def _sync_loop(self):
         print('SYNCHRONIZER: Running')
 
+        t1 = time.time()
         while not self._stop_requested:
-            pass
+            t2 = time.time()
+
+            """Should we sync or just keep checking the stop condition?"""
+            if t2 - t1 < 10:
+                time.sleep(0.01) # Don't busy wait
+                continue
+            
+            print("SYNCHRONIZER: Time for a sync")
+            
+            # Should use the discoverer here...
+            host = "localhost"
+            port = 1337
+            
+            with DandelionClient(host, port, self._db) as client:
+                client.execute_transaction()
+            
+            t1 = time.time()
     
