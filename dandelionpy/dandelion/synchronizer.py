@@ -20,7 +20,7 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 from service import Service
 from discoverer import Discoverer
 from threading import Thread
-from network import DandelionClient
+from network import Client
 import time
 
 class Synchronizer(Service):
@@ -84,7 +84,7 @@ class Synchronizer(Service):
             host = "localhost"
             port = 1337
             
-            with DandelionClient(host, port, self._db) as client:
+            with Client(host, port, self._db) as client:
                 client.execute_transaction()
             
             t1 = time.time()

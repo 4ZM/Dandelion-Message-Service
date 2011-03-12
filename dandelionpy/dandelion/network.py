@@ -72,7 +72,7 @@ class SocketTransaction(Transaction):
         self._sock.sendall(data)
     
     
-class DandelionServerTransaction(SocketTransaction):
+class ServerTransaction(SocketTransaction):
     """The server communication transaction logic for the dandelion communication protocol."""
      
     def __init__(self, sock, db):
@@ -129,7 +129,7 @@ class DandelionServerTransaction(SocketTransaction):
                 return
         
 
-class DandelionServer(Service):
+class Server(Service):
     
     def __init__(self, host, port, db):
         self._host = host
@@ -140,7 +140,7 @@ class DandelionServer(Service):
     def start(self):
         """Start the service. Blocking call."""
         print('SERVER: Starting')
-        self._server = _DandelionServerImpl(self._host, self._port, self._db)
+        self._server = _ServerImpl(self._host, self._port, self._db)
         self._running = True
         
     def stop(self):
@@ -160,10 +160,10 @@ class DandelionServer(Service):
         return self._running
         
 
-class _DandelionServerImpl(socketserver.ThreadingMixIn, socketserver.TCPServer):
+class _ServerImpl(socketserver.ThreadingMixIn, socketserver.TCPServer):
     def __init__(self, host, port, db):
-        super(socketserver.TCPServer, self).__init__((host,port), _DandelionServerHandler)
-        super(socketserver.ThreadingMixIn, self).__init__((host,port), _DandelionServerHandler)
+        super(socketserver.TCPServer, self).__init__((host,port), _ServerHandler)
+        super(socketserver.ThreadingMixIn, self).__init__((host,port), _ServerHandler)
         self.db = db
 
         # Start server
@@ -177,7 +177,7 @@ class _DandelionServerImpl(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
       
         
-class _DandelionServerHandler(socketserver.BaseRequestHandler):
+class _ServerHandler(socketserver.BaseRequestHandler):
 
     def setup(self):
         self.request.settimeout(10.0)
@@ -189,11 +189,11 @@ class _DandelionServerHandler(socketserver.BaseRequestHandler):
 
         self.request.send(Protocol.create_greeting_message(self.server.db.id).encode())
 
-        comm_transaction = DandelionServerTransaction(self.request, self.server.db)
+        comm_transaction = ServerTransaction(self.request, self.server.db)
         comm_transaction.process() 
 
 
-class DandelionClientTransaction(SocketTransaction):
+class ClientTransaction(SocketTransaction):
     """The client communication transaction logic for the dandelion communication protocol."""
      
     def __init__(self, sock, db):
@@ -216,7 +216,7 @@ class DandelionClientTransaction(SocketTransaction):
         print("CLIENT TRANSACTION: msg id response: ", s)
 
 
-class DandelionClient:
+class Client:
     def __init__(self, host, port, db):
         self._host = host
         self._port = port
@@ -234,7 +234,7 @@ class DandelionClient:
         self._sock.close()
 
     def execute_transaction(self):
-        comm_transaction = DandelionClientTransaction(self._sock, self._db)
+        comm_transaction = ClientTransaction(self._sock, self._db)
         comm_transaction.process()
 
 

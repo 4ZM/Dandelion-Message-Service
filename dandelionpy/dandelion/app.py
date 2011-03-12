@@ -18,7 +18,7 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from configmanager import ConfigManager 
-from network import DandelionServer
+from network import Server
 from synchronizer import Synchronizer
 from ui import UI
 
@@ -32,7 +32,7 @@ class DandelionApp:
         pass
     
     def start_server(self): 
-        self._server = DandelionServer(self._config_manager.server_config['local_address'], 
+        self._server = Server(self._config_manager.server_config['local_address'], 
                                        int(self._config_manager.server_config['listen_port']), 
                                        self._config_manager.content_db) 
         self._server.start()
