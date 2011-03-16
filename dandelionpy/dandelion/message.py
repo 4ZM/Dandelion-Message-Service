@@ -23,8 +23,8 @@ import binascii
 class Message:
     """A DMS Message"""
     
-    _ID_LENGTH_BYTES = 16
-    MAX_TEXT_LENGTH = 160 
+    _ID_LENGTH_BYTES = 18
+    MAX_TEXT_LENGTH = 140 
     
     def __init__(self, text, signer=None, encrypter=None):
         """Create a message without sender and recipient"""
