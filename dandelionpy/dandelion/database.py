@@ -18,20 +18,18 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import random
-import pickle
+import dandelion.util
 
-from message import Message
+from dandelion.message import Message
 
 class ContentDB: 
     """Message data base for the Dandelion Message Service"""
     
-    _ID_LENGTH_BYTES = 16
+    _ID_LENGTH_BYTES = 18 # 144 bit id
     
     def __init__(self):
         """Create a new data base with a random id"""
         
-        # Using a naive in-memory db for now
-        # TODO Should use some not so naive data structure here to get better access complexity  
         self._messages = []
         self._id = bytes([int(random.random() * 255) for _ in range(ContentDB._ID_LENGTH_BYTES)])
         self._rev = 0
@@ -42,7 +40,6 @@ class ContentDB:
         """The data base id (bytes)"""
         return self._id
     
-    # TODO TimeCookie should be long number?
     def add_messages(self, msgs):
         """Add a a list of messages to the data base.
         
@@ -55,7 +52,7 @@ class ContentDB:
         if msgs is None:
             raise ValueError
         
-        if not hasattr(msgs,'__iter__'):
+        if not hasattr(msgs, '__iter__'):
             raise TypeError
         
         # Make sure the list only contains messages
@@ -71,9 +68,7 @@ class ContentDB:
             self._messages.extend(new_msgs)
             self._rev += 1
             
-        #pickle.loads(binascii.a2b_hex(binascii.b2a_hex(pickle.dumps(123))))
-            
-        return pickle.dumps(self._rev)
+        return dandelion.util.encode_int(self._rev)
         
     @property
     def message_count(self):
@@ -84,10 +79,9 @@ class ContentDB:
     def contains_messages(self, msgs):
         """Returns a list of boolean values where True indicates that the argument at 
         that position in the argument message list is in the data base.
-        
         """
         
-        if not hasattr(msgs,'__iter__'):
+        if not hasattr(msgs, '__iter__'):
             raise TypeError
             
         untagged_messages = [m for (_, m) in self._messages]
@@ -100,7 +94,6 @@ class ContentDB:
         
         The specified list of messages will be removed from the data base. 
         If the message parameter is omitted, all messages in the data base will be removed.
-        
         """
         
         if msgs is None:
@@ -121,7 +114,7 @@ class ContentDB:
         if msgids is None:
             return [m for _, m in self._messages]
         
-        if not hasattr(msgids,'__iter__'):
+        if not hasattr(msgids, '__iter__'):
             raise TypeError
                
         return [m for _, m in self._messages if m.id in msgids]
@@ -133,20 +126,23 @@ class ContentDB:
         including) the time specified by the time cookie will be returned.  
         If the time cookie parameter is omitted, all messages currently in the 
         data base will be returned.
-        
         """
         
         if time_cookie is None:
-            return (pickle.dumps(self._rev), [m for (_, m) in self._messages])
+            return (dandelion.util.encode_int(self._rev), [m for (_, m) in self._messages])
         
         if not isinstance(time_cookie, bytes):
             raise TypeError 
         
-        tc_num = pickle.loads(time_cookie)
+        tc_num = dandelion.util.decode_int(time_cookie)
+        
+        if not (0 <= tc_num <= self._rev):
+            raise ValueError
+        
         msgs = []
         for tc, m in self._messages:
             if tc >= tc_num:
                 msgs.append(m)
         
-        return (pickle.dumps(self._rev), msgs)
+        return (dandelion.util.encode_int(self._rev), msgs)
     

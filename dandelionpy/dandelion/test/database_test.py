@@ -131,6 +131,13 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual(len(last_messages), 0)
         self.assertEqual(tc, second_cookie)
         
+        # Trying some bad input
+        self.assertRaises(TypeError, db.messages_since, 0)
+        self.assertRaises(TypeError, db.messages_since, '')
+        self.assertRaises(TypeError, db.messages_since, 'fubar')
+        self.assertRaises(ValueError, db.messages_since, b'')
+        self.assertRaises(ValueError, db.messages_since, b'1337')
+        
     def test_get_messages(self):
         """Test the message retrieval from msg id list"""
         
