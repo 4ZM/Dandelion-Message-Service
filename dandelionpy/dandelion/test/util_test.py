@@ -18,7 +18,7 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import unittest
-from dandelion.util import *
+from dandelion.util import encode_bytes, encode_int, decode_bytes, decode_int
 
 class UtilTest(unittest.TestCase):
     

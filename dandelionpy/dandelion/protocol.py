@@ -17,9 +17,9 @@ You should have received a copy of the GNU General Public License
 along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import binascii
 import re
 from dandelion.message import Message
+import dandelion.util
 
 class ProtocolParseError(Exception):
     pass
@@ -39,7 +39,7 @@ class Protocol:
     """
     
     PROTOCOL_VERSION = '1.0'
-    MESSAGE_LENGTH_BYTES = 4
+    TERMINATOR = '\n'
     
     _PROTOCOL_COOKIE = 'DMS'
     _FIELD_SEPARATOR = ';'
@@ -47,6 +47,7 @@ class Protocol:
     
     _GETMESSAGELIST = 'GETMESSAGELIST'
     _GETMESSAGES = 'GETMESSAGES'
+    
     
     @classmethod
     def create_greeting_message(cls, dbid):
@@ -68,9 +69,11 @@ class Protocol:
         if not isinstance(dbid, bytes):
             raise TypeError
         
-        return cls._add_size_pading(cls._FIELD_SEPARATOR.join([cls._PROTOCOL_COOKIE, 
-                                          cls.PROTOCOL_VERSION, 
-                                          cls._b2s(dbid)])) 
+        return '{0}{3}{1}{3}{2}{4}'.format(cls._PROTOCOL_COOKIE, 
+                                           Protocol.PROTOCOL_VERSION, 
+                                           dandelion.util.encode_bytes(dbid).decode(),
+                                           cls._FIELD_SEPARATOR,
+                                           Protocol.TERMINATOR)
 
     @classmethod
     def parse_greeting_message(cls, msgstr):
@@ -82,33 +85,33 @@ class Protocol:
         version, a ProtocolVersionError is raised.         
         """
 
-        if msgstr == None:
+        if msgstr is None:
             raise ValueError
         
         if not isinstance(msgstr, str):
             raise TypeError
         
-        msgstr = cls._strip_size_pading(msgstr)
-        
         match = re.search(
           ''.join([r'^', 
-                   Protocol._PROTOCOL_COOKIE, 
-                   Protocol._FIELD_SEPARATOR, 
+                   cls._PROTOCOL_COOKIE, 
+                   cls._FIELD_SEPARATOR, 
                    r'([0-9]+\.[0-9]+)',
-                   Protocol._FIELD_SEPARATOR,
-                   r'([a-zA-Z0-9+/=]+)$']), msgstr)
+                   cls._FIELD_SEPARATOR,
+                   r'([a-zA-Z0-9+/=]+)',
+                   Protocol.TERMINATOR,
+                   r'$']), msgstr)
         
         if not match:
             raise ProtocolParseError
         
-        ver, dbid_hex = match.groups()
+        ver, dbid_str = match.groups()
         
         """Only exact match for now (should preferably support older versions)"""
         if Protocol.PROTOCOL_VERSION != ver:
             raise ProtocolVersionError('Incompatible Protocol versions')
         
         try:
-            dbid = cls._s2b(dbid_hex)
+            dbid = dandelion.util.decode_bytes(dbid_str.encode())
         except ValueError:
             raise ProtocolParseError
         
@@ -124,7 +127,7 @@ class Protocol:
         if not isinstance(msgstr, str):
             raise TypeError
         
-        return cls._strip_size_pading(msgstr).startswith(Protocol._GETMESSAGELIST)
+        return msgstr.startswith(cls._GETMESSAGELIST)
     
         
     @classmethod
@@ -142,17 +145,15 @@ class Protocol:
         """ 
         
         if time_cookie is None:
-            return cls._add_size_pading(cls._GETMESSAGELIST)
+            return ''.join([cls._GETMESSAGELIST, Protocol.TERMINATOR])
     
         if not isinstance(time_cookie, bytes):
             raise TypeError
         
-        msg = ' '.join([cls._GETMESSAGELIST, cls._b2s(time_cookie)])
-        
-        msg = cls._add_size_pading(msg)
-        
-        return msg 
-        
+        return '{0} {1}{2}'.format(cls._GETMESSAGELIST, 
+                                   dandelion.util.encode_bytes(time_cookie).decode(), 
+                                   Protocol.TERMINATOR)
+            
         
     @classmethod
     def parse_message_id_list_request(cls, msgstr):
@@ -172,12 +173,12 @@ class Protocol:
         
         if not cls.is_message_id_list_request(msgstr):
             raise ProtocolParseError
-
-        msgstr = cls._strip_size_pading(msgstr)
                 
         match = re.search(''.join([r'^', 
-                                   Protocol._GETMESSAGELIST, 
-                                   r'( ([a-zA-Z0-9+/=]+))?$']), msgstr)
+                                   cls._GETMESSAGELIST, 
+                                   r'( ([a-zA-Z0-9+/=]+))?',
+                                   Protocol.TERMINATOR,
+                                   r'$']), msgstr)
         
         if not match:
             raise ProtocolParseError
@@ -185,7 +186,7 @@ class Protocol:
         if match.groups()[0] is None:
             return None
         
-        return cls._s2b(match.groups()[1])
+        return dandelion.util.decode_bytes(match.groups()[1].encode())
         
     @classmethod    
     def create_message_id_list(cls, time_cookie, messages=None):
@@ -213,12 +214,12 @@ class Protocol:
         if not hasattr(messages, '__iter__'):
             raise TypeError
         
-        tc_str = cls._b2s(time_cookie)
+        tc_str = dandelion.util.encode_bytes(time_cookie).decode()
         
-        """TOOO How to do this in a pythonic way?"""
         msgparts = [tc_str]
-        msgparts.extend([cls._b2s(msg.id) for msg in messages])
-        return cls._add_size_pading(Protocol._FIELD_SEPARATOR.join(msgparts))
+        msgparts.extend([dandelion.util.encode_bytes(msg.id).decode() for msg in messages])
+        return ''.join([cls._FIELD_SEPARATOR.join(msgparts),
+                        Protocol.TERMINATOR])
 
         
     @classmethod
@@ -233,12 +234,12 @@ class Protocol:
         
         if not isinstance(msgstr, str):
             raise TypeError
-        
-        msgstr = cls._strip_size_pading(msgstr)
-        
+
         match = re.search(''.join([r'^', 
                                    r'([a-zA-Z0-9+/=]+)', 
-                                   r'(;[a-zA-Z0-9+/=]+)*$']), msgstr)
+                                   r'(;[a-zA-Z0-9+/=]+)*',
+                                   Protocol.TERMINATOR,
+                                   r'$']), msgstr)
         
         if not match:
             raise ProtocolParseError
@@ -247,7 +248,8 @@ class Protocol:
         if tc is None:
             raise ProtocolParseError
         
-        return (cls._s2b(tc), [cls._s2b(m) for m in msgstr.split(';')[1:]])
+        return (dandelion.util.decode_bytes(tc.encode()), 
+                [dandelion.util.decode_bytes(m.encode()) for m in msgstr[:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)[1:]])
 
     @classmethod
     def is_message_list_request(cls, msgstr):
@@ -259,7 +261,7 @@ class Protocol:
         if not isinstance(msgstr, str):
             raise TypeError
         
-        return cls._strip_size_pading(msgstr).startswith(cls._GETMESSAGES)
+        return msgstr.startswith(cls._GETMESSAGES)
 
         
     @classmethod
@@ -280,11 +282,11 @@ class Protocol:
             raise TypeError
 
         if len(msg_ids) == 0:
-            return cls._add_size_pading(cls._GETMESSAGES)
+            return ''.join([cls._GETMESSAGES, Protocol.TERMINATOR])
         
-        msgid_str = cls._FIELD_SEPARATOR.join([cls._b2s(mid) for mid in msg_ids])
+        msgid_str = cls._FIELD_SEPARATOR.join([dandelion.util.encode_bytes(mid).decode() for mid in msg_ids])
         
-        return cls._add_size_pading(' '.join([cls._GETMESSAGES, msgid_str]))
+        return '{0} {1}{2}'.format(cls._GETMESSAGES, msgid_str, Protocol.TERMINATOR)
         
     @classmethod
     def parse_message_list_request(cls, msgstr):
@@ -295,21 +297,21 @@ class Protocol:
 
         if not cls.is_message_list_request(msgstr):
             raise ProtocolParseError
-        
-        msgstr = cls._strip_size_pading(msgstr)
-        
-        match = re.search(''.join([r'^',
-                                   cls._GETMESSAGES, 
-                                   r'( [a-zA-Z0-9+/=]+)?', 
-                                   r'(;[a-zA-Z0-9+/=]+)*$']), msgstr)
+
+        match = re.search(r''.join([r'^',
+                                    cls._GETMESSAGES, 
+                                    r'( [a-zA-Z0-9+/=]+)?', 
+                                    r'(;[a-zA-Z0-9+/=]+)*',
+                                    Protocol.TERMINATOR,
+                                    r'$']), msgstr)
         if not match:
             raise ProtocolParseError
 
         if not match.groups()[0]:
             return None
         
-        id_strings = msgstr[len(cls._GETMESSAGES)+1:].split(';')
-        return [cls._s2b(id) for id in id_strings]
+        id_strings = msgstr[len(cls._GETMESSAGES) + 1:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)
+        return [dandelion.util.decode_bytes(id.encode()) for id in id_strings]
     
     
     @classmethod
@@ -341,7 +343,7 @@ class Protocol:
         
         msg = cls._FIELD_SEPARATOR.join(msgstrings)
         
-        return cls._add_size_pading(msg)
+        return ''.join([msg, Protocol.TERMINATOR])
 
     @classmethod
     def _message2string(cls, msg):
@@ -349,10 +351,10 @@ class Protocol:
          
         # TODO add code for sender & receiver TX
         return cls._SUB_FIELD_SEPARATOR.join([
-                  cls._b2s(msg.id),
+                  #dandelion.util.encode_bytes(msg.id).decode(),
                   cls._get_message_type_code(msg),
-                  cls._i2s(len(msg.text)),
-                  msg.text])
+                  dandelion.util.encode_int(len(msg.text)).decode(),
+                  dandelion.util.encode_bytes(msg.text.encode()).decode()])
         
     @classmethod
     def parse_message_list(cls, msgstr):
@@ -368,79 +370,19 @@ class Protocol:
         if not isinstance(msgstr, str):
             raise TypeError
 
-        msgstr = cls._strip_size_pading(msgstr)
-
-        match = re.search(''.join([r'^(.+)(', cls._FIELD_SEPARATOR, r'.+)*$']),
-                          msgstr)
+        match = re.search(''.join(['^(.+)(', 
+                                   cls._FIELD_SEPARATOR, 
+                                   '.+)*', 
+                                   Protocol.TERMINATOR, 
+                                   '$']), msgstr)
 
         if not match:
             raise ProtocolParseError
 
-        parts = msgstr.split(cls._FIELD_SEPARATOR)
+        parts = msgstr[:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)
         
         return [cls._string2message(m) for m in parts]
     
-    @classmethod
-    def parse_size_str(cls, size_str):
-        """Parse the size string and return an integer"""
-        
-        if size_str is None:
-            raise ValueError
-        
-        if not isinstance(size_str, str):
-            raise TypeError
-
-        if not re.match('[A-F0-9]{8}', size_str):
-            raise ProtocolParseError
-
-        return cls._s2i(size_str)
-    
-    @classmethod    
-    def _add_size_pading(cls, msgstr):
-        """Add a size padding to the start of the message.
-        
-        The size padding is encoded with a fixed length hex 32-bit field.
-        The size of the length padding is not included in the length padding 
-        itself.  
-        """
-
-        if msgstr is None:
-            raise ValueError
-        
-        if not isinstance(msgstr, str):
-            raise TypeError
-
-        
-
-        num = cls._i2s(len(msgstr))
-        zeros = ''.join(['0' for _ in range(cls.MESSAGE_LENGTH_BYTES * 2 - len(num))])
-        padded = ''.join([zeros, num, msgstr])
-        
-        return padded
-        
-    @classmethod    
-    def _strip_size_pading(cls, msgstr):
-        """Remove the message size padding from the start of the message.
-        
-        Will also raise ProtocolParseError if the size does not match the 
-        acctual message length. 
-        """
-
-        if msgstr is None:
-            raise ValueError
-        
-        if not isinstance(msgstr, str):
-            raise TypeError
-
-        if not re.match('[A-F0-9]{8}', msgstr):
-            raise ProtocolParseError
-
-        size = cls._s2i(msgstr[:cls.MESSAGE_LENGTH_BYTES * 2])
-        
-        if len(msgstr) - cls.MESSAGE_LENGTH_BYTES * 2 != size:
-            raise ProtocolParseError
-
-        return msgstr[cls.MESSAGE_LENGTH_BYTES * 2:]
     
     @classmethod
     def _string2message(cls, mstr):
@@ -449,13 +391,13 @@ class Protocol:
         # TODO add code for sender & receiver TX
         mparts = mstr.split(cls._SUB_FIELD_SEPARATOR)
         
-        if len(mparts) < 4:
+        if len(mparts) < 3:
             raise ProtocolParseError
         
-        mid = cls._s2b(mparts[0])
-        mcode = mparts[1]
-        mlen = cls._s2i(mparts[2])
-        mtext = mparts[3]
+        #mid = dandelion.util.decode_bytes(mparts[0].encode())
+        mcode = mparts[0]
+        mlen = dandelion.util.decode_int(mparts[1].encode())
+        mtext = dandelion.util.decode_bytes(mparts[2].encode()).decode()
         
         if mcode not in ['N', 'S', 'R', 'B']:
             raise ProtocolParseError
@@ -465,8 +407,8 @@ class Protocol:
         
         m = Message(mtext)
         
-        if mid != m.id: 
-            raise ProtocolParseError
+        #if mid != m.id: 
+        #    raise ProtocolParseError
         
         return m
     
@@ -482,43 +424,4 @@ class Protocol:
             return 'R'
         else:
             return 'N' 
-    
-    
-    @staticmethod
-    def _b2s(b):
-        """bytes to string serialization"""
-        
-        try:
-            #s = binascii.b2a_base64(b)[:-1].decode()
-            s = binascii.b2a_hex(b).decode('utf-8').upper()
-        except binascii.Error:
-            raise ValueError()
-        
-        return s 
-    
-    @staticmethod
-    def _s2b(s):
-        """string to bytes de-serialization"""
-        
-        try:
-            #b = bytes(binascii.a2b_base64(s.encode()))
-            b = bytes(binascii.a2b_hex(s.encode('utf-8')))
-        except binascii.Error:
-            raise ValueError()
-        
-        return b 
-        
-    @staticmethod        
-    def _i2s(i):
-        """integer to string serialization"""
 
-        s = hex(i)[2:].upper()
-        return s 
-    
-    @staticmethod
-    def _s2i(s):
-        """string to integer de-serialization"""
-        
-        i = int(s, 16)
-        return i 
-        
