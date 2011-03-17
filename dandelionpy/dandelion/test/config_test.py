@@ -18,14 +18,19 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import unittest
+import os
+
 from dandelion.config import *
 
 class MessageTest(unittest.TestCase):
     """Unit test suite for the DMS configuration classes"""
-     
-    TEST_FILE = 'config_test_data.conf'
+
+    TEST_FILE = os.path.join(os.path.split(os.path.abspath(__file__))[0], 
+                             'config_test_data.conf')
     
     def test_construction(self):
+        print('TF: ', self.TEST_FILE)
+        
         cm = ConfigManager(MessageTest.TEST_FILE)
         self.assertEqual(MessageTest.TEST_FILE, cm.config_file)
         self.assertTrue(isinstance(cm.server_config, ServerConfig))

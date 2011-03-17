@@ -17,7 +17,6 @@ You should have received a copy of the GNU General Public License
 along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-    
 import threading
 import socketserver
 from dandelion.protocol import Protocol, ProtocolParseError
@@ -48,99 +47,140 @@ class Transaction:
         """
 
 class SocketTransaction(Transaction):
-    """A transaction that uses sockets for communication"""
+    """A transaction that uses sockets for communication."""
     
-    def __init__(self, sock):
-        print("SOCKTRANSACTION: created")
+    def __init__(self, sock, terminator, buff_size=1024):
+        """Setup the SocketTransaction.
+        
+        The terminator is a single character of type bytes. Read operations will 
+        consume data until the terminator is sent. 
+        
+        Note: The SocketTransaction class is an abstract base class and should 
+        not be used stand alone. This function should be called by the sub classes.
+        """
+        #print("SOCKTRANSACTION: created")
+        
+        if sock is None:
+            raise TypeError
+        
+        if terminator is None or not isinstance(terminator, bytes):
+            raise TypeError
+        
+        if len(terminator) > 1:
+            raise ValueError 
+        
+        if buff_size is None or not isinstance(buff_size, int):
+            raise TypeError
+        
+        if buff_size <= 0:
+            raise ValueError        
+        
         self._sock = sock
+        self._terminator = terminator
+        self._buff_size = buff_size
     
     def _read(self):
+        """Read bytes from the socket until a terminator is received.
         
-        try:
-            s = self._sock.recv(Protocol.MESSAGE_LENGTH_BYTES*2).decode()
-            d = Protocol.parse_size_str(s)
-            data = self._sock.recv(d).decode()
-            print("SOCKTRANSACTION: read: ", ''.join([s, data]))
-            return ''.join([s, data])
-    
-        except Exception as e:
-            print("SOCKTRANSACTION: reading Exception: ", e)
-            return None
+        Implementation of the Transaction._read function.
+        
+        Returns the bytes read (including the terminator).
+        """
+        
+        total_data = bytearray()
+
+        while True:
+            data = self._sock.recv(self._buff_size)
+            #print("SOCKTRANSACTION: read chunk: ", data)
+            
+            if (self._terminator in data):
+                total_data.extend(data[:data.find(self._terminator) + 1])
+                break
+            
+            total_data.extend(data)
+
+        #print("SOCKTRANSACTION: read: ", total_data)
+        return total_data
     
     def _write(self, data):
-        print("SOCKTRANSACTION: write: ", data)
+        """Write the data bytes to the socket."""
+        
+        #print("SOCKTRANSACTION: write: ", data)
         self._sock.sendall(data)
     
     
 class ServerTransaction(SocketTransaction):
     """The server communication transaction logic for the dandelion communication protocol."""
+    
+    class _AbortTransactionException(Exception):
+        """Exception for internal signaling that the transaction should end.""" 
      
-    def __init__(self, sock, db):
-        super().__init__(sock)
+    def __init__(self, sock, db, buff_size=1024):
+        super().__init__(sock, Protocol.TERMINATOR.encode(), buff_size)
         self._db = db
      
     def process(self):
+        """The DMS server transaction logic.
         
-            print("SERVER TRANSACTION: Starting server transaction")
+        Starts by sending a greeting. Will then service the connected client 
+        repeatedly until it disconnects or the server times out."""
+         
+        #print("SERVER TRANSACTION: Starting server transaction")
+        
+        """Write greeting"""
+        self._write(Protocol.create_greeting_message(self._db.id).encode())
 
-            data = self._read()
-            
-            if data is None:
-                return
-            
-            print("S: Raw recv: ", data)
-            
+        while True: # Serve client as long as it is active 
             try:
-                
-                if Protocol.is_message_id_list_request(data):
-                    
-                    tc = Protocol.parse_message_id_list_request(data)
-                    print("S: Got message id list request, tc: ", tc)
-                    
-                    tc, msgs = self._db.messages_since(tc)
+                bdata = self._read()
+            except socket.timeout:
+                break
 
-                    response_str = Protocol.create_message_id_list(tc, msgs)
-                    
-                    print("S: sending id list: ", response_str)
-                    self._write(response_str.encode()) 
-                    
-                elif Protocol.is_message_list_request(data):
-                    
-                    msgids = Protocol.parse_message_list_request(data)
-                    
-                    print("S: Got message list request, mids: ", msgids)
-                    
-                    msgs = self._db.get_messages(msgids)
-                    response_str = Protocol.create_message_list(msgs)
-        
-                    print("S: sending msg list: ", response_str)
-                    self._write(response_str)
-        
-            except ProtocolParseError:
-                print("S: ProtocolParseError")
+            try:
+                self._process_data(bdata)
+            except self._AbortServiceException:
                 return
+
+
+    def _process_data(self, bdata):
+        """Internal helper function that processes what should be a server request."""
+         
+        try:
+            data = bdata.decode()
             
-            except ValueError:
-                print("S: ValueError")
-                return
+            if Protocol.is_message_id_list_request(data):
                 
-            except TypeError:
-                print("S: TypeError")
-                return
+                tc = Protocol.parse_message_id_list_request(data)
+                tc, msgs = self._db.messages_since(tc)
+                response_str = Protocol.create_message_id_list(tc, msgs)
+
+                self._write(response_str.encode()) 
+                
+            elif Protocol.is_message_list_request(data):
+                
+                msgids = Protocol.parse_message_list_request(data)
+                msgs = self._db.get_messages(msgids)
+                response_str = Protocol.create_message_list(msgs)
+
+                self._write(response_str.encode())
         
+        except (ProtocolParseError, ValueError, TypeError):
+            print("SERVER TRANSACTION: Error processing data from client")
+            raise self._AbortServiceException
+       
 
 class Server(Service):
     
-    def __init__(self, host, port, db):
-        self._host = host
-        self._port = port
+    def __init__(self, config, db):
+        self._ip = config.ip
+        self._port = config.port
         self._db = db
         self._running = False
     
     def start(self):
         """Start the service. Blocking call."""
         print('SERVER: Starting')
-        self._server = _ServerImpl(self._host, self._port, self._db)
+        self._server = _ServerImpl(self._ip, self._port, self._db)
         self._running = True
         
     def stop(self):
@@ -152,7 +192,7 @@ class Server(Service):
     @property
     def status(self):
         """A string with information about the service"""
-        print(''.join(['Server status: Running: ', str(self._running), ' (', self._host, ':', str(self._port), ')']))
+        print(''.join(['Server status: Running: ', str(self._running), ' (', self._ip, ':', str(self._port), ')']))
     
     @property 
     def running(self):
@@ -187,8 +227,6 @@ class _ServerHandler(socketserver.BaseRequestHandler):
 
         print("SERVER: In handler")
 
-        self.request.send(Protocol.create_greeting_message(self.server.db.id).encode())
-
         comm_transaction = ServerTransaction(self.request, self.server.db)
         comm_transaction.process() 
 
@@ -218,7 +256,7 @@ class ClientTransaction(SocketTransaction):
 
 class Client:
     def __init__(self, host, port, db):
-        self._host = host
+        self._ip = host
         self._port = port
         self._db = db
     
@@ -226,7 +264,7 @@ class Client:
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.settimeout(10.0)
         print("CLIENT: connecting")
-        self._sock.connect((self._host, self._port))
+        self._sock.connect((self._ip, self._port))
         return self
     
     def __exit__(self, type, value, traceback):

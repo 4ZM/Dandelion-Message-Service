@@ -17,11 +17,12 @@ You should have received a copy of the GNU General Public License
 along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from service import Service
-from discoverer import Discoverer
 from threading import Thread
-from network import Client
 import time
+
+from dandelion.service import Service
+from dandelion.discoverer import Discoverer
+from dandelion.network import Client
 
 class Synchronizer(Service):
     

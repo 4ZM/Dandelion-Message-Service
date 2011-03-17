@@ -22,7 +22,54 @@ class IdentityManager:
     def __init__(self, config):
         self._config = config
 
+class RSAKey:
+    def __init__(self, n, e, d=None):
+        self.n = n
+        self.e = e
+        self.d = d # Private key
+    
+class DSAKey:
+    def __init__(self, y, g, p, q, x=None):
+        self.y = y
+        self.g = g
+        self.p = p
+        self.q = q
+        self.x = x # Private key
+
+
 
 class Identity:
-    pass
+    
+    def __init__(self, DSAKey, RSAKey):
+        pass
+    
+    @property 
+    def fingerprint(self):
+        return 0
+    
+    
+    
+    def sign(self, message):
+        return ''
+    
+    def verify(self, message, signature):
+        return True
+    
+    
+    def encrypt(self, plaintext):
+        return plaintext
 
+    def decrypt(self, ciphertext):
+        return ciphertext
+
+    @classmethod
+    def generate(cls):
+        return Identity(DSAKey(0,0,0,0), RSAKey(0,0))
+        
+    @classmethod
+    def export_id(cls):
+        pass
+    
+    @classmethod
+    def import_id(cls):
+        pass

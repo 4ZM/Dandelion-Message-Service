@@ -372,12 +372,12 @@ class ProtocolTest(unittest.TestCase):
     def test_create_message_list(self):
         """Test message list creation"""
         
-        m1 = Message('M1')
-        m2 = Message('M22')
-        m3 = Message('M3')
-        m1_txt_b64 = 'XXXX'
-        m2_txt_b64 = 'XXXX'
-        m3_txt_b64 = 'XXXX'
+        m1 = Message('FUBAR')
+        m2 = Message('f00')
+        m3 = Message('13;@|37')
+        m1_txt_b64 = 'RlVCQVI='
+        m2_txt_b64 = 'ZjAw'
+        m3_txt_b64 = 'MTM7QHwzNw=='
         
         msg = Protocol.create_message_list([m1, m2, m3])
         

@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from configmanager import ConfigManager 
+from config import ConfigManager 
 from network import Server
 from synchronizer import Synchronizer
 from ui import UI
@@ -25,26 +25,22 @@ from ui import UI
 class DandelionApp:
 
     def __init__(self, config_file=None):
-        
         self._config_manager = ConfigManager(config_file)
-        
-        
-        pass
     
     def start_server(self): 
-        self._server = Server(self._config_manager.server_config['local_address'], 
-                                       int(self._config_manager.server_config['listen_port']), 
-                                       self._config_manager.content_db) 
+        self._server = Server(self._config_manager.server_config, 
+                              self._config_manager.content_db) 
         self._server.start()
     
     def start_content_synchronizer(self): 
         self._synchronizer = Synchronizer(self._config_manager.synchronizer_config,
-                                                  self._config_manager.content_db)
+                                          self._config_manager.content_db)
         self._synchronizer.start()
     
     def run_ui(self): 
         
-        self._ui = UI(self._config_manager, 
+        self._ui = UI(self._config_manager.ui_config, 
+                      self._config_manager.content_db,
                       self._server, 
                       self._synchronizer)
         self._ui.run()
@@ -52,10 +48,8 @@ class DandelionApp:
     def exit(self):
         self._synchronizer.stop()
         self._server.stop()
-    
 
 
-    
 if __name__ == '__main__':
     
     app = DandelionApp('dandelion.conf')

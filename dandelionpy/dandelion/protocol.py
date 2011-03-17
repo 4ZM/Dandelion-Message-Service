@@ -349,11 +349,8 @@ class Protocol:
     def _message2string(cls, msg):
         """Serialize a message to a DMS string"""
          
-        # TODO add code for sender & receiver TX
         return cls._SUB_FIELD_SEPARATOR.join([
-                  #dandelion.util.encode_bytes(msg.id).decode(),
                   cls._get_message_type_code(msg),
-                  dandelion.util.encode_int(len(msg.text)).decode(),
                   dandelion.util.encode_bytes(msg.text.encode()).decode()])
         
     @classmethod
@@ -388,28 +385,18 @@ class Protocol:
     def _string2message(cls, mstr):
         """Parse the string and create a message"""
         
-        # TODO add code for sender & receiver TX
         mparts = mstr.split(cls._SUB_FIELD_SEPARATOR)
         
-        if len(mparts) < 3:
+        if len(mparts) < 2:
             raise ProtocolParseError
         
-        #mid = dandelion.util.decode_bytes(mparts[0].encode())
         mcode = mparts[0]
-        mlen = dandelion.util.decode_int(mparts[1].encode())
-        mtext = dandelion.util.decode_bytes(mparts[2].encode()).decode()
+        mtext = dandelion.util.decode_bytes(mparts[1].encode()).decode()
         
         if mcode not in ['N', 'S', 'R', 'B']:
             raise ProtocolParseError
         
-        if mlen != len(mtext):
-            raise ProtocolParseError
-        
         m = Message(mtext)
-        
-        #if mid != m.id: 
-        #    raise ProtocolParseError
-        
         return m
     
     @classmethod

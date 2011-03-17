@@ -91,11 +91,11 @@ OP_START, OP_STOP, OP_RESTART, OP_STATUS = range(4)
         
 class UI:
     
-    def __init__(self, config_manager, server=None, content_synchronizer=None):
+    def __init__(self, config_manager, db, server=None, content_synchronizer=None):
         self._server = server
         self._synchronizer = content_synchronizer
         self._config_manager = config_manager
-        self._db = config_manager.content_db
+        self._db = db
         #self._id_manager = IdentityManager(self._config_manager.identity_manager_config)
 
         self._cmd_line = CmdLine(self)
