@@ -38,6 +38,8 @@ class Synchronizer(Service):
         self._thread = Thread(target=self._sync_loop)
         self._thread.start()
         self._running = True
+        
+        self._discoverer.start()
     
     def stop(self):
         """Stop the service. Block until the service is running."""
@@ -48,6 +50,7 @@ class Synchronizer(Service):
         if self._thread.is_alive():
             raise Exception # Timeout
             
+        self._discoverer.stop()
         self._running = False
         
     
@@ -82,11 +85,15 @@ class Synchronizer(Service):
             print("SYNCHRONIZER: Time for a sync")
             
             # Should use the discoverer here...
-            host = "localhost"
-            port = 1337
-            
+            #host = "localhost"
+            #port = 1337
+            #self._discoverer.start_listening()
+            #self._discoverer.stop_listening()
+            info_dict = self._discoverer.get_results()
+            print("RETURNED FROM DISCOVERER", info_dict)
+            """
             with Client(host, port, self._db) as client:
                 client.execute_transaction()
-            
+            """
             t1 = time.time()
     
