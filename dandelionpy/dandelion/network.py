@@ -18,10 +18,11 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import threading
+import socket
 import socketserver
+
 from dandelion.protocol import Protocol, ProtocolParseError
 from dandelion.database import ContentDB
-import socket
 from dandelion.service import Service
     
     
@@ -138,7 +139,7 @@ class ServerTransaction(SocketTransaction):
 
             try:
                 self._process_data(bdata)
-            except self._AbortServiceException:
+            except ServerTransaction._AbortTransactionException:
                 return
 
 
@@ -147,7 +148,7 @@ class ServerTransaction(SocketTransaction):
          
         try:
             data = bdata.decode()
-            
+
             if Protocol.is_message_id_list_request(data):
                 
                 tc = Protocol.parse_message_id_list_request(data)
@@ -163,10 +164,12 @@ class ServerTransaction(SocketTransaction):
                 response_str = Protocol.create_message_list(msgs)
 
                 self._write(response_str.encode())
+            else:
+                raise ProtocolParseError
         
         except (ProtocolParseError, ValueError, TypeError):
             print("SERVER TRANSACTION: Error processing data from client")
-            raise self._AbortServiceException
+            raise ServerTransaction._AbortTransactionException
        
 
 class Server(Service):
@@ -186,7 +189,7 @@ class Server(Service):
     def stop(self):
         """Stop the service. Blocking call."""
         print('SERVER: Stopping')
-        self._server.shutdown()
+        self._server.shutdown(socket.SHUT_RDWR)
         self._running = False
     
     @property
@@ -242,21 +245,27 @@ class ClientTransaction(SocketTransaction):
     def process(self):
         print("CLIENT TRANSACTION: starting")
         
-        """Read greeting from server"""
-        dbid = Protocol.parse_greeting_message(self._read().decode())
-
-        """Request and read message id's"""
-        self._write(Protocol.create_message_id_list_request().encode())
-        _, msgids = Protocol.parse_message_id_list(self._read().decode())
+        try:
         
-        """Request and read messages"""        
-        self._write(Protocol.create_message_list_request(msgids).encode())
-        msgs = Protocol.parse_message_list(self._read().decode())
-        
-        """Store the new messages"""
-        self._db.add_messages(msgs)
+            """Read greeting from server"""
+            dbid = Protocol.parse_greeting_message(self._read().decode())
+    
+            """Request and read message id's"""
+            self._write(Protocol.create_message_id_list_request().encode())
+            _, msgids = Protocol.parse_message_id_list(self._read().decode())
+            
+            """Request and read messages"""        
+            self._write(Protocol.create_message_list_request(msgids).encode())
+            msgs = Protocol.parse_message_list(self._read().decode())
+            
+            """Store the new messages"""
+            self._db.add_messages(msgs)
+            print("CLIENT TRANSACTION: adding new messages to db:", len(msgs))
+            
+        except (socket.timeout, ProtocolParseError, ValueError, TypeError):
+            print("CLIENT TRANSACTION: Error processing data from client")
 
-        print("CLIENT TRANSACTION: hanging up - updated:", len(msgs))
+        print("CLIENT TRANSACTION: hanging up")
 
 
 class Client:
@@ -274,6 +283,7 @@ class Client:
     
     def __exit__(self, type, value, traceback):
         print("CLIENT: disconnecting")
+        self._sock.shutdown(socket.SHUT_RDWR)
         self._sock.close()
 
     def execute_transaction(self):

@@ -18,9 +18,10 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import unittest
-from dandelion.network import SocketTransaction, ServerTransaction, ClientTransaction
 import socket
 import threading
+
+from dandelion.network import SocketTransaction, ServerTransaction, ClientTransaction
 from dandelion.database import ContentDB
 from dandelion.message import Message
 from dandelion.protocol import Protocol
@@ -36,15 +37,16 @@ class TestClientHelper:
     def sock(self):
         return self._sock
     
-    def __enter__(self):    
+    def __enter__(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.settimeout(TIMEOUT)
         self._sock.connect((HOST, PORT))
         return self
         
     def __exit__(self, type, value, traceback):
+        self._sock.shutdown(socket.SHUT_RDWR)
         self._sock.close()
-        
+
 
 class TestServerHelper:
     """A helper to create a socket (server side) for testing communication"""
@@ -67,6 +69,7 @@ class TestServerHelper:
     
     def __exit__(self, type, value, traceback):
         self._thread.join()
+        self._sock.shutdown(socket.SHUT_RDWR)
         self._sock.close()
         
     def _wait_for_connection(self):
@@ -281,6 +284,54 @@ class MessageTest(unittest.TestCase):
         self.assertEqual(srv_db.message_count, 3)
         self.assertEqual(len([srvmsg for srvmsg in srv_db.get_messages() if srvmsg not in client_db.get_messages()]), 0) 
 
+    def test_server_transaction_protocol_violation(self):
+        """Tests the servers response to an invalid request""" 
+    
+        db = ContentDB()
 
+        with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
+            srv_transaction = ServerTransaction(server_helper.sock, db)
+            test_client = SocketTransaction(client_helper.sock, b'\n')
+            
+            """Run the server transaction in a separate thread to allow client access"""
+            thread = threading.Thread(target=srv_transaction.process)
+            thread.start()
+
+            """Check greeting from server"""
+            rcv = test_client._read()
+            self.assertEqual(rcv, Protocol.create_greeting_message(db.id).encode())
+            
+            """Check response to mdgid list req"""
+            test_client._write(b'NON PROTOCOL MESSAGE\n')
+            self.assertRaises(socket.timeout, test_client._read)
+
+            """Wait for server (will time out if no requests)"""
+            thread.join(2*TIMEOUT)
+            server_helper, client_helper = None, None
+
+        
+    def test_client_transaction_protocol_violation(self):
+        """Tests the client transaction protocol and logic""" 
+        
+        client_db = ContentDB()
+        srv_db = ContentDB()
+    
+        with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
+            
+            client_transaction = ClientTransaction(client_helper.sock, client_db)
+            srv_sock = SocketTransaction(server_helper.sock, b'\n')
+            
+            """Run the client transaction in a separate thread"""
+            thread = threading.Thread(target=client_transaction.process)
+            thread.start()
+            
+            """Send a greeting (should be req. by client)"""
+            srv_sock._write(b'NON PROTOCOL MESSAGE\n')
+            self.assertRaises(socket.timeout, srv_sock._read)
+
+            """Wait for client to hang up"""
+            thread.join(2*TIMEOUT)
+
+            
 if __name__ == '__main__':
     unittest.main()
