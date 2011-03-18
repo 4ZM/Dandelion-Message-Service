@@ -226,6 +226,8 @@ class Protocol:
     def parse_message_id_list(cls, msgstr):
         """Parse the message ID response string from the server.
         
+        Returns a (tc, [msgid]) tuple.
+        
         Raises a ProtocolParseError if the string can't be parsed.
         """
         

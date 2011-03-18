@@ -29,8 +29,6 @@ class MessageTest(unittest.TestCase):
                              'config_test_data.conf')
     
     def test_construction(self):
-        print('TF: ', self.TEST_FILE)
-        
         cm = ConfigManager(MessageTest.TEST_FILE)
         self.assertEqual(MessageTest.TEST_FILE, cm.config_file)
         self.assertTrue(isinstance(cm.server_config, ServerConfig))

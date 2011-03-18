@@ -212,6 +212,7 @@ class _ServerImpl(socketserver.ThreadingMixIn, socketserver.TCPServer):
         print('SERVER: Running')
         
     def shutdown(self):
+        print('SERVER: Shutdown')
         super(socketserver.TCPServer, self).shutdown()
         self.server_thread.join(None)
 
@@ -233,25 +234,29 @@ class _ServerHandler(socketserver.BaseRequestHandler):
 
 class ClientTransaction(SocketTransaction):
     """The client communication transaction logic for the dandelion communication protocol."""
-     
-    def __init__(self, sock, db):
-        super().__init__(sock)
+
+    def __init__(self, sock, db, buff_size=1024):
+        super().__init__(sock, Protocol.TERMINATOR.encode(), buff_size)
         self._db = db
      
     def process(self):
         print("CLIENT TRANSACTION: starting")
         
-        dbid = Protocol.parse_greeting_message(self._read())
-        
-        print("CLIENT TRANSACTION: greeting db: ", dbid)
-        
-        print("CLIENT TRANSACTION: sending id list req")
+        """Read greeting from server"""
+        dbid = Protocol.parse_greeting_message(self._read().decode())
 
+        """Request and read message id's"""
         self._write(Protocol.create_message_id_list_request().encode())
+        _, msgids = Protocol.parse_message_id_list(self._read().decode())
         
-        s = self._read()
+        """Request and read messages"""        
+        self._write(Protocol.create_message_list_request(msgids).encode())
+        msgs = Protocol.parse_message_list(self._read().decode())
+        
+        """Store the new messages"""
+        self._db.add_messages(msgs)
 
-        print("CLIENT TRANSACTION: msg id response: ", s)
+        print("CLIENT TRANSACTION: hanging up - updated:", len(msgs))
 
 
 class Client:

@@ -18,7 +18,7 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import unittest
-from dandelion.network import SocketTransaction, ServerTransaction
+from dandelion.network import SocketTransaction, ServerTransaction, ClientTransaction
 import socket
 import threading
 from dandelion.database import ContentDB
@@ -84,165 +84,203 @@ class MessageTest(unittest.TestCase):
     def test_helper_classes(self):
         """This test case tests the helper server and client classes used in the other test cases.""" 
     
-        with TestServerHelper() as server_helper:
-            with TestClientHelper() as client_helper:
+        with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
 
-                self.assertNotEqual(server_helper, None)
-                self.assertNotEqual(client_helper, None)
-                
-                self.assertRaises(socket.timeout, recv_n, client_helper.sock, 1)
-                self.assertRaises(socket.timeout, recv_n, client_helper.sock, 10000)
-                
-                msg = b'123'
-                
-                server_helper.sock.sendall(msg)
-                ret = recv_n(client_helper.sock, len(msg))
-                self.assertTrue(isinstance(ret, bytes))
-                self.assertEqual(msg, ret)
+            self.assertNotEqual(server_helper, None)
+            self.assertNotEqual(client_helper, None)
+            
+            self.assertRaises(socket.timeout, recv_n, client_helper.sock, 1)
+            self.assertRaises(socket.timeout, recv_n, client_helper.sock, 10000)
+            
+            msg = b'123'
+            
+            server_helper.sock.sendall(msg)
+            ret = recv_n(client_helper.sock, len(msg))
+            self.assertTrue(isinstance(ret, bytes))
+            self.assertEqual(msg, ret)
 
-                server_helper.sock.sendall(msg)
-                server_helper.sock.sendall(msg)
-                ret = recv_n(client_helper.sock, len(msg) * 2)
-                self.assertEqual(b''.join([msg, msg]), ret)
+            server_helper.sock.sendall(msg)
+            server_helper.sock.sendall(msg)
+            ret = recv_n(client_helper.sock, len(msg) * 2)
+            self.assertEqual(b''.join([msg, msg]), ret)
 
-                server_helper.sock.sendall(msg)
-                self.assertRaises(socket.timeout, recv_n, client_helper.sock, len(msg) * 2)
-                self.assertRaises(socket.timeout, recv_n, client_helper.sock, 1)
+            server_helper.sock.sendall(msg)
+            self.assertRaises(socket.timeout, recv_n, client_helper.sock, len(msg) * 2)
+            self.assertRaises(socket.timeout, recv_n, client_helper.sock, 1)
 
-                server_helper.sock.sendall(b'')
-                ret = recv_n(client_helper.sock, 0)
-                self.assertEqual(ret, b'')
-                ret = recv_n(client_helper.sock, 0)
-                self.assertEqual(ret, b'')
-                self.assertRaises(socket.timeout, recv_n, client_helper.sock, 1)
+            server_helper.sock.sendall(b'')
+            ret = recv_n(client_helper.sock, 0)
+            self.assertEqual(ret, b'')
+            ret = recv_n(client_helper.sock, 0)
+            self.assertEqual(ret, b'')
+            self.assertRaises(socket.timeout, recv_n, client_helper.sock, 1)
 
 
     def test_socket_transaction_ctor(self):
         """Tests the SocketTransaction base class constructor""" 
     
-        with TestServerHelper() as server_helper:
-            with TestClientHelper() as _:
-                
-                SocketTransaction(server_helper.sock, b'\n')
-                SocketTransaction(server_helper.sock, b'\n', 2048)
-                
-                self.assertRaises(TypeError, SocketTransaction, server_helper.sock, None)
-                self.assertRaises(TypeError, SocketTransaction, server_helper.sock, '\n')
-                self.assertRaises(ValueError, SocketTransaction, server_helper.sock, b'12')
-                
-                self.assertRaises(TypeError, SocketTransaction, server_helper.sock, b'\n', None)
-                self.assertRaises(TypeError, SocketTransaction, server_helper.sock, b'\n', 'str')
-                self.assertRaises(ValueError, SocketTransaction, server_helper.sock, b'\n', 0)
-                self.assertRaises(ValueError, SocketTransaction, server_helper.sock, b'\n', -10)
+        with TestServerHelper() as server_helper, TestClientHelper() as _:
+            
+            SocketTransaction(server_helper.sock, b'\n')
+            SocketTransaction(server_helper.sock, b'\n', 2048)
+            
+            self.assertRaises(TypeError, SocketTransaction, server_helper.sock, None)
+            self.assertRaises(TypeError, SocketTransaction, server_helper.sock, '\n')
+            self.assertRaises(ValueError, SocketTransaction, server_helper.sock, b'12')
+            
+            self.assertRaises(TypeError, SocketTransaction, server_helper.sock, b'\n', None)
+            self.assertRaises(TypeError, SocketTransaction, server_helper.sock, b'\n', 'str')
+            self.assertRaises(ValueError, SocketTransaction, server_helper.sock, b'\n', 0)
+            self.assertRaises(ValueError, SocketTransaction, server_helper.sock, b'\n', -10)
 
 
     def test_socket_transaction_write(self):
         """Tests the SocketTransaction base class _write function (protected)""" 
     
-        with TestServerHelper() as server_helper:
-            with TestClientHelper() as client_helper:
+        with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
                 
-                msg = b'123'
-                
-                """Using the server socket"""
-                st_a = SocketTransaction(server_helper.sock, b'\n')
+            msg = b'123'
+            
+            """Using the server socket"""
+            st_a = SocketTransaction(server_helper.sock, b'\n')
 
-                st_a._write(msg)
-                ret = recv_n(client_helper.sock, len(msg))
-                self.assertEqual(msg, ret)
+            st_a._write(msg)
+            ret = recv_n(client_helper.sock, len(msg))
+            self.assertEqual(msg, ret)
 
-                st_a._write(b'')
-                ret = recv_n(client_helper.sock, 0)
-                self.assertEqual(ret, b'')
+            st_a._write(b'')
+            ret = recv_n(client_helper.sock, 0)
+            self.assertEqual(ret, b'')
 
-                self.assertRaises(TypeError, st_a._write, 1)
-                self.assertRaises(TypeError, st_a._write, None)
-                self.assertRaises(TypeError, st_a._write, 'str')
-                
-                """Using the client socket"""
-                st_b = SocketTransaction(client_helper.sock, b'\n')
+            self.assertRaises(TypeError, st_a._write, 1)
+            self.assertRaises(TypeError, st_a._write, None)
+            self.assertRaises(TypeError, st_a._write, 'str')
+            
+            """Using the client socket"""
+            st_b = SocketTransaction(client_helper.sock, b'\n')
 
-                st_b._write(msg)
-                ret = recv_n(server_helper.sock, len(msg))
-                self.assertEqual(msg, ret)
+            st_b._write(msg)
+            ret = recv_n(server_helper.sock, len(msg))
+            self.assertEqual(msg, ret)
 
-                st_b._write(b'')
-                ret = recv_n(server_helper.sock, 0)
-                self.assertEqual(ret, b'')
+            st_b._write(b'')
+            ret = recv_n(server_helper.sock, 0)
+            self.assertEqual(ret, b'')
 
-                self.assertRaises(TypeError, st_b._write, 1)
-                self.assertRaises(TypeError, st_b._write, None)
-                self.assertRaises(TypeError, st_b._write, 'str')
+            self.assertRaises(TypeError, st_b._write, 1)
+            self.assertRaises(TypeError, st_b._write, None)
+            self.assertRaises(TypeError, st_b._write, 'str')
                 
                 
     def test_socket_transaction_read(self):
         """Tests the SocketTransaction base class _read function (protected)""" 
     
-        with TestServerHelper() as server_helper:
-            with TestClientHelper() as client_helper:
+        with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
                 
-                msg = b'123\n'
-                
-                """Using the server socket"""
-                client_helper.sock.sendall(msg)
-                ret = SocketTransaction(server_helper.sock, b'\n')._read()
-                self.assertEqual(msg, ret)
+            msg = b'123\n'
+            
+            """Using the server socket"""
+            client_helper.sock.sendall(msg)
+            ret = SocketTransaction(server_helper.sock, b'\n')._read()
+            self.assertEqual(msg, ret)
 
-                """Using the client socket"""
-                server_helper.sock.sendall(msg)
-                ret = SocketTransaction(client_helper.sock, b'\n')._read()
-                self.assertEqual(msg, ret)
+            """Using the client socket"""
+            server_helper.sock.sendall(msg)
+            ret = SocketTransaction(client_helper.sock, b'\n')._read()
+            self.assertEqual(msg, ret)
 
-                """Reading with different buffer lengths"""
-                server_helper.sock.sendall(msg)
-                ret = SocketTransaction(client_helper.sock, b'\n', 1)._read()
-                self.assertEqual(msg, ret)
+            """Reading with different buffer lengths"""
+            server_helper.sock.sendall(msg)
+            ret = SocketTransaction(client_helper.sock, b'\n', 1)._read()
+            self.assertEqual(msg, ret)
 
-                server_helper.sock.sendall(msg)
-                ret = SocketTransaction(client_helper.sock, b'\n', 2)._read()
-                self.assertEqual(msg, ret)
+            server_helper.sock.sendall(msg)
+            ret = SocketTransaction(client_helper.sock, b'\n', 2)._read()
+            self.assertEqual(msg, ret)
 
-                server_helper.sock.sendall(msg)
-                ret = SocketTransaction(client_helper.sock, b'\n', 3)._read()
-                self.assertEqual(msg, ret)
+            server_helper.sock.sendall(msg)
+            ret = SocketTransaction(client_helper.sock, b'\n', 3)._read()
+            self.assertEqual(msg, ret)
 
-                server_helper.sock.sendall(msg)
-                ret = SocketTransaction(client_helper.sock, b'\n', 4)._read()
-                self.assertEqual(msg, ret)
+            server_helper.sock.sendall(msg)
+            ret = SocketTransaction(client_helper.sock, b'\n', 4)._read()
+            self.assertEqual(msg, ret)
 
-    def test_server_transaction(self):
+    def test_basic_server_transaction(self):
         """Tests the server transaction protocol and logic""" 
     
         db = ContentDB()
         tc = db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
     
-        with TestServerHelper() as server_helper:
-            with TestClientHelper() as client_helper:
+        with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
+            srv_transaction = ServerTransaction(server_helper.sock, db)
+            test_client = SocketTransaction(client_helper.sock, b'\n')
+            
+            """Run the server transaction in a separate thread to allow client access"""
+            thread = threading.Thread(target=srv_transaction.process)
+            thread.start()
 
-                srv_transaction = ServerTransaction(server_helper.sock, db)
-                test_client = SocketTransaction(client_helper.sock, b'\n')
+            """Check greeting from server"""
+            rcv = test_client._read()
+            self.assertEqual(rcv, Protocol.create_greeting_message(db.id).encode())
+            
+            """Check response to mdgid list req"""
+            test_client._write(Protocol.create_message_id_list_request(tc).encode())
+            rcv = test_client._read()
+            self.assertEqual(rcv, Protocol.create_message_id_list(tc, None).encode())
+
+            """Check response to mdg req"""
+            test_client._write(Protocol.create_message_list_request([msg.id for msg in db.get_messages()]).encode())
+            rcv = test_client._read()
+            self.assertEqual(rcv, Protocol.create_message_list(db.get_messages()).encode())
+
+            """Wait for server (will time out if no requests)"""
+            thread.join(2*TIMEOUT)
+
+    def test_basic_client_transaction(self):
+        """Tests the client transaction protocol and logic""" 
+        
+        client_db = ContentDB()
+        srv_db = ContentDB()
+        tc = srv_db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
+    
+        self.assertEqual(client_db.message_count, 0)
+        self.assertEqual(srv_db.message_count, 3)
+    
+        with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
+            
+            client_transaction = ClientTransaction(client_helper.sock, client_db)
+            srv_sock = SocketTransaction(server_helper.sock, b'\n')
+            
+            """Run the client transaction in a separate thread"""
+            thread = threading.Thread(target=client_transaction.process)
+            thread.start()
+            
+            """Send a greeting (should be req. by client)"""
+            srv_sock._write(Protocol.create_greeting_message(srv_db.id).encode())
+            
+            """Reading msg id list request"""
+            rcv = srv_sock._read()
+            self.assertEqual(rcv, Protocol.create_message_id_list_request().encode())
+
+            """Sending the msg id list"""
+            srv_sock._write(Protocol.create_message_id_list(tc, srv_db.get_messages()).encode())
+
+            """Reading msg list request"""
+            rcv = srv_sock._read()
+            self.assertEqual(rcv, Protocol.create_message_list_request([msg.id for msg in srv_db.get_messages()]).encode())
+
+            """Sending the msg id list"""
+            srv_sock._write(Protocol.create_message_list(srv_db.get_messages()).encode())
+
+            """Wait for client to hang up"""
+            thread.join(2*TIMEOUT)
                 
-                """Run the server transaction in a separate thread to allow client access"""
-                thread = threading.Thread(target=srv_transaction.process)
-                thread.start()
+        """Make sure the client has updated the db"""
+        self.assertEqual(client_db.message_count, 3)
+        self.assertEqual(srv_db.message_count, 3)
+        self.assertEqual(len([srvmsg for srvmsg in srv_db.get_messages() if srvmsg not in client_db.get_messages()]), 0) 
 
-                """Check greeting from server"""
-                rcv = test_client._read()
-                self.assertEqual(rcv, Protocol.create_greeting_message(db.id).encode())
-                
-                """Check response to mdgid list req"""
-                test_client._write(Protocol.create_message_id_list_request(tc).encode())
-                rcv = test_client._read()
-                self.assertEqual(rcv, Protocol.create_message_id_list(tc, None).encode())
-
-                """Check response to mdg req"""
-                test_client._write(Protocol.create_message_list_request([msg.id for msg in db.get_messages()]).encode())
-                rcv = test_client._read()
-                self.assertEqual(rcv, Protocol.create_message_list(db.get_messages()).encode())
-
-                """Wait for server (will time out if no requests)"""
-                thread.join(2*TIMEOUT)
-                
 
 if __name__ == '__main__':
     unittest.main()
