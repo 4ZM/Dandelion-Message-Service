@@ -387,7 +387,9 @@ class ProtocolTest(unittest.TestCase):
         self.assertTrue(m2_txt_b64 in msg)
         self.assertTrue(m3_txt_b64 in msg)
         
-        self.assertRaises(ValueError, Protocol.create_message_list, [])
+        msg = Protocol.create_message_list([])
+        self.assertEqual(msg, Protocol.TERMINATOR)
+        
         self.assertRaises(ValueError, Protocol.create_message_list, None)
         self.assertRaises(TypeError, Protocol.create_message_list, 1337)
 
