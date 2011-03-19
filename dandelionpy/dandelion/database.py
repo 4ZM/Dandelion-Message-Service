@@ -55,12 +55,11 @@ class ContentDB:
         if not hasattr(msgs, '__iter__'):
             raise TypeError
         
-        # Make sure the list only contains messages
-        for m in msgs:
-            if not isinstance(m, Message):
-                raise TypeError
+        """Make sure the list only contains messages"""
+        if not all([isinstance(m, Message) for m in msgs]):
+            raise TypeError
         
-        # Add the messages not already present to the data base
+        """Add the messages not already present to the data base"""
         untagged_messages = [m for (_, m) in self._messages]
         new_msgs = [(self._rev, m) for m in msgs if m not in untagged_messages]
         
