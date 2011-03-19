@@ -20,6 +20,7 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 import unittest
 import binascii
 from dandelion.message import Message 
+import dandelion
 
 class MessageTest(unittest.TestCase):
     """Unit test suite for the DMS Message class"""
@@ -107,7 +108,7 @@ class MessageTest(unittest.TestCase):
         """Testing the message to string conversion"""
         
         msg = Message(self._sample_message)
-        self.assertEqual(str(msg), self._sample_message_sha256[- 2*Message._ID_LENGTH_BYTES:])         
+        self.assertEqual(str(msg), dandelion.util.encode_bytes(binascii.a2b_hex(self._sample_message_sha256)[- Message._ID_LENGTH_BYTES:]).decode())         
 
 
 if __name__ == '__main__':
