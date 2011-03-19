@@ -154,23 +154,20 @@ class ServerTransaction(SocketTransaction):
                 tc = Protocol.parse_message_id_list_request(data)
                 tc, msgs = self._db.messages_since(tc)
                 response_str = Protocol.create_message_id_list(tc, msgs)
-
                 self._write(response_str.encode()) 
-                
+
             elif Protocol.is_message_list_request(data):
-                
                 msgids = Protocol.parse_message_list_request(data)
                 msgs = self._db.get_messages(msgids)
                 response_str = Protocol.create_message_list(msgs)
-
                 self._write(response_str.encode())
+
             else:
                 raise ProtocolParseError
         
         except (ProtocolParseError, ValueError, TypeError):
-            print("SERVER TRANSACTION: Error processing data from client")
+            #print("SERVER TRANSACTION: Error processing data from client")
             raise ServerTransaction._AbortTransactionException
-       
 
 class Server(Service):
     
@@ -182,14 +179,14 @@ class Server(Service):
     
     def start(self):
         """Start the service. Blocking call."""
-        print('SERVER: Starting')
+        #print('SERVER: Starting')
         self._server = _ServerImpl(self._ip, self._port, self._db)
         self._running = True
         
     def stop(self):
         """Stop the service. Blocking call."""
-        print('SERVER: Stopping')
-        self._server.shutdown(socket.SHUT_RDWR)
+        #print('SERVER: Stopping')
+        self._server.shutdown()
         self._running = False
     
     @property
@@ -212,10 +209,10 @@ class _ServerImpl(socketserver.ThreadingMixIn, socketserver.TCPServer):
         # Start server
         self.server_thread = threading.Thread(target=self.serve_forever)
         self.server_thread.start()
-        print('SERVER: Running')
+        #print('SERVER: Running')
         
     def shutdown(self):
-        print('SERVER: Shutdown')
+        #print('SERVER: Shutdown')
         super(socketserver.TCPServer, self).shutdown()
         self.server_thread.join(None)
 
@@ -229,7 +226,7 @@ class _ServerHandler(socketserver.BaseRequestHandler):
         
     def handle(self):
 
-        print("SERVER: In handler")
+        #print("SERVER: In handler")
 
         comm_transaction = ServerTransaction(self.request, self.server.db)
         comm_transaction.process() 
@@ -243,10 +240,9 @@ class ClientTransaction(SocketTransaction):
         self._db = db
      
     def process(self):
-        print("CLIENT TRANSACTION: starting")
+        #print("CLIENT TRANSACTION: starting")
         
         try:
-        
             """Read greeting from server"""
             dbid = Protocol.parse_greeting_message(self._read().decode())
     
@@ -254,18 +250,24 @@ class ClientTransaction(SocketTransaction):
             self._write(Protocol.create_message_id_list_request().encode())
             _, msgids = Protocol.parse_message_id_list(self._read().decode())
             
+            """TODO: Make a descission about what messages to fetch..."""
+            
+            if len(msgids) == 0: # Nothing to fetch
+                return 
+            
             """Request and read messages"""        
             self._write(Protocol.create_message_list_request(msgids).encode())
             msgs = Protocol.parse_message_list(self._read().decode())
-            
+
             """Store the new messages"""
             self._db.add_messages(msgs)
-            print("CLIENT TRANSACTION: adding new messages to db:", len(msgs))
+            #print("CLIENT TRANSACTION: adding new messages to db:", len(msgs))
             
         except (socket.timeout, ProtocolParseError, ValueError, TypeError):
-            print("CLIENT TRANSACTION: Error processing data from client")
+            """Do nothing on error, just hang up"""
+            #print("CLIENT TRANSACTION: Error processing data from server")
 
-        print("CLIENT TRANSACTION: hanging up")
+        #print("CLIENT TRANSACTION: hanging up")
 
 
 class Client:
@@ -277,12 +279,12 @@ class Client:
     def __enter__(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.settimeout(10.0)
-        print("CLIENT: connecting")
+        #print("CLIENT: connecting")
         self._sock.connect((self._ip, self._port))
         return self
     
     def __exit__(self, type, value, traceback):
-        print("CLIENT: disconnecting")
+        #print("CLIENT: disconnecting")
         self._sock.shutdown(socket.SHUT_RDWR)
         self._sock.close()
 
