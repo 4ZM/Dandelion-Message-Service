@@ -18,7 +18,7 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import hashlib
-import binascii
+import dandelion
 
 class Message:
     """A DMS Message"""
@@ -80,7 +80,7 @@ class Message:
      
     def __str__(self):
         """String conversion is message ID as hex"""
-        return binascii.b2a_hex(self._id).decode()
+        return dandelion.util.encode_bytes(self._id).decode()
          
     def __eq__(self, other):
         return isinstance(other, Message) and self._id == other._id
