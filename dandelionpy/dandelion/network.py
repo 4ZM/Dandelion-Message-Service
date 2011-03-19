@@ -174,12 +174,13 @@ class ServerTransaction(SocketTransaction):
 
 class Server(Service):
     
-    def __init__(self, config, db):
-        self._ip = config.ip
-        self._port = config.port
+    #def __init__(self, config, db):
+    def __init__(self, ip, port, db):
+        self._ip = ip
+        self._port = int(port)
         self._db = db
         self._running = False
-    
+        print(ip, port, )
     def start(self):
         """Start the service. Blocking call."""
         print('SERVER: Starting')

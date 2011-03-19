@@ -22,10 +22,10 @@ import socket
 import threading
 
 class Discoverer:
-    """ previously known as ServiceListenerManager """
-    def __init__(self):
+    def __init__(self, type=None):
         print("DISCOVERER INITIATED")
-        self._type = '_http._tcp.local.'    # TODO: get this from config
+        self._type = type
+        #self._type = self._config.type
         self._mdns = mdns
         
     def start(self):

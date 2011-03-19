@@ -1,0 +1,10 @@
+# python / django
+*.pyc
+*.project
+*.pydevproject
+__pycache__
+
+# OS files
+*.DS_Store
+
+

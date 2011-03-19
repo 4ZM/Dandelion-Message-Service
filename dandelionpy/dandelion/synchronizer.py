@@ -26,10 +26,13 @@ from dandelion.network import Client
 
 class Synchronizer(Service):
     
-    def __init__(self, config, db):
-        self._config = config
+    def __init__(self, ip, port, type, db):
+        #self._config = config
+        self._ip = ip
+        self._port = port
+        self._type = type
         self._db = db
-        self._discoverer = Discoverer()
+        self._discoverer = Discoverer(self._type)
         
     def start(self):
         """Start the service. Block until the service is running."""

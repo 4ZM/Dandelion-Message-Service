@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import socket
 import configparser
 from dandelion.database import ContentDB
 
@@ -37,12 +38,20 @@ class ServerConfig(Config):
     _PORT_DEFAULT = 1337
     
     _IP_NAME = 'ip'
-    _IP_DEFAULT = '127.0.0.1'
+    #_IP_DEFAULT = '127.0.0.1'
+    _IP_DEFAULT = socket.gethostbyname( socket.gethostname() )
+    
+    _TYPE_DEFAULT = '_http._tcp.local.'
     
     def __init__(self):
         self._port = ServerConfig._PORT_DEFAULT
         self._ip = ServerConfig._IP_DEFAULT
-        
+        self._type = ServerConfig._TYPE_DEFAULT
+    
+    @property 
+    def type(self):
+        return self._type
+    
     @property
     def port(self):
         return self._port
