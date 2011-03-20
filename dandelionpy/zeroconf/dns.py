@@ -611,12 +611,21 @@ class DNSOutgoing(object):
     def addAdditionalAnswer(self, record):
         """Adds an additional answer"""
         self.additionals.append(record)
-
+    
+    def toByte(self, value):
+        b_value = str(value).encode("utf-8")
+        return b_value
     def writeByte(self, value):
         """Writes a single byte to the packet"""
         format = '!c'
-        self.data.append(struct.pack(format, chr(value)))
-        self.size += 1
+        
+        value = self.toByte(value)
+        try:
+            print("VALUE:", value)
+            self.data.append(struct.pack(format, value ))   # FIXME: this crashes when value is greater than 9
+            self.size += 1
+        except Exception as e:
+            print("writeByte", e)
 
     def insertShort(self, index, value):
         """Inserts an unsigned short in a certain position in the packet"""
@@ -733,7 +742,7 @@ class DNSOutgoing(object):
                 self.insertShort(0, 0)
             else:
                 self.insertShort(0, self.id)
-        return ''.join(self.data)
+        return ''.join(str(self.data))
 
 
 class DNSCache(object):
@@ -1012,4 +1021,3 @@ class ServiceInfo(object):
                 result += str(self.text[:17])
         result += "]"
         return result
-

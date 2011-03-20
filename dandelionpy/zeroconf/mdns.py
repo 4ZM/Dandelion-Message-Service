@@ -64,6 +64,7 @@ class Engine(threading.Thread):
         self.readers = {} # maps socket to reader
         self.timeout = 5
         self.condition = threading.Condition()
+        #print("STARTING ENGINE")
         self.start()
 
     def run(self):
@@ -80,6 +81,7 @@ class Engine(threading.Thread):
             else:
                 try:
                     rr, wr, er = select.select(rs, [], [], self.timeout)
+                    #log.debug("select.select() %s ", rr)
                 except Exception as err:
                     log.warn( 'Select failure, ignored: %s', err )
                 else:
@@ -94,11 +96,12 @@ class Engine(threading.Thread):
     def getReaders(self):
         result = []
         self.condition.acquire()
-        result = self.readers.keys()
+        result = list(self.readers.keys())
         self.condition.release()
         return result
 
     def addReader(self, reader, socket):
+        #log.debug("addReader %s, %s", reader, socket)
         self.condition.acquire()
         self.readers[socket] = reader
         self.condition.notify()
@@ -123,6 +126,7 @@ class Listener(object):
     It requires registration with an Engine object in order to have
     the read() method called when a socket is availble for reading."""
     def __init__(self, zeroconf):
+        #log.debug("ADDING LISTENER")
         self.zeroconf = zeroconf
         self.zeroconf.engine.addReader(self, self.zeroconf.socket)
 
@@ -248,7 +252,7 @@ class ServiceBrowser(threading.Thread):
             if self.nextTime <= now:
                 out = dns.DNSOutgoing(dns._FLAGS_QR_QUERY)
                 out.addQuestion(dns.DNSQuestion(self.type, dns._TYPE_PTR, dns._CLASS_IN))
-                for record in self.services.values():
+                for record in list(self.services.values()):
                     if not record.isExpired(now):
                         out.addAnswerAtTime(record, now)
                 self.zeroconf.send(out)
@@ -277,15 +281,16 @@ class Zeroconf(object):
             self.intf = bindaddress
         self.socket = mcastsocket.create_socket( (bindaddress, dns._MDNS_PORT) )
         mcastsocket.join_group( self.socket, dns._MDNS_ADDR )
-
+        log.debug("joined multicast group with socket %s", self.socket)
+        log.debug("socket: %s" %dir(self.socket))
         self.listeners = []
         self.browsers = []
         self.services = {}
 
         self.cache = dns.DNSCache()
-
+        log.debug("GOT CACHE %s" % self.cache)
         self.condition = threading.Condition()
-
+        
         self.engine = Engine(self)
         self.listener = Listener(self)
         self.reaper = Reaper(self)
@@ -337,8 +342,16 @@ class Zeroconf(object):
         of 60 seconds.  Zeroconf will then respond to requests for
         information for that service.  The name of the service may be
         changed if needed to make it unique on the network."""
+        #print "REGISTERING SERVICE!"
+        #log.debug(">>",self.services[info.name.lower()])
+    
+        #import pdb
+        #pdb.set_trace()
+        
         self.checkService(info)
         self.services[info.name.lower()] = info
+        log.debug(">>",self.services[info.name.lower()])
+        
         now = dns.currentTimeMillis()
         nextTime = now
         i = 0
@@ -347,6 +360,7 @@ class Zeroconf(object):
                 self.wait(nextTime - now)
                 now = dns.currentTimeMillis()
                 continue
+
             out = dns.DNSOutgoing(dns._FLAGS_QR_RESPONSE | dns._FLAGS_AA)
             out.addAnswerAtTime(dns.DNSPointer(info.type, dns._TYPE_PTR, dns._CLASS_IN, ttl, info.name), 0)
             out.addAnswerAtTime(dns.DNSService(info.name, dns._TYPE_SRV, dns._CLASS_IN, ttl, info.priority, info.weight, info.port, info.server), 0)
@@ -356,6 +370,7 @@ class Zeroconf(object):
             self.send(out)
             i += 1
             nextTime += _REGISTER_TIME
+            print("registerService end")
 
     def unregisterService(self, info):
         """Unregister a service."""
@@ -393,7 +408,7 @@ class Zeroconf(object):
                     now = dns.currentTimeMillis()
                     continue
                 out = dns.DNSOutgoing(dns._FLAGS_QR_RESPONSE | dns._FLAGS_AA)
-                for info in self.services.values():
+                for info in list(self.services.values()):
                     out.addAnswerAtTime(dns.DNSPointer(info.type, dns._TYPE_PTR, dns._CLASS_IN, 0, info.name), 0)
                     out.addAnswerAtTime(dns.DNSService(info.name, dns._TYPE_SRV, dns._CLASS_IN, 0, info.priority, info.weight, info.port, info.server), 0)
                     out.addAnswerAtTime(dns.DNSText(info.name, dns._TYPE_TXT, dns._CLASS_IN, 0, info.text), 0)
@@ -490,7 +505,7 @@ class Zeroconf(object):
         for question in msg.questions:
             log.debug( 'Question: %s', question )
             if question.type == dns._TYPE_PTR:
-                for service in self.services.values():
+                for service in list(self.services.values()):
                     if question.name == service.type:
                         log.info( 'Service query found %s', service.name )
                         if out is None:
@@ -509,12 +524,9 @@ class Zeroconf(object):
 
                     # Answer A record queries for any service addresses we know
                     if question.type == dns._TYPE_A or question.type == dns._TYPE_ANY:
-                        for service in self.services.values():
+                        for service in list(self.services.values()):
                             if service.server == question.name.lower():
-                                try:
-                                    out.addAnswer(msg, DNSAddress(question.name, dns._TYPE_A, dns._CLASS_IN | dns._CLASS_UNIQUE, dns._DNS_TTL, service.address))
-                                except Exception as e:
-                                    print(e)
+                                out.addAnswer(msg, DNSAddress(question.name, dns._TYPE_A, dns._CLASS_IN | dns._CLASS_UNIQUE, dns._DNS_TTL, service.address))
 
 
                     service = self.services.get(question.name.lower(), None)
@@ -541,9 +553,12 @@ class Zeroconf(object):
         """Sends an outgoing packet."""
         # This is a quick test to see if we can parse the packets we generate
         #temp = dns.DNSIncoming(out.packet())
+        log.debug("SENDING PACKET")
+        packet = out.packet()
         try:
-            packet = out.packet()
+            
             bytes_sent = self.socket.sendto(packet, 0, (addr, port))
+            log.debug("PACKET SENT %s" % str(packet))
         except:
             # Ignore this, it may be a temporary loss of network connection
             pass
