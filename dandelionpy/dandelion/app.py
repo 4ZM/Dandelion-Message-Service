@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from config import ConfigManager 
+#from config import ConfigManager 
 from configuration import ConfigurationManager
 from network import Server
 from synchronizer import Synchronizer

@@ -36,6 +36,65 @@ class Synchronizer(Service):
         
     def start(self):
         """Start the service. Block until the service is running."""
+        #print('SYNCHRONIZER: Starting')
+        self._stop_requested = False
+        self._thread = Thread(target=self._sync_loop)
+        self._thread.start()
+        self._running = True
+    
+    def stop(self):
+        """Stop the service. Block until the service is running."""
+        
+        self._stop_requested = True
+        #print('SYNCHRONIZER: Stopping')
+        self._thread.join(0.1)
+        if self._thread.is_alive():
+            raise Exception # Timeout
+            
+        self._running = False
+        
+    
+    def restart(self):
+        """Stop then start the service. Blocking call"""
+        self.stop()
+        self.start()
+    
+    @property
+    def status(self):
+        """A string with information about the service"""
+        print(''.join(['Synchronizer status: Running: ', str(self._running)]))
+        
+    
+    @property 
+    def running(self):
+        """Returns True if the service is running, False otherwise"""
+        return self._running
+        
+    def _sync_loop(self):
+        #print('SYNCHRONIZER: Running')
+
+        t1 = time.time()
+        while not self._stop_requested:
+            t2 = time.time()
+
+            """Should we sync or just keep checking the stop condition?"""
+            if t2 - t1 < 10:
+                time.sleep(0.01) # Don't busy wait
+                continue
+            
+            #print("SYNCHRONIZER: Time for a sync")
+            
+            # Should use the discoverer here...
+            host = "localhost"
+            port = 1337
+            
+            with Client(host, port, self._db) as client:
+                client.execute_transaction()
+            
+            t1 = time.time()
+    
+    def start(self):
+        """Start the service. Block until the service is running."""
         print('SYNCHRONIZER: Starting')
         self._stop_requested = False
         self._thread = Thread(target=self._sync_loop)
@@ -85,15 +144,10 @@ class Synchronizer(Service):
                 time.sleep(0.01) # Don't busy wait
                 continue
             
-            print("SYNCHRONIZER: Time for a sync")
-            
             # Should use the discoverer here...
-            #host = "localhost"
-            #port = 1337
-            #self._discoverer.start_listening()
-            #self._discoverer.stop_listening()
+            
             info_dict = self._discoverer.get_results()
-            print("RETURNED FROM DISCOVERER", info_dict)
+            
             """
             with Client(host, port, self._db) as client:
                 client.execute_transaction()

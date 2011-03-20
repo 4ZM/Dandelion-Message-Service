@@ -336,9 +336,6 @@ class Protocol:
         if not hasattr(messages, '__iter__'):
             raise TypeError
         
-        if len(messages) == 0:
-            raise ValueError
-        
         msgstrings = []
         for msg in messages:
             msgstrings.extend([cls._message2string(msg)])
@@ -413,4 +410,3 @@ class Protocol:
             return 'R'
         else:
             return 'N' 
-

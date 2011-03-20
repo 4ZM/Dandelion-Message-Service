@@ -621,7 +621,7 @@ class DNSOutgoing(object):
         
         value = self.toByte(value)
         try:
-            print("VALUE:", value)
+            #print("VALUE:", value)
             self.data.append(struct.pack(format, value ))   # FIXME: this crashes when value is greater than 9
             self.size += 1
         except Exception as e:

@@ -92,15 +92,18 @@ class SocketTransaction(Transaction):
 
         while True:
             data = self._sock.recv(self._buff_size)
-            #print("SOCKTRANSACTION: read chunk: ", data)
+#            print("SOCKTRANSACTION: read chunk: ", data)
             
-            if (self._terminator in data):
+            if len(data) == 0:
+                break
+            
+            if self._terminator in data:
                 total_data.extend(data[:data.find(self._terminator) + 1])
                 break
             
             total_data.extend(data)
 
-        #print("SOCKTRANSACTION: read: ", total_data)
+#        print("SOCKTRANSACTION: read: ", total_data)
         return total_data
     
     def _write(self, data):
@@ -126,7 +129,7 @@ class ServerTransaction(SocketTransaction):
         Starts by sending a greeting. Will then service the connected client 
         repeatedly until it disconnects or the server times out."""
          
-        #print("SERVER TRANSACTION: Starting server transaction")
+#        print("SERVER TRANSACTION: Starting server transaction")
         
         """Write greeting"""
         self._write(Protocol.create_greeting_message(self._db.id).encode())
@@ -140,7 +143,10 @@ class ServerTransaction(SocketTransaction):
             try:
                 self._process_data(bdata)
             except ServerTransaction._AbortTransactionException:
+#                print("SERVER TRANSACTION: Ending server transaction A")
                 return
+            
+#        print("SERVER TRANSACTION: Ending server transaction")
 
 
     def _process_data(self, bdata):
@@ -154,27 +160,29 @@ class ServerTransaction(SocketTransaction):
                 tc = Protocol.parse_message_id_list_request(data)
                 tc, msgs = self._db.messages_since(tc)
                 response_str = Protocol.create_message_id_list(tc, msgs)
-
                 self._write(response_str.encode()) 
-                
+
             elif Protocol.is_message_list_request(data):
-                
                 msgids = Protocol.parse_message_list_request(data)
                 msgs = self._db.get_messages(msgids)
                 response_str = Protocol.create_message_list(msgs)
-
                 self._write(response_str.encode())
+
             else:
                 raise ProtocolParseError
         
         except (ProtocolParseError, ValueError, TypeError):
-            print("SERVER TRANSACTION: Error processing data from client")
+            #print("SERVER TRANSACTION: Error processing data from client")
             raise ServerTransaction._AbortTransactionException
-       
 
 class Server(Service):
-    
-    #def __init__(self, config, db):
+    """
+    def __init__(self, config, db):
+        self._ip = config.ip
+        self._port = config.port
+        self._db = db
+        self._running = False
+    """    
     def __init__(self, ip, port, info_dict, db):
         self._ip = ip
         self._port = int(port)
@@ -185,20 +193,22 @@ class Server(Service):
         
         self._running = False
         print(ip, port, )
-        
+
+
     def start(self):
         """Start the service. Blocking call."""
-        print('SERVER: Starting')
+        #print('SERVER: Starting')
         self._server = _ServerImpl(self._ip, self._port, self._db)
         self._zeroconf_service.register()
         self._running = True
         
     def stop(self):
         """Stop the service. Blocking call."""
-        print('SERVER: Stopping')
-        self._server.shutdown(socket.SHUT_RDWR)
+        #print('SERVER: Stopping')
         self._zeroconf_service.unregister()
+        self._server.shutdown()
         self._running = False
+        #print('SERVER: Stopped')
     
     @property
     def status(self):
@@ -213,34 +223,37 @@ class Server(Service):
 
 class _ServerImpl(socketserver.ThreadingMixIn, socketserver.TCPServer):
     def __init__(self, host, port, db):
-        super(socketserver.TCPServer, self).__init__((host,port), _ServerHandler)
-        super(socketserver.ThreadingMixIn, self).__init__((host,port), _ServerHandler)
+        super(socketserver.TCPServer, self).__init__((host, port), _ServerHandler)
+        super(socketserver.ThreadingMixIn, self).__init__((host, port), _ServerHandler)
         self.db = db
 
         # Start server
         self.server_thread = threading.Thread(target=self.serve_forever)
         self.server_thread.start()
-        print('SERVER: Running')
+#        print('SERVER: Running')
         
-    def shutdown(self, socket_data=None):
-        print('SERVER: Shutdown')
+    def shutdown(self):
+#        print('SERVER: Shutdown')
         super(socketserver.TCPServer, self).shutdown()
         self.server_thread.join(None)
+#        print('SERVER: Shutdown completed')
 
       
         
 class _ServerHandler(socketserver.BaseRequestHandler):
 
     def setup(self):
-        self.request.settimeout(10.0)
+        self.request.settimeout(5.0)
         #self.request.setblocking(False)
         
     def handle(self):
 
-        print("SERVER: In handler")
+#        print("SERVER: In handler")
 
         comm_transaction = ServerTransaction(self.request, self.server.db)
         comm_transaction.process() 
+        
+#        print("SERVER: Out handler")
 
 
 class ClientTransaction(SocketTransaction):
@@ -251,27 +264,34 @@ class ClientTransaction(SocketTransaction):
         self._db = db
      
     def process(self):
-        print("CLIENT TRANSACTION: starting")
+#        print("CLIENT TRANSACTION: starting")
         
         try:
-        
             """Read greeting from server"""
             dbid = Protocol.parse_greeting_message(self._read().decode())
-    
+
+            """TODO: We should use the remote tc from the last sync..."""
+            
             """Request and read message id's"""
             self._write(Protocol.create_message_id_list_request().encode())
             _, msgids = Protocol.parse_message_id_list(self._read().decode())
             
-            """Request and read messages"""        
-            self._write(Protocol.create_message_list_request(msgids).encode())
-            msgs = Protocol.parse_message_list(self._read().decode())
+            req_msgids = [mid for mid in msgids if not self._db.contains_message(mid)]
+
+            if len(req_msgids) == 0: # Nothing to fetch
+#                print("CLIENT TRANSACTION: hanging up - 0 sync")
+                return 
             
+            """Request and read messages"""        
+            self._write(Protocol.create_message_list_request(req_msgids).encode())
+            msgs = Protocol.parse_message_list(self._read().decode())
+
             """Store the new messages"""
             self._db.add_messages(msgs)
-            print("CLIENT TRANSACTION: adding new messages to db:", len(msgs))
             
         except (socket.timeout, ProtocolParseError, ValueError, TypeError):
-            print("CLIENT TRANSACTION: Error processing data from client")
+            """Do nothing on error, just hang up"""
+            #print("CLIENT TRANSACTION: Error processing data from server")
 
         print("CLIENT TRANSACTION: hanging up")
 
@@ -284,13 +304,13 @@ class Client:
     
     def __enter__(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._sock.settimeout(10.0)
-        print("CLIENT: connecting")
+        self._sock.settimeout(5.0)
+        #print("CLIENT: connecting")
         self._sock.connect((self._ip, self._port))
         return self
     
     def __exit__(self, type, value, traceback):
-        print("CLIENT: disconnecting")
+        #print("CLIENT: disconnecting")
         self._sock.shutdown(socket.SHUT_RDWR)
         self._sock.close()
 
