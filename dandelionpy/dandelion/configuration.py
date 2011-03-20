@@ -29,7 +29,8 @@ class ConfigurationManager():
                                    'mdns_group' : '239.255.255.250',
                                    'type' : '_http._tcp.local.',
                                    'service_name' : 'dandelion_service',
-                                   'max_connections' : 5
+                                   'max_connections' : 5,
+                                   'description' : 'DandelionMessagingSystem'
                                    },
                         
                        'synchronization' : {'server_time' : 0},

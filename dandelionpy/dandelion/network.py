@@ -24,7 +24,7 @@ import socketserver
 from dandelion.protocol import Protocol, ProtocolParseError
 from dandelion.database import ContentDB
 from dandelion.service import Service
-    
+from dandelion.zservice import ZeroconfService
     
 class Transaction:
     """Interface for communication transactions.
@@ -175,22 +175,29 @@ class ServerTransaction(SocketTransaction):
 class Server(Service):
     
     #def __init__(self, config, db):
-    def __init__(self, ip, port, db):
+    def __init__(self, ip, port, info_dict, db):
         self._ip = ip
         self._port = int(port)
         self._db = db
+        self._info_dict = info_dict # to be passed to the zeroconf part
+        
+        self._zeroconf_service = ZeroconfService(self._info_dict)
+        
         self._running = False
         print(ip, port, )
+        
     def start(self):
         """Start the service. Blocking call."""
         print('SERVER: Starting')
         self._server = _ServerImpl(self._ip, self._port, self._db)
+        self._zeroconf_service.register()
         self._running = True
         
     def stop(self):
         """Stop the service. Blocking call."""
         print('SERVER: Stopping')
         self._server.shutdown(socket.SHUT_RDWR)
+        self._zeroconf_service.unregister()
         self._running = False
     
     @property
@@ -215,7 +222,7 @@ class _ServerImpl(socketserver.ThreadingMixIn, socketserver.TCPServer):
         self.server_thread.start()
         print('SERVER: Running')
         
-    def shutdown(self):
+    def shutdown(self, socket_data=None):
         print('SERVER: Shutdown')
         super(socketserver.TCPServer, self).shutdown()
         self.server_thread.join(None)

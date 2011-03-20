@@ -17,16 +17,17 @@ You should have received a copy of the GNU General Public License
 along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from zeroconf import mdns
+
 import socket
 import threading
+from zeroconf import mdns
 
 class Discoverer:
     def __init__(self, type=None):
         print("DISCOVERER INITIATED")
         self._type = type
-        #self._type = self._config.type
         self._mdns = mdns
+        
         
     def start(self):
         print("ServiceListener starts to listen ... ")

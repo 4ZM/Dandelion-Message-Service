@@ -22,6 +22,7 @@ from configuration import ConfigurationManager
 from network import Server
 from synchronizer import Synchronizer
 from ui import UI
+import logging
 
 class DandelionApp:
 
@@ -31,6 +32,7 @@ class DandelionApp:
     def start_server(self): 
         self._server = Server(self._config_manager.local_address, 
                               self._config_manager.local_port, 
+                              self._config_manager.server,  #info_dict
                               self._config_manager.content_db) 
         self._server.start()
     
@@ -56,6 +58,7 @@ class DandelionApp:
 
 if __name__ == '__main__':
     
+    logging.basicConfig( level = logging.INFO )
     app = DandelionApp('dandelion.conf')
     print('APP: Starting Server')
     app.start_server()
