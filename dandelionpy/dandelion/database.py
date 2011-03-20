@@ -75,18 +75,14 @@ class ContentDB:
         
         return len(self._messages)
         
-    def contains_messages(self, msgs):
-        """Returns a list of boolean values where True indicates that the argument at 
-        that position in the argument message list is in the data base.
+    def contains_message(self, msgid):
+        """Returns true if the database contains the msgid 
         """
         
-        if not hasattr(msgs, '__iter__'):
+        if not isinstance(msgid, bytes):
             raise TypeError
             
-        untagged_messages = [m for (_, m) in self._messages]
-        l = [m in untagged_messages for m in msgs]
-        
-        return l 
+        return len([m for (_, m) in self._messages if m.id == msgid]) > 0
     
     def remove_messages(self, msgs=None):
         """Removes messages from the data base.

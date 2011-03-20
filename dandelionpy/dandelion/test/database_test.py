@@ -51,7 +51,7 @@ class DatabaseTest(unittest.TestCase):
         # Add a single message        
         db.add_messages([first_msg])
         self.assertEqual(db.message_count, 1)
-        self.assertEqual(db.contains_messages([first_msg]), [True])
+        self.assertEqual(db.contains_message(first_msg.id), True)
         
     def test_list_message_interface(self):
         """Test functions relating to storing and recovering single messages"""
@@ -64,35 +64,35 @@ class DatabaseTest(unittest.TestCase):
         db.add_messages(first_msg_list)
         self.assertNotEqual(db.message_count, None)
         self.assertEqual(db.message_count, len(first_msg_list))
-        self.assertEqual(db.contains_messages(first_msg_list), [True, True])
+        self.assertEqual([db.contains_message(m.id) for m in first_msg_list], [True, True])
 
         # And for another message list? 
         second_msg_list = [Message('C'), Message('A')]
-        self.assertEqual(db.contains_messages(second_msg_list), [False, True])
+        self.assertEqual([db.contains_message(m.id) for m in second_msg_list], [False, True])
         
         # Adding the second message list
         db.add_messages(second_msg_list)
         self.assertEqual(db.message_count, 3)
-        self.assertEqual(db.contains_messages(first_msg_list), [True, True])
-        self.assertEqual(db.contains_messages(second_msg_list), [True, True])
+        self.assertEqual([db.contains_message(m.id) for m in first_msg_list], [True, True])
+        self.assertEqual([db.contains_message(m.id) for m in second_msg_list], [True, True])
 
         # Remove a list
         db.remove_messages(first_msg_list)
         self.assertEqual(db.message_count, 1)
-        self.assertEqual(db.contains_messages(first_msg_list), [False, False])
-        self.assertEqual(db.contains_messages(second_msg_list), [True, False])
+        self.assertEqual([db.contains_message(m.id) for m in first_msg_list], [False, False])
+        self.assertEqual([db.contains_message(m.id) for m in second_msg_list], [True, False])
 
         # Remove same message list 
         db.remove_messages(first_msg_list)
         self.assertEqual(db.message_count, 1)
-        self.assertEqual(db.contains_messages(first_msg_list), [False, False])
-        self.assertEqual(db.contains_messages(second_msg_list), [True, False])
+        self.assertEqual([db.contains_message(m.id) for m in first_msg_list], [False, False])
+        self.assertEqual([db.contains_message(m.id) for m in second_msg_list], [True, False])
         
         # Remove all messages
         db.remove_messages()
         self.assertEqual(db.message_count, 0)
-        self.assertEqual(db.contains_messages(first_msg_list), [False, False])
-        self.assertEqual(db.contains_messages(second_msg_list), [False, False])
+        self.assertEqual([db.contains_message(m.id) for m in first_msg_list], [False, False])
+        self.assertEqual([db.contains_message(m.id) for m in second_msg_list], [False, False])
 
     def test_uid_storage(self):
         """Test function relating to storing and recovering user identities"""

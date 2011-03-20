@@ -245,23 +245,24 @@ class ClientTransaction(SocketTransaction):
         try:
             """Read greeting from server"""
             dbid = Protocol.parse_greeting_message(self._read().decode())
-    
+
+            """TODO: We should use the remote tc from the last sync..."""
+            
             """Request and read message id's"""
             self._write(Protocol.create_message_id_list_request().encode())
             _, msgids = Protocol.parse_message_id_list(self._read().decode())
             
-            """TODO: Make a descission about what messages to fetch..."""
-            
-            if len(msgids) == 0: # Nothing to fetch
+            req_msgids = [mid for mid in msgids if not self._db.contains_message(mid)]
+
+            if len(req_msgids) == 0: # Nothing to fetch
                 return 
             
             """Request and read messages"""        
-            self._write(Protocol.create_message_list_request(msgids).encode())
+            self._write(Protocol.create_message_list_request(req_msgids).encode())
             msgs = Protocol.parse_message_list(self._read().decode())
 
             """Store the new messages"""
             self._db.add_messages(msgs)
-            #print("CLIENT TRANSACTION: adding new messages to db:", len(msgs))
             
         except (socket.timeout, ProtocolParseError, ValueError, TypeError):
             """Do nothing on error, just hang up"""

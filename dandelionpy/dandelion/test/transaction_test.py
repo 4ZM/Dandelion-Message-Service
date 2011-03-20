@@ -388,6 +388,38 @@ class MessageTest(unittest.TestCase):
         """Make sure the db hasn't changed"""
         self.assertEqual(client_db.message_count, 0)
         self.assertEqual(server_db.message_count, 0)
+        
+    def test_client_server_transaction_partial_sync(self):
+        """Tests the whole, client driven transaction protocol and logic""" 
+        
+        client_db = ContentDB()
+        server_db = ContentDB()
+        client_db.add_messages([Message('fubar')])
+        server_db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
+    
+        self.assertEqual(client_db.message_count, 1)
+        self.assertEqual(server_db.message_count, 3)
+    
+        with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
+                
+            client_transaction = ClientTransaction(client_helper.sock, client_db)
+            server_transaction = ServerTransaction(server_helper.sock, server_db)
+            
+            """Run the client transactions asynchronously"""
+            server_thread = threading.Thread(target=server_transaction.process)
+            client_thread = threading.Thread(target=client_transaction.process)
+            server_thread.start()
+            client_thread.start()
+            
+            """Wait for client to hang up"""
+            client_thread.join(1) # One sec should be plenty
+            server_thread.join(2*TIMEOUT)
+            
+        """Make sure the client has updated the db"""
+        self.assertEqual(client_db.message_count, 3)
+        self.assertEqual(server_db.message_count, 3)
+        self.assertEqual(len([srvmsg for srvmsg in server_db.get_messages() if srvmsg not in client_db.get_messages()]), 0) 
+
 
 if __name__ == '__main__':
     unittest.main()
