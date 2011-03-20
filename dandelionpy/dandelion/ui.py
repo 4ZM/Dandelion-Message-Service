@@ -18,7 +18,7 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import cmd
-from message import Message
+from dandelion.message import Message
 
 class CmdLine(cmd.Cmd):
     """Simple command processor example."""
@@ -102,9 +102,9 @@ class UI:
 
 
     def run(self):
-        print('UI: Starting cmd line')
+        #print('UI: Starting cmd line')
         self._cmd_line.cmdloop()
-        print('UI: Exiting cmd line')
+        #print('UI: Exiting cmd line')
 
     def say(self, msg, sender=None, receiver=None):
         

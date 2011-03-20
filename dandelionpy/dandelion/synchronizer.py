@@ -33,7 +33,7 @@ class Synchronizer(Service):
         
     def start(self):
         """Start the service. Block until the service is running."""
-        print('SYNCHRONIZER: Starting')
+        #print('SYNCHRONIZER: Starting')
         self._stop_requested = False
         self._thread = Thread(target=self._sync_loop)
         self._thread.start()
@@ -43,7 +43,7 @@ class Synchronizer(Service):
         """Stop the service. Block until the service is running."""
         
         self._stop_requested = True
-        print('SYNCHRONIZER: Stopping')
+        #print('SYNCHRONIZER: Stopping')
         self._thread.join(0.1)
         if self._thread.is_alive():
             raise Exception # Timeout
@@ -68,7 +68,7 @@ class Synchronizer(Service):
         return self._running
         
     def _sync_loop(self):
-        print('SYNCHRONIZER: Running')
+        #print('SYNCHRONIZER: Running')
 
         t1 = time.time()
         while not self._stop_requested:
@@ -79,7 +79,7 @@ class Synchronizer(Service):
                 time.sleep(0.01) # Don't busy wait
                 continue
             
-            print("SYNCHRONIZER: Time for a sync")
+            #print("SYNCHRONIZER: Time for a sync")
             
             # Should use the discoverer here...
             host = "localhost"

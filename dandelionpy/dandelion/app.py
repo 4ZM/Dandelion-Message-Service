@@ -17,10 +17,10 @@ You should have received a copy of the GNU General Public License
 along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from config import ConfigManager 
-from network import Server
-from synchronizer import Synchronizer
-from ui import UI
+from dandelion.config import ConfigManager 
+from dandelion.network import Server
+from dandelion.synchronizer import Synchronizer
+from dandelion.ui import UI
 
 class DandelionApp:
 
@@ -53,11 +53,11 @@ class DandelionApp:
 if __name__ == '__main__':
     
     app = DandelionApp('dandelion.conf')
-    print('APP: Starting Server')
+    #print('APP: Starting Server')
     app.start_server()
-    print('APP: Starting Synchronizer')
+    #print('APP: Starting Synchronizer')
     app.start_content_synchronizer()
-    print('APP: Starting UI')
+    #print('APP: Starting UI')
     app.run_ui()
-    print('APP: Exiting')
+    #print('APP: Exiting')
     app.exit()
