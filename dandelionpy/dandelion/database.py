@@ -56,8 +56,11 @@ class ContentDB:
             raise TypeError
         
         """Make sure the list only contains messages"""
-        if not all([isinstance(m, Message) for m in msgs]):
-            raise TypeError
+        try:
+            if not all([isinstance(m, Message) for m in msgs]):
+                raise TypeError
+        except Exception as e:
+            print("e", e)
         
         """Add the messages not already present to the data base"""
         untagged_messages = [m for (_, m) in self._messages]

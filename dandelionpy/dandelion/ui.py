@@ -18,8 +18,7 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import cmd
-from dandelion.message import Message
-import dandelion
+from message import Message
 
 class CmdLine(cmd.Cmd):
     """Simple command processor example."""
@@ -55,6 +54,10 @@ class CmdLine(cmd.Cmd):
     def do_isayto(self, args):
         """isayto receiver message : Create a new signed and addressed message"""
         self._ui.say(args, sender=True, receiver='RECV')
+        
+
+    def do_stat(self, args):
+        """stat : Show current status of this client"""
 
     def do_msgs(self, args):
         """msgs : Show messages"""
@@ -79,7 +82,7 @@ class CmdLine(cmd.Cmd):
             return OP_STOP
         elif op_str == 'restart':
             return OP_RESTART
-        elif op_str == 'status' or op_str == 'stat':
+        elif op_str == 'status':
             return OP_STATUS
         else:
             raise Exception
@@ -99,9 +102,9 @@ class UI:
 
 
     def run(self):
-        #print('UI: Starting cmd line')
+        print('UI: Starting cmd line')
         self._cmd_line.cmdloop()
-        #print('UI: Exiting cmd line')
+        print('UI: Exiting cmd line')
 
     def say(self, msg, sender=None, receiver=None):
         
@@ -121,7 +124,7 @@ class UI:
         print(' --- MESSAGES BEGIN --- ')
         
         for m in msgs:
-            print(' : '.join([m.text, dandelion.util.encode_bytes(m.id).decode()]))
+            print(' : '.join([m.text, str(m.id)]))
 
         print(' --- MESSAGES END --- ')
 

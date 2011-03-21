@@ -410,4 +410,3 @@ class Protocol:
             return 'R'
         else:
             return 'N' 
-
