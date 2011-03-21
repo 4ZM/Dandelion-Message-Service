@@ -22,7 +22,7 @@ import socket
 import socketserver
 
 from dandelion.protocol import Protocol, ProtocolParseError
-from dandelion.database import ContentDB
+from dandelion.database import InMemoryContentDB
 from dandelion.service import Service
     
     
@@ -158,7 +158,7 @@ class ServerTransaction(SocketTransaction):
             if Protocol.is_message_id_list_request(data):
                 
                 tc = Protocol.parse_message_id_list_request(data)
-                tc, msgs = self._db.messages_since(tc)
+                tc, msgs = self._db.get_messages_since(tc)
                 response_str = Protocol.create_message_id_list(tc, msgs)
                 self._write(response_str.encode()) 
 

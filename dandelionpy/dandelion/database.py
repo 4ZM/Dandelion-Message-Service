@@ -22,19 +22,108 @@ import dandelion.util
 
 from dandelion.message import Message
 
+class ContentDBException(Exception):
+    pass
+
+
+
 class ContentDB: 
+    """Message data base for the Dandelion Message Service"""
+    
+    class _classproperty(property):
+        """Class property (mix of classmethod and property)"""
+        def __get__(self, obj, type_):
+            return self.fget.__get__(None, type_)()
+    
+    _ID_LENGTH_BYTES = 18 # 144 bit id
+    
+    __instance = None # Singleton instance
+
+    @classmethod
+    def register(cls, db):
+        """Register a database instance
+        
+        Can only register one database (available from the db property) 
+        """
+        
+        if cls.__instance is not None:
+            raise ContentDBException
+        
+        if db is None or not isinstance(db, ContentDB):
+            raise ContentDBException
+        
+        cls.__instance = db
+
+    @classmethod
+    def unregister(cls):
+        """Unregister currently registered db"""
+        
+        if cls.__instance is None:
+            raise ContentDBException
+        
+        cls.__instance = None
+            
+    @_classproperty
+    @classmethod
+    def db(cls):
+        """Access the registered database."""
+        return cls.__instance
+    
+    @property
+    def id(self):
+        """The data base id (bytes)"""
+
+    def add_messages(self, msgs):
+        """Add a a list of messages to the data base.
+        
+        Will add all messages, not already in the data base to the data base and return a 
+        time cookie (bytes) that represents the point in time after the messages have been added.
+        If no messages were added, it just returns the current time cookie. 
+        """
+
+    def remove_messages(self, msgs=None):
+        """Removes messages from the data base.
+        
+        The specified list of messages will be removed from the data base. 
+        If the message parameter is omitted, all messages in the data base will be removed.
+        """
+    @property
+    def message_count(self):
+        """Returns the number of messages currently in the data base (int)"""
+
+    def contains_message(self, msgid):
+        """Returns true if the database contains the msgid"""
+
+    def get_messages(self, msgids=None):
+        """Get a list of all messages with specified message id"""
+
+    def get_messages_since(self, time_cookie=None):
+        """Get messages from the data base.
+        
+        If a time cookie is specified, all messages in the database from (and 
+        including) the time specified by the time cookie will be returned.  
+        If the time cookie parameter is omitted, all messages currently in the 
+        data base will be returned.
+        """
+        
+    def _generate_random_db_id(self):
+        """Create a new db id"""
+        return bytes([int(random.random() * 255) for _ in range(ContentDB._ID_LENGTH_BYTES)])
+
+
+class InMemoryContentDB(ContentDB): 
     """Message data base for the Dandelion Message Service"""
     
     _ID_LENGTH_BYTES = 18 # 144 bit id
     
     def __init__(self):
         """Create a new data base with a random id"""
+        super().__init__()        
         
         self._messages = []
-        self._id = bytes([int(random.random() * 255) for _ in range(ContentDB._ID_LENGTH_BYTES)])
+        self._id = self._generate_random_db_id()
         self._rev = 0
-        
-        
+
     @property
     def id(self):
         """The data base id (bytes)"""
@@ -68,21 +157,6 @@ class ContentDB:
             self._rev += 1
             
         return dandelion.util.encode_int(self._rev)
-        
-    @property
-    def message_count(self):
-        """Returns the number of messages currently in the data base (int)"""
-        
-        return len(self._messages)
-        
-    def contains_message(self, msgid):
-        """Returns true if the database contains the msgid 
-        """
-        
-        if not isinstance(msgid, bytes):
-            raise TypeError
-            
-        return len([m for (_, m) in self._messages if m.id == msgid]) > 0
     
     def remove_messages(self, msgs=None):
         """Removes messages from the data base.
@@ -102,6 +176,20 @@ class ContentDB:
                         
         for m in to_delete:
             self._messages.remove(m)
+            
+    @property
+    def message_count(self):
+        """Returns the number of messages currently in the data base (int)"""
+        
+        return len(self._messages)
+        
+    def contains_message(self, msgid):
+        """Returns true if the database contains the msgid"""
+        
+        if not isinstance(msgid, bytes):
+            raise TypeError
+            
+        return len([m for (_, m) in self._messages if m.id == msgid]) > 0
 
     def get_messages(self, msgids=None):
         """Get a list of all messages with specified message id"""
@@ -114,7 +202,7 @@ class ContentDB:
                
         return [m for _, m in self._messages if m.id in msgids]
 
-    def messages_since(self, time_cookie=None):
+    def get_messages_since(self, time_cookie=None):
         """Get messages from the data base.
         
         If a time cookie is specified, all messages in the database from (and 

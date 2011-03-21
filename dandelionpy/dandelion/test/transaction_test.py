@@ -22,7 +22,7 @@ import socket
 import threading
 
 from dandelion.network import SocketTransaction, ServerTransaction, ClientTransaction
-from dandelion.database import ContentDB
+from dandelion.database import InMemoryContentDB
 from dandelion.message import Message
 from dandelion.protocol import Protocol
 
@@ -212,7 +212,7 @@ class MessageTest(unittest.TestCase):
     def test_basic_server_transaction(self):
         """Tests the server transaction protocol and logic""" 
     
-        db = ContentDB()
+        db = InMemoryContentDB()
         tc = db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
     
         with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
@@ -243,8 +243,8 @@ class MessageTest(unittest.TestCase):
     def test_basic_client_transaction(self):
         """Tests the client transaction protocol and logic""" 
         
-        client_db = ContentDB()
-        srv_db = ContentDB()
+        client_db = InMemoryContentDB()
+        srv_db = InMemoryContentDB()
         tc = srv_db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
     
         self.assertEqual(client_db.message_count, 0)
@@ -287,7 +287,7 @@ class MessageTest(unittest.TestCase):
     def test_server_transaction_protocol_violation(self):
         """Tests the servers response to an invalid request""" 
     
-        db = ContentDB()
+        db = InMemoryContentDB()
 
         with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
             srv_transaction = ServerTransaction(server_helper.sock, db)
@@ -313,7 +313,7 @@ class MessageTest(unittest.TestCase):
     def test_client_transaction_protocol_violation(self):
         """Tests the client transaction protocol and logic""" 
         
-        client_db = ContentDB()
+        client_db = InMemoryContentDB()
    
         with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
             
@@ -334,8 +334,8 @@ class MessageTest(unittest.TestCase):
     def test_client_server_transaction(self):
         """Tests the whole, client driven transaction protocol and logic""" 
         
-        client_db = ContentDB()
-        server_db = ContentDB()
+        client_db = InMemoryContentDB()
+        server_db = InMemoryContentDB()
         server_db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
     
         self.assertEqual(client_db.message_count, 0)
@@ -364,8 +364,8 @@ class MessageTest(unittest.TestCase):
     def test_client_server_transaction_empty_db(self):
         """Tests the whole, client driven transaction protocol and logic with an empty db""" 
         
-        client_db = ContentDB()
-        server_db = ContentDB()
+        client_db = InMemoryContentDB()
+        server_db = InMemoryContentDB()
     
         self.assertEqual(client_db.message_count, 0)
         self.assertEqual(server_db.message_count, 0)
@@ -392,8 +392,8 @@ class MessageTest(unittest.TestCase):
     def test_client_server_transaction_partial_sync(self):
         """Tests the whole, client driven transaction protocol and logic""" 
         
-        client_db = ContentDB()
-        server_db = ContentDB()
+        client_db = InMemoryContentDB()
+        server_db = InMemoryContentDB()
         client_db.add_messages([Message('fubar')])
         server_db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
     

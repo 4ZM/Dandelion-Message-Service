@@ -18,7 +18,7 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import configparser
-from dandelion.database import ContentDB
+from dandelion.database import InMemoryContentDB
 
 class ConfigException(Exception):
     pass
@@ -135,7 +135,7 @@ class ConfigManager:
         
         self.read_file()
         
-        self._content_db = ContentDB()
+        self._content_db = InMemoryContentDB()
 
     @property
     def config_file(self):

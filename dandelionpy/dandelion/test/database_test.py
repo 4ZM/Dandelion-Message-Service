@@ -19,27 +19,71 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 
 import unittest
 from dandelion.message import Message
-from dandelion.database import ContentDB
+from dandelion.database import ContentDB, ContentDBException, InMemoryContentDB
 
 class DatabaseTest(unittest.TestCase):
-    """Unit test suite for the ContentDB class"""
+    """Unit test suite for the InMemoryContentDB class"""
     
-    def test_id(self):
-        """Test data base id format"""
+    def test_singleton(self):
         
-        db = ContentDB()
+        self.assertEqual(ContentDB.db, None)
+        self.assertRaises(ContentDBException, ContentDB.register, None)
+        self.assertRaises(ContentDBException, ContentDB.register, 23)
+        self.assertRaises(ContentDBException, ContentDB.unregister)
+        
+        db = InMemoryContentDB()
+        ContentDB.register(db)
+        self.assertRaises(ContentDBException, ContentDB.register, db)
+        self.assertRaises(ContentDBException, ContentDB.register, InMemoryContentDB())
+        
+        db_back = ContentDB.db
+        self.assertNotEqual(db_back, None)
+        self.assertEqual(db_back, db)
+        
+        ContentDB.unregister()
+        self.assertEqual(ContentDB.db, None)
+
+    def test_imcdb_id(self):
+        ContentDB.register(InMemoryContentDB())
+        self._test_id(ContentDB.db)
+        ContentDB.unregister()
+
+    def test_imcdb_single_message_interface(self):
+        ContentDB.register(InMemoryContentDB())
+        self._test_single_message_interface()
+        ContentDB.unregister()
+        
+    def test_imcdb_list_message_interface(self):
+        ContentDB.register(InMemoryContentDB())
+        self._test_list_message_interface()
+        ContentDB.unregister()
+        
+    def test_imcdb_test_time_cookies(self):
+        ContentDB.register(InMemoryContentDB())
+        self._test_time_cookies()
+        ContentDB.unregister()
+
+    def test_imcdb_get_messages(self):
+        ContentDB.register(InMemoryContentDB())
+        self._test_get_messages()
+        ContentDB.unregister()
+
+    def _test_id(self, db):
+        """Test data base id format"""
+        db = ContentDB.db
+        
         id = db.id
         self.assertNotEqual(id, None)
         self.assertTrue(len(id) > 0)
         self.assertTrue(isinstance(db.id, bytes))
         
         # Another data base gets another id
-        self.assertNotEqual(id, ContentDB().id)
-        
-    def test_single_message_interface(self):
+        self.assertNotEqual(id, InMemoryContentDB().id)
+
+    def _test_single_message_interface(self):
         """Test functions relating to storing and recovering single messages"""
         
-        db = ContentDB()
+        db = ContentDB.db
         
         first_msg = Message("A message")
 
@@ -53,10 +97,10 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual(db.message_count, 1)
         self.assertEqual(db.contains_message(first_msg.id), True)
         
-    def test_list_message_interface(self):
+    def _test_list_message_interface(self):
         """Test functions relating to storing and recovering single messages"""
         
-        db = ContentDB()
+        db = ContentDB.db
         
         first_msg_list = [Message('A'), Message('B')]
 
@@ -94,14 +138,10 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual([db.contains_message(m.id) for m in first_msg_list], [False, False])
         self.assertEqual([db.contains_message(m.id) for m in second_msg_list], [False, False])
 
-    def test_uid_storage(self):
-        """Test function relating to storing and recovering user identities"""
-        #TODO 
-        
-    def test_time_cookies(self):
+    def _test_time_cookies(self):
         """Test the data base time cookies (revision) functionality""" 
         
-        db = ContentDB()
+        db = ContentDB.db
 
         # Adding a message        
         first_msg = Message('A Single Message')
@@ -118,7 +158,7 @@ class DatabaseTest(unittest.TestCase):
         self.assertNotEqual(second_cookie, first_cookie)
 
         # Since first should only be second
-        tc, some_messages = db.messages_since(first_cookie)
+        tc, some_messages = db.get_messages_since(first_cookie)
         self.assertNotEqual(some_messages, None)
         self.assertEqual(tc, second_cookie)
 
@@ -126,22 +166,22 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual(some_messages[0], second_msg)
         
         # Nothing new since last message was added
-        tc, last_messages = db.messages_since(second_cookie)
+        tc, last_messages = db.get_messages_since(second_cookie)
         self.assertNotEqual(last_messages, None)
         self.assertEqual(len(last_messages), 0)
         self.assertEqual(tc, second_cookie)
         
         # Trying some bad input
-        self.assertRaises(TypeError, db.messages_since, 0)
-        self.assertRaises(TypeError, db.messages_since, '')
-        self.assertRaises(TypeError, db.messages_since, 'fubar')
-        self.assertRaises(ValueError, db.messages_since, b'')
-        self.assertRaises(ValueError, db.messages_since, b'1337')
-        
-    def test_get_messages(self):
+        self.assertRaises(TypeError, db.get_messages_since, 0)
+        self.assertRaises(TypeError, db.get_messages_since, '')
+        self.assertRaises(TypeError, db.get_messages_since, 'fubar')
+        self.assertRaises(ValueError, db.get_messages_since, b'')
+        self.assertRaises(ValueError, db.get_messages_since, b'1337')
+
+    def _test_get_messages(self):
         """Test the message retrieval from msg id list"""
         
-        db = ContentDB()
+        db = ContentDB.db
 
         m1 = Message('M1')
         m2 = Message('M2')

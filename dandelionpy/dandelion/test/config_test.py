@@ -35,7 +35,7 @@ class MessageTest(unittest.TestCase):
         self.assertTrue(isinstance(cm.synchronizer_config, SynchronizerConfig))
         self.assertTrue(isinstance(cm.identity_manager_config, IdentityConfig))
         self.assertTrue(isinstance(cm.ui_config, UiConfig))
-        self.assertTrue(isinstance(cm.content_db, ContentDB))
+        self.assertTrue(isinstance(cm.content_db, InMemoryContentDB))
         
     def test_default_file(self):
         cm = ConfigManager()
