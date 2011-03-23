@@ -197,10 +197,11 @@ class Server(Service):
 
     def start(self):
         """Start the service. Blocking call."""
-        #print('SERVER: Starting')
-        self._server = _ServerImpl(self._ip, self._port, self._db)
+        print('SERVER: Starting')
         self._zeroconf_service.register()
+        self._server = _ServerImpl(self._ip, self._port, self._db)
         self._running = True
+        print("SERVER WAS STARTED")
         
     def stop(self):
         """Stop the service. Blocking call."""

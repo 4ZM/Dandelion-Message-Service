@@ -158,6 +158,7 @@ class DNSEntry(object):
         self.key = str(name.lower()) #self.key = string.lower(name)
         self.name = name
         self.type = type
+        log.debug(( "INIT TYPE %s ") % (type))
         self.clazz = clazz & _CLASS_MASK
         self.unique = (clazz & _CLASS_UNIQUE) != 0
 
@@ -354,7 +355,8 @@ class DNSText(DNSRecord):
 
     def write(self, out):
         """Used in constructing an outgoing packet"""
-        out.writeString(self.text, len(self.text))
+        
+        out.writeString(self.text.encode('utf-8'), len(self.text.encode('utf-8')))  #FIXME: 
 
     def __eq__(self, other):
         """Tests equality on text"""
@@ -612,17 +614,13 @@ class DNSOutgoing(object):
         """Adds an additional answer"""
         self.additionals.append(record)
     
-    def toByte(self, value):
-        b_value = str(value).encode("utf-8")
-        return b_value
     def writeByte(self, value):
         """Writes a single byte to the packet"""
         format = '!c'
         
-        value = self.toByte(value)
+        value = bytes([value])  #FIXME: 
         try:
-            #print("VALUE:", value)
-            self.data.append(struct.pack(format, value ))   # FIXME: this crashes when value is greater than 9
+            self.data.append(struct.pack(format, value ))
             self.size += 1
         except Exception as e:
             print("writeByte", e)
@@ -644,12 +642,16 @@ class DNSOutgoing(object):
         format = '!I'
         #FIX, python3 has only one integer type, namely int.casting to long is invalid
         #org: self.data.append(struct.pack(format, long(value)))
+        if value is None:   #FIXME: 
+            return 
         self.data.append(struct.pack(format, int(value)))
         self.size += 4
 
     def writeString(self, value, length):
         """Writes a string to the packet"""
         format = '!' + str(length) + 's'
+        if not isinstance(value, bytes):    #FIXME: 
+            raise TypeError
         self.data.append(struct.pack(format, value))
         self.size += length
 
@@ -714,7 +716,7 @@ class DNSOutgoing(object):
         record.write(self)
         self.size -= 2
 
-        length = len(''.join(self.data[index:]))
+        length = len(b''.join(self.data[index:]))   # FIXME: 
         self.insertShort(index, length) # Here is the short we adjusted for
 
     def packet(self):

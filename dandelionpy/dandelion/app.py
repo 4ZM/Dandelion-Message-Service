@@ -58,7 +58,7 @@ class DandelionApp:
 
 if __name__ == '__main__':
     
-    logging.basicConfig( level = logging.INFO )
+    logging.basicConfig( level = logging.DEBUG )
     app = DandelionApp('dandelion.conf')
     print('APP: Starting Server')
     app.start_server()

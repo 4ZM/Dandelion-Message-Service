@@ -1,4 +1,4 @@
-
+#! /usr/bin/env python
 import logging,socket,sys,os
 from zeroconf import mdns, dns
 
@@ -12,13 +12,12 @@ def main(ip=None):
     print("HOST IP", host_ip)
     try:
         print("1. Testing registration of a service...")
-        _desc = {
+        desc = {
                 'version':'0.10',
                 'a':'test value', 
                 'b':'another value'
         }
         
-        desc = {}
         info = mdns.ServiceInfo(
             "_http._tcp.local.", 
             "vojds_service@_http._tcp.local.",
