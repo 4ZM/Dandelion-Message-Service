@@ -41,7 +41,7 @@ class ProtocolTest(unittest.TestCase):
         """Test construction of greeting message"""
         
         ex_database_id_bin = b'\x01\x03\x03\x07'
-        ex_database_id_str = dandelion.util.encode_bytes(ex_database_id_bin).decode()
+        ex_database_id_str = dandelion.util.encode_b64_bytes(ex_database_id_bin).decode()
 
         greeting = Protocol.create_greeting_message(ex_database_id_bin)
         pc, pv, dbid = greeting[:-1].split(';')
@@ -59,7 +59,7 @@ class ProtocolTest(unittest.TestCase):
         """Test parsing greeting message"""
 
         ex_database_id_bin = b'\x01\x03\x03\x07'
-        ex_database_id_str = dandelion.util.encode_bytes(ex_database_id_bin).decode()
+        ex_database_id_str = dandelion.util.encode_b64_bytes(ex_database_id_bin).decode()
 
         dbid = Protocol.parse_greeting_message('DMS;{0};{1}\n'.format(Protocol.PROTOCOL_VERSION, ex_database_id_str))
         self.assertEqual(dbid, ex_database_id_bin)
@@ -99,7 +99,7 @@ class ProtocolTest(unittest.TestCase):
         
         tc = b'\x01\x03\x03\x07'
         s = Protocol.create_message_id_list_request(tc)
-        self.assertTrue(' '.join(['GETMESSAGELIST', dandelion.util.encode_bytes(tc).decode()]) in s) 
+        self.assertTrue(' '.join(['GETMESSAGELIST', dandelion.util.encode_b64_bytes(tc).decode()]) in s) 
         self.assertTrue(Protocol.is_message_id_list_request(s))
         
         """Testing bad input"""
@@ -113,7 +113,7 @@ class ProtocolTest(unittest.TestCase):
         """Test parsing the message ID list request string"""
         
         tc_bin = b'\x01\x03\x03\x07'
-        tc_str = dandelion.util.encode_bytes(tc_bin).decode()
+        tc_str = dandelion.util.encode_b64_bytes(tc_bin).decode()
         
         self.assertTrue(Protocol.is_message_id_list_request('GETMESSAGELIST {0}\n'.format(tc_str)))
         tc = Protocol.parse_message_id_list_request('GETMESSAGELIST {0}\n'.format(tc_str))
@@ -170,14 +170,14 @@ class ProtocolTest(unittest.TestCase):
         msg3 = Message('M3')
         
         tc = b'\x01\x03\x03\x07'
-        tc_str_ok = dandelion.util.encode_bytes(tc).decode()
+        tc_str_ok = dandelion.util.encode_b64_bytes(tc).decode()
         
         str_ = Protocol.create_message_id_list(tc, [msg1, msg2, msg3])[:-1]
         tc_str, m1_str, m2_str, m3_str = str_.split(';')
         self.assertEqual(tc_str, tc_str_ok)
-        self.assertEqual(msg1.id, dandelion.util.decode_bytes(m1_str.encode()))
-        self.assertEqual(msg2.id, dandelion.util.decode_bytes(m2_str.encode()))
-        self.assertEqual(msg3.id, dandelion.util.decode_bytes(m3_str.encode()))
+        self.assertEqual(msg1.id, dandelion.util.decode_b64_bytes(m1_str.encode()))
+        self.assertEqual(msg2.id, dandelion.util.decode_b64_bytes(m2_str.encode()))
+        self.assertEqual(msg3.id, dandelion.util.decode_b64_bytes(m3_str.encode()))
 
         str_ = Protocol.create_message_id_list(tc, None)[:-1]
         self.assertEqual(str_, tc_str)
@@ -199,14 +199,14 @@ class ProtocolTest(unittest.TestCase):
         """Test parsing the message ID list request string"""
 
         tc = b'13\x01\x07'
-        tc_str = dandelion.util.encode_bytes(tc).decode()
+        tc_str = dandelion.util.encode_b64_bytes(tc).decode()
                 
         m1 = b'42'
         m2 = b'\x01\x23\x245'
         m3 = b'\x42\x42\x42'
-        m3_str = dandelion.util.encode_bytes(m3).decode()
-        m2_str = dandelion.util.encode_bytes(m2).decode()
-        m1_str = dandelion.util.encode_bytes(m1).decode()
+        m3_str = dandelion.util.encode_b64_bytes(m3).decode()
+        m2_str = dandelion.util.encode_b64_bytes(m2).decode()
+        m1_str = dandelion.util.encode_b64_bytes(m1).decode()
 
         parsed_tc, msgidlist = Protocol.parse_message_id_list(''.join([';'.join([tc_str, m1_str, m2_str, m3_str]), '\n']))
         self.assertEqual(parsed_tc, tc)
@@ -278,9 +278,9 @@ class ProtocolTest(unittest.TestCase):
         m1 = b'42'
         m2 = b'\x01\x23\x245'
         m3 = b'\x42\x42\x42'
-        m3_str = dandelion.util.encode_bytes(m3).decode()
-        m2_str = dandelion.util.encode_bytes(m2).decode()
-        m1_str = dandelion.util.encode_bytes(m1).decode()
+        m3_str = dandelion.util.encode_b64_bytes(m3).decode()
+        m2_str = dandelion.util.encode_b64_bytes(m2).decode()
+        m1_str = dandelion.util.encode_b64_bytes(m1).decode()
         
         self.assertTrue(Protocol.is_message_list_request('GETMESSAGES\n'))
         self.assertFalse(Protocol.is_message_list_request('GETMES_XXX_SAGES\n'))
@@ -311,9 +311,9 @@ class ProtocolTest(unittest.TestCase):
         m1 = b'42'
         m2 = b'\x01\x23\x245'
         m3 = b'\x42\x42\x42'
-        m3_str = dandelion.util.encode_bytes(m3).decode()
-        m2_str = dandelion.util.encode_bytes(m2).decode()
-        m1_str = dandelion.util.encode_bytes(m1).decode()
+        m3_str = dandelion.util.encode_b64_bytes(m3).decode()
+        m2_str = dandelion.util.encode_b64_bytes(m2).decode()
+        m1_str = dandelion.util.encode_b64_bytes(m1).decode()
        
         msgs_ret = Protocol.parse_message_list_request('GETMESSAGES {0}\n'.format(';'.join([m1_str, m2_str, m3_str])))
         self.assertEquals(len(msgs_ret), 3)

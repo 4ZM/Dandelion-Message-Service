@@ -121,7 +121,7 @@ class UI:
         print(' --- MESSAGES BEGIN --- ')
         
         for m in msgs:
-            print(' : '.join([m.text, dandelion.util.encode_bytes(m.id).decode()]))
+            print(' : '.join([m.text, dandelion.util.encode_b64_bytes(m.id).decode()]))
 
         print(' --- MESSAGES END --- ')
 

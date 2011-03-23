@@ -108,7 +108,7 @@ class MessageTest(unittest.TestCase):
         """Testing the message to string conversion"""
         
         msg = Message(self._sample_message)
-        self.assertEqual(str(msg), dandelion.util.encode_bytes(binascii.a2b_hex(self._sample_message_sha256)[- Message._ID_LENGTH_BYTES:]).decode())         
+        self.assertEqual(str(msg), dandelion.util.encode_b64_bytes(binascii.a2b_hex(self._sample_message_sha256)[- Message._ID_LENGTH_BYTES:]).decode())         
 
 
 if __name__ == '__main__':

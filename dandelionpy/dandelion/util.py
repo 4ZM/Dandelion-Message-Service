@@ -20,17 +20,23 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 import base64
 import binascii
 
-def encode_bytes(bstr):
+def encode_b64_bytes(bstr):
     if not isinstance(bstr, bytes) and not isinstance(bstr, bytearray):
         raise TypeError    
     
     return base64.b64encode(bstr)
     
-def decode_bytes(bstr):
+def decode_b64_bytes(bstr):
     if not isinstance(bstr, bytes) and not isinstance(bstr, bytearray):
         raise TypeError    
 
     return base64.b64decode(bstr)
+
+def encode_b64_int(x):
+    return encode_b64_bytes(encode_int(x))
+
+def decode_b64_int(bstr):
+    return decode_int(decode_b64_bytes(bstr))
 
 def encode_int(x):
     
@@ -45,10 +51,10 @@ def encode_int(x):
     if len(hstr) % 2 != 0:
         hstr = ''.join(['0', hstr])
 
-    return base64.b64encode(binascii.a2b_hex(hstr))
+    return binascii.a2b_hex(hstr)
 
 def decode_int(bstr):
     if not isinstance(bstr, bytes) and not isinstance(bstr, bytearray):
         raise TypeError    
 
-    return int(binascii.b2a_hex(base64.b64decode(bstr)), 16)
+    return int(binascii.b2a_hex(bstr), 16)

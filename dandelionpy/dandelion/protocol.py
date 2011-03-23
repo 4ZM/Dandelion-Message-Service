@@ -71,7 +71,7 @@ class Protocol:
         
         return '{0}{3}{1}{3}{2}{4}'.format(cls._PROTOCOL_COOKIE, 
                                            Protocol.PROTOCOL_VERSION, 
-                                           dandelion.util.encode_bytes(dbid).decode(),
+                                           dandelion.util.encode_b64_bytes(dbid).decode(),
                                            cls._FIELD_SEPARATOR,
                                            Protocol.TERMINATOR)
 
@@ -111,7 +111,7 @@ class Protocol:
             raise ProtocolVersionError('Incompatible Protocol versions')
         
         try:
-            dbid = dandelion.util.decode_bytes(dbid_str.encode())
+            dbid = dandelion.util.decode_b64_bytes(dbid_str.encode())
         except ValueError:
             raise ProtocolParseError
         
@@ -151,7 +151,7 @@ class Protocol:
             raise TypeError
         
         return '{0} {1}{2}'.format(cls._GETMESSAGELIST, 
-                                   dandelion.util.encode_bytes(time_cookie).decode(), 
+                                   dandelion.util.encode_b64_bytes(time_cookie).decode(), 
                                    Protocol.TERMINATOR)
             
         
@@ -186,7 +186,7 @@ class Protocol:
         if match.groups()[0] is None:
             return None
         
-        return dandelion.util.decode_bytes(match.groups()[1].encode())
+        return dandelion.util.decode_b64_bytes(match.groups()[1].encode())
         
     @classmethod    
     def create_message_id_list(cls, time_cookie, messages=None):
@@ -214,10 +214,10 @@ class Protocol:
         if not hasattr(messages, '__iter__'):
             raise TypeError
         
-        tc_str = dandelion.util.encode_bytes(time_cookie).decode()
+        tc_str = dandelion.util.encode_b64_bytes(time_cookie).decode()
         
         msgparts = [tc_str]
-        msgparts.extend([dandelion.util.encode_bytes(msg.id).decode() for msg in messages])
+        msgparts.extend([dandelion.util.encode_b64_bytes(msg.id).decode() for msg in messages])
         return ''.join([cls._FIELD_SEPARATOR.join(msgparts),
                         Protocol.TERMINATOR])
 
@@ -250,8 +250,8 @@ class Protocol:
         if tc is None:
             raise ProtocolParseError
         
-        return (dandelion.util.decode_bytes(tc.encode()), 
-                [dandelion.util.decode_bytes(m.encode()) for m in msgstr[:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)[1:]])
+        return (dandelion.util.decode_b64_bytes(tc.encode()), 
+                [dandelion.util.decode_b64_bytes(m.encode()) for m in msgstr[:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)[1:]])
 
     @classmethod
     def is_message_list_request(cls, msgstr):
@@ -286,7 +286,7 @@ class Protocol:
         if len(msg_ids) == 0:
             return ''.join([cls._GETMESSAGES, Protocol.TERMINATOR])
         
-        msgid_str = cls._FIELD_SEPARATOR.join([dandelion.util.encode_bytes(mid).decode() for mid in msg_ids])
+        msgid_str = cls._FIELD_SEPARATOR.join([dandelion.util.encode_b64_bytes(mid).decode() for mid in msg_ids])
         
         return '{0} {1}{2}'.format(cls._GETMESSAGES, msgid_str, Protocol.TERMINATOR)
         
@@ -313,7 +313,7 @@ class Protocol:
             return None
         
         id_strings = msgstr[len(cls._GETMESSAGES) + 1:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)
-        return [dandelion.util.decode_bytes(id.encode()) for id in id_strings]
+        return [dandelion.util.decode_b64_bytes(id.encode()) for id in id_strings]
     
     
     @classmethod
@@ -350,7 +350,7 @@ class Protocol:
          
         return cls._SUB_FIELD_SEPARATOR.join([
                   cls._get_message_type_code(msg),
-                  dandelion.util.encode_bytes(msg.text.encode()).decode()])
+                  dandelion.util.encode_b64_bytes(msg.text.encode()).decode()])
         
     @classmethod
     def parse_message_list(cls, msgstr):
@@ -390,7 +390,7 @@ class Protocol:
             raise ProtocolParseError
         
         mcode = mparts[0]
-        mtext = dandelion.util.decode_bytes(mparts[1].encode()).decode()
+        mtext = dandelion.util.decode_b64_bytes(mparts[1].encode()).decode()
         
         if mcode not in ['N', 'S', 'R', 'B']:
             raise ProtocolParseError

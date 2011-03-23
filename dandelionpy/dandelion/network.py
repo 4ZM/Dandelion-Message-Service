@@ -279,7 +279,7 @@ class ClientTransaction(SocketTransaction):
             """Do nothing on error, just hang up"""
             #print("CLIENT TRANSACTION: Error processing data from server")
 
-        print("CLIENT TRANSACTION: hanging up")
+        # print("CLIENT TRANSACTION: hanging up")
 
 
 class Client:

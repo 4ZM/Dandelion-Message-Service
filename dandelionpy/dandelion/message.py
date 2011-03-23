@@ -80,7 +80,7 @@ class Message:
      
     def __str__(self):
         """String conversion is message ID as hex"""
-        return dandelion.util.encode_bytes(self._id).decode()
+        return dandelion.util.encode_b64_bytes(self._id).decode()
          
     def __eq__(self, other):
         return isinstance(other, Message) and self._id == other._id

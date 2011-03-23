@@ -18,11 +18,29 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import unittest
+import tempfile
 from dandelion.message import Message
-from dandelion.database import ContentDB, ContentDBException, InMemoryContentDB
+from dandelion.database import ContentDB, InMemoryContentDB, SQLiteContentDB, ContentDBException
 
 class DatabaseTest(unittest.TestCase):
     """Unit test suite for the InMemoryContentDB class"""
+    
+    def test_sqlite(self):
+        tmp = tempfile.NamedTemporaryFile()
+        sqlitedb = SQLiteContentDB(tmp.name)
+        
+        self.assertTrue(len(sqlitedb.id), ContentDB._ID_LENGTH_BYTES)
+        self.assertTrue(isinstance(sqlitedb.id, bytes))
+        self.assertEqual(sqlitedb.message_count, 0)
+
+        m1 = Message('a')
+        tc1 = sqlitedb.add_messages([m1, Message('b')])
+        self.assertEqual(sqlitedb.message_count, 2)
+        tc2 = sqlitedb.add_messages([Message('c')])
+        self.assertEqual(sqlitedb.message_count, 3)
+        self.assertNotEqual(tc1, tc2)
+
+        sqlitedb.get_messages([m1.id])
     
     def test_singleton(self):
         
@@ -42,6 +60,38 @@ class DatabaseTest(unittest.TestCase):
         
         ContentDB.unregister()
         self.assertEqual(ContentDB.db, None)
+
+
+    def test_sqlitedb_id(self):
+        tmp = tempfile.NamedTemporaryFile()
+        ContentDB.register(SQLiteContentDB(tmp.name))
+        self._test_id(ContentDB.db)
+        ContentDB.unregister()
+
+    def test_sqlitedb_single_message_interface(self):
+        tmp = tempfile.NamedTemporaryFile()
+        ContentDB.register(SQLiteContentDB(tmp.name))
+        self._test_single_message_interface()
+        ContentDB.unregister()
+        
+    def test_sqlitedb_list_message_interface(self):
+        tmp = tempfile.NamedTemporaryFile()
+        ContentDB.register(SQLiteContentDB(tmp.name))
+        self._test_list_message_interface()
+        ContentDB.unregister()
+        
+    def test_sqlitedb_test_time_cookies(self):
+        tmp = tempfile.NamedTemporaryFile()
+        ContentDB.register(SQLiteContentDB(tmp.name))
+        self._test_time_cookies()
+        ContentDB.unregister()
+
+    def test_sqlitedb_get_messages(self):
+        tmp = tempfile.NamedTemporaryFile()
+        ContentDB.register(SQLiteContentDB(tmp.name))
+        self._test_get_messages()
+        ContentDB.unregister()
+
 
     def test_imcdb_id(self):
         ContentDB.register(InMemoryContentDB())
@@ -67,6 +117,7 @@ class DatabaseTest(unittest.TestCase):
         ContentDB.register(InMemoryContentDB())
         self._test_get_messages()
         ContentDB.unregister()
+
 
     def _test_id(self, db):
         """Test data base id format"""
@@ -147,6 +198,7 @@ class DatabaseTest(unittest.TestCase):
         first_msg = Message('A Single Message')
         first_cookie = db.add_messages([first_msg])
         self.assertNotEqual(first_cookie, None)
+        self.assertTrue(isinstance(first_cookie, bytes))
 
         # Same message again
         self.assertEqual(first_cookie, db.add_messages([first_msg]))
