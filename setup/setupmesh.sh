@@ -2,7 +2,6 @@
 
 
 SSID=$(zenity --entry --text "SSID of the network" --title "SSID")
-KEY=$(zenity --entry --text "Encryption key" --title "KEY")
 
 WIFNAME=$(gksudo iwconfig |grep "IEEE 802.11" |awk '{print $1}')
 
