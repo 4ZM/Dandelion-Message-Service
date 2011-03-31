@@ -29,7 +29,8 @@ class DandelionApp:
     
     def start_server(self): 
         self._server = Server(self._config_manager.server_config, 
-                              self._config_manager.content_db) 
+                              self._config_manager.content_db,
+                              self._config_manager.identity) 
         self._server.start()
     
     def start_content_synchronizer(self): 
@@ -41,6 +42,7 @@ class DandelionApp:
         
         self._ui = UI(self._config_manager.ui_config, 
                       self._config_manager.content_db,
+                      self._config_manager.identity,
                       self._server, 
                       self._synchronizer)
         self._ui.run()

@@ -26,7 +26,7 @@ class Message:
     _ID_LENGTH_BYTES = 18
     MAX_TEXT_LENGTH = 140 
     
-    def __init__(self, text, signer=None, encrypter=None):
+    def __init__(self, text, sender=None, receiver=None):
         """Create a message without sender and recipient"""
         
         if text is None or len(text) > Message.MAX_TEXT_LENGTH:

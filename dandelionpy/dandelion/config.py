@@ -17,8 +17,9 @@ You should have received a copy of the GNU General Public License
 along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import configparser
 from dandelion.database import InMemoryContentDB
+from dandelion.identity import Identity, PrivateIdentity, PrivateIdentity
+import configparser
 
 class ConfigException(Exception):
     pass
@@ -136,6 +137,7 @@ class ConfigManager:
         self.read_file()
         
         self._content_db = InMemoryContentDB()
+        self._identity = PrivateIdentity.generate()
 
     @property
     def config_file(self):
@@ -161,6 +163,10 @@ class ConfigManager:
     def content_db(self):
         return self._content_db
     
+    @property 
+    def identity(self):
+        return self._identity
+
     def write_file(self):
 
         confparser = configparser.ConfigParser()

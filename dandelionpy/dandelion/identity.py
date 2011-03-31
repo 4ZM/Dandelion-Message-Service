@@ -16,6 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
+import dandelion.util
+import hashlib
 
 
 class IdentityManager:
@@ -24,52 +26,89 @@ class IdentityManager:
 
 class RSAKey:
     def __init__(self, n, e, d=None):
-        self.n = n
-        self.e = e
-        self.d = d # Private key
+        self._n = n
+        self._e = e
+        self._d = d # Private key
+    
+    @property
+    def is_private(self):
+        return self._d is not None
+    
+    def encode(self):
+        return [dandelion.util.encode_int(self._n), 
+                dandelion.util.encode_int(self._e)]
     
 class DSAKey:
     def __init__(self, y, g, p, q, x=None):
-        self.y = y
-        self.g = g
-        self.p = p
-        self.q = q
-        self.x = x # Private key
+        self._y = y
+        self._g = g
+        self._p = p
+        self._q = q
+        self._x = x # Private key
 
+    @property
+    def is_private(self):
+        return self._x is not None
 
+    def encode(self):
+        return [dandelion.util.encode_int(self._y),
+                dandelion.util.encode_int(self._g),
+                dandelion.util.encode_int(self._p), 
+                dandelion.util.encode_int(self._q)]
+
+    
 
 class Identity:
     
-    def __init__(self, DSAKey, RSAKey):
-        pass
+    _FP_LENGTH_BYTES = 18
     
+    def __init__(self, key_pair):
+        self._dsa_key, self._rsa_key = key_pair
+        
+        h = hashlib.sha256()
+        map(h.update, self._dsa_key.encode())
+        map(h.update, self._rsa_key.encode())
+        self._fp = h.digest()[- Identity._FP_LENGTH_BYTES:] 
+
     @property 
     def fingerprint(self):
-        return 0
-    
-    
-    
-    def sign(self, message):
-        return ''
-    
-    def verify(self, message, signature):
+        return self._fp
+
+    def verify(self, msg, signature):
         return True
-    
-    
+
     def encrypt(self, plaintext):
         return plaintext
+
+    def export_id(self):
+        return (self._dsa_key, self._rsa_key)
+    
+    @classmethod
+    def import_id(cls, key_pair):
+        dsa_key, rsa_key = key_pair
+        
+        if dsa_key.is_private and rsa_key.is_private:
+            return PrivateIdentity(key_pair)
+        elif not dsa_key.is_private and not rsa_key.is_private:
+            return Identity(key_pair)
+        else:
+            raise ValueError # Can't mix public and private key parts
+
+class PrivateIdentity(Identity):
+    
+    def __init__(self, key_pair):
+        super().__init__(key_pair)
+        
+        """Both keys have to have private components"""
+        if not self._dsa_key.is_private or not self._rsa_key.is_private:
+            raise ValueError 
+        
+    def sign(self, msg):
+        return b'1337'
 
     def decrypt(self, ciphertext):
         return ciphertext
 
     @classmethod
     def generate(cls):
-        return Identity(DSAKey(0,0,0,0), RSAKey(0,0))
-        
-    @classmethod
-    def export_id(cls):
-        pass
-    
-    @classmethod
-    def import_id(cls):
-        pass
+        return PrivateIdentity((DSAKey(0,0,0,0,0), RSAKey(0,0,0)))

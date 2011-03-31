@@ -20,6 +20,7 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 import cmd
 from dandelion.message import Message
 import dandelion
+from dandelion.identity import PrivateIdentity
 
 class CmdLine(cmd.Cmd):
     """Simple command processor example."""
@@ -46,15 +47,15 @@ class CmdLine(cmd.Cmd):
 
     def do_isay(self, args):
         """say message : Create a new signed message"""
-        self._ui.say(args, sender=True)
+        self._ui.say(args, sign=True)
 
     def do_sayto(self, args):
         """sayto receiver message : Create a new addressed message"""
-        self._ui.say(args, receiver='RECV')
+        self._ui.say(args, receiver_name='RECV')
 
     def do_isayto(self, args):
         """isayto receiver message : Create a new signed and addressed message"""
-        self._ui.say(args, sender=True, receiver='RECV')
+        self._ui.say(args, sign=True, receiver_name='RECV')
 
     def do_msgs(self, args):
         """msgs : Show messages"""
@@ -88,11 +89,12 @@ OP_START, OP_STOP, OP_RESTART, OP_STATUS = range(4)
         
 class UI:
     
-    def __init__(self, config_manager, db, server=None, content_synchronizer=None):
+    def __init__(self, config_manager, db, id, server=None, content_synchronizer=None):
         self._server = server
         self._synchronizer = content_synchronizer
         self._config_manager = config_manager
         self._db = db
+        self._identity = id
         #self._id_manager = IdentityManager(self._config_manager.identity_manager_config)
 
         self._cmd_line = CmdLine(self)
@@ -103,14 +105,29 @@ class UI:
         self._cmd_line.cmdloop()
         #print('UI: Exiting cmd line')
 
-    def say(self, msg, sender=None, receiver=None):
+    def say(self, msg, sign=None, receiver_name=None):
         
-        if sender and receiver:
-            print(''.join(['SAY: ', msg, ' (Sign: YES) (Receiver: ', receiver, ')']))
-        elif sender:
+        if receiver_name:
+            receiver_ = PrivateIdentity.generate() # Should look up id of receiver
+        else:
+            receiver_ = None
+        
+        if sign and receiver_:
+            print(''.join(['SAY: ', msg, ' (Sign: YES) (Receiver: ', receiver_name, ')']))
+            print('My ID: ', self._identity.fingerprint)
+            print('Recv ID: ', receiver_.fingerprint)
+            m = Message(msg, self._identity, receiver_)
+            self._db.add_messages([m])
+        elif sign:
             print(''.join(['SAY: ', msg, ' (Sign: YES) (Receiver: N/A)']))
-        elif receiver:
-            print(''.join(['SAY: ', msg, ' (Sign: N/A) (Receiver: ', receiver, ')']))
+            print('My ID: ', self._identity.fingerprint)
+            m = Message(msg, sender=self._identity)
+            self._db.add_messages([m])
+        elif receiver_:
+            print(''.join(['SAY: ', msg, ' (Sign: N/A) (Receiver: ', receiver_name, ')']))
+            print('Recv ID: ', receiver_.fingerprint)
+            m = Message(msg, receiver=receiver_)
+            self._db.add_messages([m])
         else:
             print(''.join(['SAY: ', msg, ' (Sign: N/A) (Receiver: N/A)']))
             m = Message(msg)
@@ -142,11 +159,4 @@ class UI:
             print(service.status)
         else:
             pass # Error
-    
-
-if __name__ == '__main__':
-    
-    UI(None).run()
-    
-
 

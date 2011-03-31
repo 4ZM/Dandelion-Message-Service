@@ -177,10 +177,11 @@ class ServerTransaction(SocketTransaction):
 
 class Server(Service):
     
-    def __init__(self, config, db):
+    def __init__(self, config, db, id):
         self._ip = config.ip
         self._port = config.port
         self._db = db
+        self._identity = id
         self._running = False
     
     def start(self):
