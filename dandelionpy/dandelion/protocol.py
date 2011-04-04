@@ -345,14 +345,6 @@ class Protocol:
         return ''.join([msg, Protocol.TERMINATOR])
 
     @classmethod
-    def _message2string(cls, msg):
-        """Serialize a message to a DMS string"""
-         
-        return cls._SUB_FIELD_SEPARATOR.join([
-                  cls._get_message_type_code(msg),
-                  dandelion.util.encode_b64_bytes(msg.text.encode()).decode()])
-        
-    @classmethod
     def parse_message_list(cls, msgstr):
         """Parse the message transmission string from the server.
         
@@ -366,11 +358,11 @@ class Protocol:
         if not isinstance(msgstr, str):
             raise TypeError
 
-        match = re.search(''.join(['^(.+)(', 
+        match = re.search(''.join([r'^(.+)(', 
                                    cls._FIELD_SEPARATOR, 
-                                   '.+)*', 
+                                   r'.+)*', 
                                    Protocol.TERMINATOR, 
-                                   '$']), msgstr)
+                                   r'$']), msgstr)
 
         if not match:
             raise ProtocolParseError
@@ -378,36 +370,40 @@ class Protocol:
         parts = msgstr[:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)
         
         return [cls._string2message(m) for m in parts]
-    
-    
+     
+    @classmethod
+    def _message2string(cls, msg):
+        """Serialize a message to a DMS string"""
+        
+        text = msg.text.encode() if isinstance(msg.text, str) else msg.text # Convert to bytes string
+        receiver = b'' if msg.receiver is None else msg.receiver.encode()
+        sender, signature = (b'',b'') if msg.sender is None else (msg.sender.encode(), msg.signature.encode())
+
+        return cls._SUB_FIELD_SEPARATOR.join([
+                  dandelion.util.encode_b64_bytes(text).decode(),
+                  dandelion.util.encode_b64_bytes(receiver).decode(),
+                  dandelion.util.encode_b64_bytes(sender).decode(),
+                  dandelion.util.encode_b64_bytes(signature).decode()])
+        
     @classmethod
     def _string2message(cls, mstr):
         """Parse the string and create a message"""
         
+        TEXT_INDEX, RECEIVER_INDEX, SENDER_INDEX, SIGNATURE_INDEX = (0,1,2,3)
+
         mparts = mstr.split(cls._SUB_FIELD_SEPARATOR)
         
-        if len(mparts) < 2:
+        if len(mparts) != 4:
             raise ProtocolParseError
         
-        mcode = mparts[0]
-        mtext = dandelion.util.decode_b64_bytes(mparts[1].encode()).decode()
+        if (mparts[SENDER_INDEX] != b'' and mparts[SIGNATURE_INDEX] == b'') or (mparts[SENDER_INDEX] == b'' and mparts[SIGNATURE_INDEX] != b''):
+            raise  ProtocolParseError
         
-        if mcode not in ['N', 'S', 'R', 'B']:
-            raise ProtocolParseError
-        
-        m = Message(mtext)
-        return m
-    
-    @classmethod
-    def _get_message_type_code(cls, msg):
-        """Return the DMS protocol message type code"""
-        
-        if msg.has_sender() and msg.has_receiver():
-            return 'B'
-        elif msg.has_sender():
-            return 'S'
-        elif msg.has_receiver():
-            return 'R'
-        else:
-            return 'N' 
+        receiver = dandelion.util.decode_b64_bytes(mparts[RECEIVER_INDEX].encode()).decode() if mparts[RECEIVER_INDEX] == b'' else None 
+        text = dandelion.util.decode_b64_bytes(mparts[TEXT_INDEX].encode())
+        text = text.decode() if receiver is None else text # Decode unless encrypted 
+        sender = dandelion.util.decode_b64_bytes(mparts[SENDER_INDEX].encode()).decode() if mparts[SENDER_INDEX] == b'' else None
+        signature = dandelion.util.decode_b64_bytes(mparts[SIGNATURE_INDEX].encode()).decode() if mparts[SIGNATURE_INDEX] == b'' else None
 
+        return Message(text, receiver, sender, signature)
+    

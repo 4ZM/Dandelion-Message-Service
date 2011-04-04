@@ -17,9 +17,11 @@ You should have received a copy of the GNU General Public License
 along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import unittest
 import binascii
-from dandelion.message import Message 
+import unittest
+
+from dandelion.identity import PrivateIdentity
+from dandelion.message import Message
 import dandelion
 
 class MessageTest(unittest.TestCase):
@@ -43,24 +45,64 @@ class MessageTest(unittest.TestCase):
         self.assertNotEqual(msg.id, None)
         self.assertTrue(len(msg.id) > 0)
 
-        self.assertFalse(msg.has_sender())
+        self.assertFalse(msg.has_sender)
         self.assertEqual(msg.sender, None)
         
-        self.assertFalse(msg.has_receiver())
+        self.assertFalse(msg.has_receiver)
         self.assertEqual(msg.receiver, None)
 
     def test_construction_with_sender(self):
         """Testing message construction when specifying a sender"""
-        # TODO
-
+        
+        txt = "text"
+        id = PrivateIdentity.generate()
+        m = Message(txt, sender_fp=id.fingerprint, signature=id.sign(txt))
+        self.assertEqual(m.text, txt)
+        self.assertFalse(m.has_receiver)
+        self.assertTrue(m.has_sender)
+        self.assertIsNone(m.receiver)
+        self.assertEqual(m.sender, id.fingerprint)
+        self.assertTrue(m.signature, id.sign(txt))
+        
     def test_construction_with_receiver(self):
         """Testing message construction when specifying a receiver"""
-        # TODO
+
+        txt = b"plain_text"
+        id = PrivateIdentity.generate()
+        m = Message(id.encrypt(txt), receiver_fp=id.fingerprint)
+        self.assertNotEqual(m.text, txt)
+        self.assertTrue(m.has_receiver)
+        self.assertFalse(m.has_sender)
+        self.assertEqual(m.receiver, id.fingerprint)
+        self.assertIsNone(m.sender)
+        self.assertTrue(m.text, id.encrypt(txt)) 
     
     def test_construction_with_sender_and_receiver(self):
         """Testing message construction when specifying a sender and a receiver"""
-        # TODO
         
+        txt = b"plain_text"
+        id_sender = PrivateIdentity.generate()
+        id_receiver = PrivateIdentity.generate()
+        m = Message(id_receiver.encrypt(txt), receiver_fp=id_receiver.fingerprint, 
+                    sender_fp=id_receiver.fingerprint, signature=id_receiver.sign(txt))
+        self.assertNotEqual(m.text, txt)
+        self.assertTrue(m.has_receiver)
+        self.assertTrue(m.has_sender)
+        self.assertEqual(m.receiver, id_receiver.fingerprint)
+        self.assertEqual(m.sender, id_sender.fingerprint)
+        self.assertTrue(m.signature, id_sender.sign(id_sender.encrypt(txt)))
+        
+    def test_construction_with_factory(self):
+        txt = "plain_text"
+        id = PrivateIdentity.generate()
+        m = Message.create(txt, id)
+        self.assertEqual(m.text, txt)
+        self.assertFalse(m.has_receiver)
+        self.assertTrue(m.has_sender)
+        self.assertIsNone(m.receiver)
+        self.assertEqual(m.sender, id.fingerprint)
+        self.assertTrue(m.signature, id.sign(txt))
+
     def test_id_generation(self):
         """Testing the correctness of message id generation"""
         

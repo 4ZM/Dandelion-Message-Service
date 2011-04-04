@@ -80,7 +80,7 @@ class CmdLine(cmd.Cmd):
             return OP_STOP
         elif op_str == 'restart':
             return OP_RESTART
-        elif op_str == 'status' or op_str == 'stat':
+        elif op_str == 'status' or op_str == 'stat' or op_str == '':
             return OP_STATUS
         else:
             raise Exception
@@ -101,9 +101,7 @@ class UI:
 
 
     def run(self):
-        #print('UI: Starting cmd line')
         self._cmd_line.cmdloop()
-        #print('UI: Exiting cmd line')
 
     def say(self, msg, sign=None, receiver_name=None):
         
@@ -116,21 +114,21 @@ class UI:
             print(''.join(['SAY: ', msg, ' (Sign: YES) (Receiver: ', receiver_name, ')']))
             print('My ID: ', self._identity.fingerprint)
             print('Recv ID: ', receiver_.fingerprint)
-            m = Message(msg, self._identity, receiver_)
+            m = Message.create(msg, sender=self._identity, receiver=receiver_)
             self._db.add_messages([m])
         elif sign:
             print(''.join(['SAY: ', msg, ' (Sign: YES) (Receiver: N/A)']))
             print('My ID: ', self._identity.fingerprint)
-            m = Message(msg, sender=self._identity)
+            m = Message.create(msg, sender=self._identity)
             self._db.add_messages([m])
         elif receiver_:
             print(''.join(['SAY: ', msg, ' (Sign: N/A) (Receiver: ', receiver_name, ')']))
             print('Recv ID: ', receiver_.fingerprint)
-            m = Message(msg, receiver=receiver_)
+            m = Message.create(msg, receiver=receiver_)
             self._db.add_messages([m])
         else:
             print(''.join(['SAY: ', msg, ' (Sign: N/A) (Receiver: N/A)']))
-            m = Message(msg)
+            m = Message.create(msg)
             self._db.add_messages([m])
 
     def show_messages(self):
@@ -138,7 +136,7 @@ class UI:
         print(' --- MESSAGES BEGIN --- ')
         
         for m in msgs:
-            print(' : '.join([m.text, dandelion.util.encode_b64_bytes(m.id).decode()]))
+            print(' : '.join([dandelion.util.encode_b64_bytes(m.id).decode(), m.text]))
 
         print(' --- MESSAGES END --- ')
 

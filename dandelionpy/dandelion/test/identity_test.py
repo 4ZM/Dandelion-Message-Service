@@ -18,7 +18,8 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import unittest
-from dandelion.identity import Identity, PrivateIdentity
+
+from dandelion.identity import PrivateIdentity
 
 class UtilTest(unittest.TestCase):
     
