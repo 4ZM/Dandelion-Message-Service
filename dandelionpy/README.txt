@@ -1,4 +1,1 @@
-"""
-sudo iwconfig wlan0 essid "an ad-hoc net" mode ad-hoc
-sudo avahi-autoipd wlan0
-"""
+Dandelion Messaging System is a mesh network message passing system.
