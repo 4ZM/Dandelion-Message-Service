@@ -16,25 +16,28 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 """
-
 import random
 import sqlite3
-import dandelion.util
 
 from dandelion.message import Message
+import dandelion.util
 
 class ContentDBException(Exception):
     pass
 
 class ContentDB: 
-    """Message data base for the Dandelion Message Service"""
+    """Message data base for the Dandelion Message Service.
+    
+    Abstract base class and static singleton.
+    """
     
     class _classproperty(property):
         """Class property (mix of classmethod and property)"""
         def __get__(self, obj, type_):
             return self.fget.__get__(None, type_)()
     
-    _ID_LENGTH_BYTES = 18 # 144 bit id
+    _DBID_LENGTH_BYTES = 18 
+    _TCID_LENGTH_BYTES = 9 
     
     __instance = None # Singleton instance
 
@@ -72,6 +75,10 @@ class ContentDB:
     def id(self):
         """The data base id (bytes)"""
 
+    @property
+    def name(self):
+        """The data base name (can be None)"""
+
     def add_messages(self, msgs):
         """Add a a list of messages to the data base.
         
@@ -86,6 +93,7 @@ class ContentDB:
         The specified list of messages will be removed from the data base. 
         If the message parameter is omitted, all messages in the data base will be removed.
         """
+        
     @property
     def message_count(self):
         """Returns the number of messages currently in the data base (int)"""
@@ -104,15 +112,76 @@ class ContentDB:
         If the time cookie parameter is omitted, all messages currently in the 
         data base will be returned.
         """
-        
+    
+    @classmethod
     def _generate_random_db_id(self):
         """Create a new db id"""
-        return bytes([int(random.random() * 255) for _ in range(ContentDB._ID_LENGTH_BYTES)])
+        return self._generate_random_id(ContentDB._DBID_LENGTH_BYTES)
+    
+    @classmethod
+    def _generate_random_tc_id(self):
+        """Create a new time_cookie id"""
+        return self._generate_random_id(ContentDB._TCID_LENGTH_BYTES)
+
+    @classmethod
+    def _generate_random_id(self, length):
+        """Create a new random binary id"""
+        return bytes([int(random.random() * 255) for _ in range(length)])
+
+    @classmethod
+    def _encode_id(self, id):
+        """Binary to text encoding of id's"""
+        return dandelion.util.encode_b64_bytes(id).decode()
+
+    @classmethod
+    def _decode_id(self, id):
+        """Text to binary decoding of id's"""
+        return dandelion.util.decode_b64_bytes(id.encode())
+    
 
 class SQLiteContentDB(ContentDB):
-    """A content database with a sqlite backend""" 
-    
-    def __init__(self, db_file):
+    """A content database with a sqlite backend."""
+     
+    _CREATE_TABLE_DATABASES = """CREATE TABLE IF NOT EXISTS databases
+        (id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fingerprint TEXT UNIQUE,
+        alias TEXT)"""
+
+    _CREATE_TABLE_TIME_COOKIES = """CREATE TABLE IF NOT EXISTS time_cookies
+        (id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cookie TEXT NOT NULL,
+        dbid INTEGER NOT NULL REFERENCES databases (id))"""
+
+    _CREATE_TABLE_IDENTITIES = """CREATE TABLE IF NOT EXISTS identities
+        (fingerprint TEXT PRIMARY KEY,
+        dsa_y INTEGER NOT NULL,
+        dsa_g INTEGER NOT NULL,
+        dsa_p INTEGER NOT NULL,
+        dsa_q INTEGER NOT NULL,
+        rsa_n INTEGER NOT NULL,
+        rsa_e INTEGER NOT NULL,
+        cookieid INTEGER NOT NULL REFERENCES time_cookies (id))"""
+
+    _CREATE_TABLE_PRIVATE_IDENTITIES = """CREATE TABLE IF NOT EXISTS
+        private_identities
+        (fingerprint TEXT PRIMARY KEY REFERENCES identities (fingerprint),
+        dsa_x INTEGER NOT NULL,
+        rsa_d INTEGER NOT NULL)"""
+
+    _CREATE_TABLE_MESSAGES = """CREATE TABLE IF NOT EXISTS messages
+        (msgid TEXT PRIMARY KEY,
+        msg TEXT NOT NULL,
+        receiver TEXT REFERENCES identities (fingerprint),
+        sender TEXT REFERENCES identities (fingerprint),
+        signature TEXT,
+        cookieid INTEGER NOT NULL REFERENCES time_cookies (id))"""
+
+    _CREATE_VIEW_TCDB = """CREATE VIEW IF NOT EXISTS time_cookies_db AS 
+        SELECT time_cookies.id AS id, time_cookies.cookie AS cookie, databases.fingerprint AS dbfp 
+        FROM time_cookies JOIN databases ON time_cookies.dbid=databases.id"""
+
+    def __init__(self, db_file, id=None):
+        """Create a SQLite backed data base."""
         super().__init__()
         
         if db_file is None or not isinstance(db_file, str):
@@ -120,15 +189,37 @@ class SQLiteContentDB(ContentDB):
         
         self._db_file = db_file
         
+        if id is None:
+            self._id = ContentDB._generate_random_db_id()
+            self._encoded_id = ContentDB._encode_id(self._id)
+        else:
+            self._id = id
+            self._encoded_id = ContentDB._encode_id(self._id)
+            
+            """Check existence of specified id"""
+            with sqlite3.connect(self._db_file) as conn:  
+                c = conn.cursor()
+                if c.execute("""SELECT count(*) FROM databases WHERE fingerprint=?""", 
+                             (self._decoded_id,)).fetchone()[0] != 1:
+                    raise ValueError
+        
         with sqlite3.connect(self._db_file) as conn:
             c = conn.cursor()
             self._create_tables(c)
-            self._id = self._create_id(c)
-    
+
     @property
     def id(self):
         """The data base id (bytes)"""
         return self._id
+    
+    @property
+    def name(self):
+        """The data base name (can be None)"""
+        with sqlite3.connect(self._db_file) as conn:
+            c = conn.cursor()
+            return c.execute("""SELECT name FROM databases WHERE fingerprint=?""", 
+                             (self._decoded_id,)).fetchone()[0]
+    
 
     def add_messages(self, msgs):
         """Add a a list of messages to the data base.
@@ -144,37 +235,42 @@ class SQLiteContentDB(ContentDB):
         if not hasattr(msgs, '__iter__'):
             raise TypeError
         
-        """Make sure the list only contains messages"""
-        if not all([isinstance(m, Message) for m in msgs]):
-            raise TypeError
-
-        
         with sqlite3.connect(self._db_file) as conn:
             c = conn.cursor()
 
-            tc = self._current_tc(c)
-
-            no_added = 0
-            for m in msgs:
-                c.execute('SELECT count(*) FROM messages WHERE id IS (?)',
-                          (dandelion.util.encode_b64_bytes(m.id).decode(),))
+            """Create a new, unused id"""
+            while True:
+                tc = self._encode_id(self._generate_random_tc_id())
+                if c.execute("""SELECT count(*) FROM time_cookies_db WHERE cookie=? and dbfp=?""", (tc, self._encoded_id)).fetchone()[0] == 0:
+                    break
                 
-                if c.fetchone()[0] == 1: # Allready contains msg
-                    continue
+            """Insert the new time cookie"""
+            tcid = c.execute("""INSERT INTO time_cookies (cookie, dbid) VALUES (?, (SELECT id FROM databases WHERE fingerprint=?))""", (tc, self._encoded_id)).lastrowid
 
-                c.execute("""INSERT INTO messages VALUES (?,?,?)""", 
-                          (dandelion.util.encode_b64_bytes(m.id).decode(), m.text, tc))
+            pre_msgs = c.execute("""SELECT count(*) FROM messages""").fetchone()[0] # Count before insert
+            
+            try:
+                for m in msgs:
+                    # Add sender/receiver
+                    c.execute("""INSERT OR IGNORE INTO messages (msgid, msg, receiver, sender, signature, cookieid) VALUES (?,?,?,?,?,?)""", 
+                              (dandelion.util.encode_b64_bytes(m.id).decode(), 
+                               m.text, 
+                               None if not m.has_receiver else dandelion.util.encode_b64_bytes(m.receiver).decode(), 
+                               None if not m.has_sender else dandelion.util.encode_b64_bytes(m.sender).decode(),
+                               None if not m.has_sender else dandelion.util.encode_b64_bytes(m.signature).decode(),
+                               tcid))
+            except AttributeError: # Typically caused by types other than Message in list
+                raise TypeError
+            
+            post_msgs = c.execute("""SELECT count(*) FROM messages""").fetchone()[0] # Count after insert
+            
+            """No new messages? Rollback tc insert and use old value"""
+            if (post_msgs - pre_msgs) == 0: 
+                conn.rollback() 
+                tc = c.execute("""SELECT max(id), cookie FROM time_cookies_db WHERE dbfp=?""", (self._encoded_id,)).fetchone()[1]
                 
-                no_added += 1
+            return self._decode_id(tc)
 
-            if no_added == 0:
-                return bytes([tc]) # Did't add anything, no new tc
-
-            tc_int = c.execute("""INSERT INTO time_cookies (time) VALUES (datetime('now'))""").lastrowid
-            return bytes([tc_int])
-            
-            
-            
     def remove_messages(self, msgs=None):
         """Removes messages from the data base.
         
@@ -191,7 +287,7 @@ class SQLiteContentDB(ContentDB):
             if msgs is None:
                 c.execute("""DELETE FROM messages""")
             else:
-                c.executemany("""DELETE FROM messages WHERE id IS (?)""", 
+                c.executemany("""DELETE FROM messages WHERE msgid=?""", 
                               [(dandelion.util.encode_b64_bytes(m.id).decode(),) for m in msgs])
 
     @property
@@ -200,7 +296,9 @@ class SQLiteContentDB(ContentDB):
         
         with sqlite3.connect(self._db_file) as conn:
             c = conn.cursor()
-            return c.execute("""SELECT count(*) FROM messages""").fetchone()[0]
+            return c.execute("""SELECT count(*) 
+                                FROM messages JOIN time_cookies_db ON messages.cookieid = time_cookies_db.id 
+                                WHERE time_cookies_db.dbfp=?""", (self._encoded_id,)).fetchone()[0]
 
     def contains_message(self, msgid):
         """Returns true if the database contains the msgid"""
@@ -210,15 +308,11 @@ class SQLiteContentDB(ContentDB):
 
         with sqlite3.connect(self._db_file) as conn:
             c = conn.cursor()
-            c.execute('SELECT count(*) FROM messages WHERE id IS (?)',
-                      (dandelion.util.encode_b64_bytes(msgid).decode(),))
-            cnt = c.fetchone()[0] 
-            if cnt == 0:
+            c.execute('SELECT msgid FROM messages WHERE msgid=?', (dandelion.util.encode_b64_bytes(msgid).decode(),)) 
+            if c.fetchone() is None:
                 return False
-            elif cnt == 1:
-                return True
             else:
-                raise ContentDBException # Duplicate id should never happen
+                return True
 
     def get_messages(self, msgids=None):
         """Get a list of all msg_rows with specified message id"""
@@ -230,16 +324,22 @@ class SQLiteContentDB(ContentDB):
             c = conn.cursor()
             
             if msgids is None:
-                c.execute('SELECT * FROM messages')
+                c.execute("""SELECT msg, receiver, sender, signature 
+                             FROM messages JOIN time_cookies_db ON messages.cookieid = time_cookies_db.id 
+                             WHERE time_cookies_db.dbfp = ?""", (self._encoded_id,))
                 msg_rows = c.fetchall()
             else:
                 msg_rows = []
-                for m in msgids: 
-                    # TODO There has to be some way of geting a list into the IN clause
-                    c.execute('SELECT * FROM messages WHERE id IN (?)', (dandelion.util.encode_b64_bytes(m).decode(),))
-                    msg_rows.extend([c.fetchone()])
-                    
-            return [Message(m[1]) for m in msg_rows]
+                try:
+                    for m in msgids: 
+                        c.execute("""SELECT msg, receiver, sender, signature 
+                                     FROM messages JOIN time_cookies_db ON messages.cookieid = time_cookies_db.id 
+                                     WHERE msgid = ? AND dbfp = ?""", (dandelion.util.encode_b64_bytes(m).decode(), self._encoded_id))
+                        msg_rows.extend([c.fetchone()])
+                except AttributeError:
+                    raise TypeError
+                
+            return [Message(m[0], m[1], m[2], m[3]) for m in msg_rows] 
 
 
     def get_messages_since(self, time_cookie=None):
@@ -250,59 +350,59 @@ class SQLiteContentDB(ContentDB):
         If the time cookie parameter is omitted, all messages currently in the 
         data base will be returned.
         """
-        
-        if time_cookie is not None and not isinstance(time_cookie, bytes):
-            raise TypeError 
 
         with sqlite3.connect(self._db_file) as conn:
             c = conn.cursor()
             
             if time_cookie is None:
-                c.execute('SELECT msg FROM messages')
+                c.execute("""SELECT msg, sender, receiver 
+                             FROM messages JOIN time_cookies_db ON messages.cookiedb = time_cookies_db.id 
+                             WHERE time_cookies_db.dbfp = ?""", (self._encoded_id,))
             else:
-                tc = dandelion.util.decode_int(time_cookie)
-                if c.execute('SELECT count(*) FROM time_cookies WHERE tc == ?', (tc,)).fetchone()[0] == 0:
+                if not isinstance(time_cookie, bytes):
+                    raise TypeError
+                if len(time_cookie) == 0:
                     raise ValueError
-
-                c.execute('SELECT msg FROM messages WHERE tc >= ?', (tc,))
                 
-            msgs = [Message(row[0]) for row in c.fetchall()]
-            
-            return (dandelion.util.encode_int(self._current_tc(c)), msgs)
+                c.execute("""CREATE TEMPORARY VIEW new_cookies AS 
+                             SELECT tc1.id AS tcid, tc1.cookie AS new_cookie, tc2.cookie AS old_cookie, tc1.dbfp AS dbfp FROM time_cookies_db AS tc1 JOIN time_cookies_db AS tc2 
+                             WHERE tc1.id > tc2.id""")
 
-    def _create_id(self, cursor):        
-        cursor.execute("""SELECT count(id) FROM self_db""")
-        if cursor.fetchone()[0] == 0:
-            newid = dandelion.util.encode_b64_bytes(self._generate_random_db_id()).decode()
-            cursor.execute("""INSERT INTO self_db (id) values (?)""", (newid,))
-        cursor.execute("""SELECT id FROM self_db""")
-        return dandelion.util.decode_b64_bytes(cursor.fetchone()[0].encode())
+                # Is it a valid cookie?
+                if c.execute("""SELECT count(*) FROM time_cookies_db WHERE cookie=? AND dbfp=?""", 
+                          (dandelion.util.encode_b64_bytes(time_cookie).decode(), self._encoded_id)).fetchone()[0] == 0:
+                    raise ValueError 
+                
+                c.execute("""SELECT msg, receiver, sender 
+                             FROM messages JOIN new_cookies ON messages.cookieid = new_cookies.tcid
+                             WHERE new_cookies.old_cookie=? AND new_cookies.dbfp=?""", 
+                             (dandelion.util.encode_b64_bytes(time_cookie).decode(), self._encoded_id)) 
+
+            msgs = [Message(row[0], row[1], row[2]) for row in c.fetchall()]
+            
+            current_tc = c.execute("""SELECT new_cookie, max(tcid) FROM new_cookies WHERE dbfp=?""", (self._encoded_id,)).fetchone()[0] 
+
+            return (dandelion.util.decode_b64_bytes(current_tc.encode()), msgs)
 
     def _create_tables(self, cursor):
         """Create the tables if they don't exist"""
-        
-        cursor.execute('''CREATE TABLE IF NOT EXISTS time_cookies 
-            (tc INTEGER PRIMARY KEY AUTOINCREMENT, time INTEGER)''')
-        
-        if cursor.execute('''SELECT count(*) FROM time_cookies''').fetchone()[0] == 0:
-            cursor.execute("""INSERT INTO time_cookies (time) VALUES (datetime('now'))""")
-        
-        cursor.execute('''CREATE TABLE IF NOT EXISTS messages (
-            id TEXT PRIMARY KEY, msg TEXT NOT NULL, 
-            tc INTEGER NOT NULL REFERENCES time_cookies (tc))''')
 
-        cursor.execute('''CREATE TABLE IF NOT EXISTS remote_databases 
-            (id TEXT PRIMARY KEY, time_cookie TEXT)''')
-        
-        cursor.execute('''CREATE TABLE IF NOT EXISTS self_db (id TEXT PRIMARY KEY)''')
+        cursor.execute(self._CREATE_TABLE_DATABASES)
+        cursor.execute(self._CREATE_TABLE_TIME_COOKIES)
+        cursor.execute(self._CREATE_TABLE_IDENTITIES)
+        cursor.execute(self._CREATE_TABLE_PRIVATE_IDENTITIES)
+        cursor.execute(self._CREATE_TABLE_MESSAGES)
+        cursor.execute(self._CREATE_VIEW_TCDB)
 
-    def _current_tc(self, cursor):
-        return cursor.execute('''SELECT max(tc) FROM time_cookies''').fetchone()[0]
+        if cursor.execute("""SELECT count(*) FROM databases WHERE fingerprint=(?)""", (self._encoded_id,)).fetchone()[0] == 0:
+            cursor.execute("""INSERT INTO databases (fingerprint) VALUES (?)""", (self._encoded_id,))
+
+        if cursor.execute("""SELECT count(*) FROM time_cookies_db WHERE dbfp=(?)""", (self._encoded_id,)).fetchone()[0] == 0:
+            cursor.execute("""INSERT INTO time_cookies (cookie, dbid) VALUES (?, (SELECT id FROM databases WHERE fingerprint=(?)))""", 
+                           (self._encode_id(self._generate_random_tc_id()), self._encoded_id))
 
 class InMemoryContentDB(ContentDB): 
     """A naive in memory data base for the Dandelion Message Service"""
-    
-    _ID_LENGTH_BYTES = 18 # 144 bit id
     
     def __init__(self):
         """Create a new data base with a random id"""
@@ -317,13 +417,17 @@ class InMemoryContentDB(ContentDB):
         """The data base id (bytes)"""
         return self._id
     
+    @property
+    def name(self):
+        """The data base name (can be None)"""
+        return None
+    
     def add_messages(self, msgs):
         """Add a a list of messages to the data base.
         
         Will add all messages, not already in the data base to the data base and return a 
         time cookie (bytes) that represents the point in time after the messages have been added.
         If no messages were added, it just returns the current time cookie. 
-        
         """
         
         if msgs is None:
@@ -368,7 +472,6 @@ class InMemoryContentDB(ContentDB):
     @property
     def message_count(self):
         """Returns the number of messages currently in the data base (int)"""
-        
         return len(self._messages)
         
     def contains_message(self, msgid):

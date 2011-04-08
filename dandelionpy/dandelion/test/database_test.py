@@ -29,7 +29,8 @@ class DatabaseTest(unittest.TestCase):
         tmp = tempfile.NamedTemporaryFile()
         sqlitedb = SQLiteContentDB(tmp.name)
         
-        self.assertTrue(len(sqlitedb.id), ContentDB._ID_LENGTH_BYTES)
+        self.assertTrue(len(sqlitedb.id), ContentDB._DBID_LENGTH_BYTES)
+        self.assertTrue(ContentDB._TCID_LENGTH_BYTES > 1)
         self.assertTrue(isinstance(sqlitedb.id, bytes))
         self.assertEqual(sqlitedb.message_count, 0)
 
