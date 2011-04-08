@@ -136,7 +136,10 @@ class UI:
         print(' --- MESSAGES BEGIN --- ')
         
         for m in msgs:
-            print(' : '.join([dandelion.util.encode_b64_bytes(m.id).decode(), m.text]))
+            print(' : '.join([dandelion.util.encode_b64_bytes(m.id).decode(), 
+                              m.text, 
+                              'N/A' if not m.has_receiver else dandelion.util.encode_b64_bytes(m.receiver).decode(), 
+                              'N/A' if not m.has_sender else dandelion.util.encode_b64_bytes(m.sender).decode()]))
 
         print(' --- MESSAGES END --- ')
 
