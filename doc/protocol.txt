@@ -168,8 +168,8 @@ Fileld separator  : '|' (pipe)
   MSGLEN    : Base64 representation of payload data size in bytes (0 is an empty message)
   MSG       : MSGLEN bytes of data. Base64 encoded. 
   #MSG#     : MSGLEN bytes of binary data. Base64 encoded.
-  RECVID    : 92 bit UIDFP encoded as Base64 string 
-  SENDERID  : 92 bit UIDFP encoded as Base64 string 
+  RECVID    : 96 bit UIDFP encoded as Base64 string 
+  SENDERID  : 96 bit UIDFP encoded as Base64 string 
   SIGN      : Base64 encoded signature
 	
 Note.3.1 The message id is not send since it is can be derived from the content
@@ -222,7 +222,7 @@ Data Specification:
 UID encoding for the communication protocol:
 Fileld separator  : '|' (pipe)
 
-  UIDFP   : UIDFP 92 bit (12 bytes) encoded as Base64
+  UIDFP   : UIDFP 96 bit (12 bytes) encoded as Base64
   PUBSGN  : Base64 representation of the public signing key components [y,g,p,q]
   PUBENC  : Base64 representation of the public encryption key components [n,e]
 
@@ -233,11 +233,11 @@ Here are some considerations on fingerprint and hash size. The problem of findin
 p(n,b) = 1 - n! * (Binomial(2^b, n) / 2^(b * n))
 
 Samples:
-n         b=64       b=92     b=128
+n         b=64       b=96     b=128
 0.01E6    2.71E-12   6.3E-22  -
 0.10E6    2.71E-10   6.3E-20  1.47E-29
 1.00E6    2.71E-8    6.3E-18  1.47E-27
 
-It seems that 92 bit (12 byte) hashes are a good fit for our typical domain of n's. Using the full SHA256 256 bits would be overkill. 
+It seems that 96 bit (12 byte) hashes are a good fit for our typical domain of n's. Using the full SHA256 256 bits would be overkill. 
 
 To put this in perspective. 80 people die every year in the US (population ~250M) after being struck by lightning. That probability is 0.32e-6. The probability of you and your girfriend both being hit by lightning, independenty of each other, is 0.10e-12. The probability of you, your girfriend and her mother all getting hit by lightning, independenty of each other, is 0.03e-18.
