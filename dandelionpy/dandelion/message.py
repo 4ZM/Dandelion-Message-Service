@@ -120,7 +120,7 @@ class Message:
             return Message(text, receiver_fp=receiver.fingerprint, sender_fp=sender.fingerprint, signature=sig)
             
     def __str__(self):
-        """String conversion is message ID as hex"""
+        """String conversion is Base64 encoded message ID"""
         return dandelion.util.encode_b64_bytes(self.id).decode()
          
     def __eq__(self, other):

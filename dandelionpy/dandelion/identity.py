@@ -90,6 +90,12 @@ class DSAKey:
     def p(self):
         """DSA key parameter p"""
         return self._p
+
+    @property 
+    def q(self):
+        """DSA key parameter q"""
+        return self._q
+    
     @property 
     def x(self):
         """The private DSA key parameter x"""
@@ -150,6 +156,16 @@ class Identity:
         The plaintext message is a bytes string and the returned encrypted message is a bytes string.
         """
         return plaintext[::-1] # Dummy impl
+    
+    def __str__(self):
+        """String conversion is user Base64 encoded fingerprint"""
+        return dandelion.util.encode_b64_bytes(self.fingerprint).decode()
+         
+    def __eq__(self, other):
+        return isinstance(other, Identity) and self.fingerprint == other.fingerprint
+    
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 class PrivateIdentity(Identity):

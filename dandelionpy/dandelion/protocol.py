@@ -20,6 +20,7 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 import re
 from dandelion.message import Message
 import dandelion.util
+from dandelion.identity import Identity, RSAKey, DSAKey
 
 class ProtocolParseError(Exception):
     pass
@@ -47,6 +48,9 @@ class Protocol:
     
     _GETMESSAGELIST = 'GETMESSAGELIST'
     _GETMESSAGES = 'GETMESSAGES'
+ 
+    _GETUSERLIST = 'GETUSERLIST'
+    _GETUSERS = 'GETUSERS'
     
     
     @classmethod
@@ -85,11 +89,7 @@ class Protocol:
         version, a ProtocolVersionError is raised.         
         """
 
-        if msgstr is None:
-            raise ValueError
-        
-        if not isinstance(msgstr, str):
-            raise TypeError
+        cls._assert_type(msgstr, str)
         
         match = re.search(
           ''.join([r'^', 
@@ -120,15 +120,18 @@ class Protocol:
     @classmethod
     def is_message_id_list_request(cls, msgstr):
         """Check if the string is a message id request."""
-
-        if msgstr is None:
-            raise ValueError
         
-        if not isinstance(msgstr, str):
-            raise TypeError
+        cls._assert_type(msgstr, str)
         
         return msgstr.startswith(cls._GETMESSAGELIST)
-    
+
+    @classmethod
+    def is_user_id_list_request(cls, msgstr):
+        """Check if the string is a user id request."""
+
+        cls._assert_type(msgstr, str)
+                
+        return msgstr.startswith(cls._GETUSERLIST)    
         
     @classmethod
     def create_message_id_list_request(cls, time_cookie=None):
@@ -154,6 +157,30 @@ class Protocol:
                                    dandelion.util.encode_b64_bytes(time_cookie).decode(), 
                                    Protocol.TERMINATOR)
             
+    @classmethod
+    def create_user_id_list_request(cls, time_cookie=None):
+        """Create the user id request string.
+        
+        The time cookie (bytes) is optional and will be serialized to some 
+        readable format.
+        
+        [C]                                                    [S]
+         |                                                      | 
+         |              GETUSERLIST [<time cookie> ]            | 
+         |----------------------------------------------------->| 
+         |                                                      | 
+        """         
+
+        if time_cookie is None:
+            return ''.join([cls._GETUSERLIST, Protocol.TERMINATOR])
+    
+        if not isinstance(time_cookie, bytes):
+            raise TypeError
+        
+        return '{0} {1}{2}'.format(cls._GETUSERLIST, 
+                                   dandelion.util.encode_b64_bytes(time_cookie).decode(), 
+                                   Protocol.TERMINATOR)
+
         
     @classmethod
     def parse_message_id_list_request(cls, msgstr):
@@ -165,12 +192,8 @@ class Protocol:
         Raises a ProtocolParseError if the string can't be parsed.
         """
         
-        if msgstr is None:
-            raise ValueError
-        
-        if not isinstance(msgstr, str):
-            raise TypeError
-        
+        cls._assert_type(msgstr, str)
+                
         if not cls.is_message_id_list_request(msgstr):
             raise ProtocolParseError
                 
@@ -188,6 +211,35 @@ class Protocol:
         
         return dandelion.util.decode_b64_bytes(match.groups()[1].encode())
         
+    @classmethod
+    def parse_user_id_list_request(cls, userstr):
+        """Parse the user id request string.
+        
+        If  a time cookie is present in the string it will be returned 
+        as a bytes type. If not, None will be returned.
+        
+        Raises a ProtocolParseError if the string can't be parsed.
+        """
+        
+        cls._assert_type(userstr, str)
+                
+        if not cls.is_user_id_list_request(userstr):
+            raise ProtocolParseError
+                
+        match = re.search(''.join([r'^', 
+                                   cls._GETUSERLIST, 
+                                   r'( ([a-zA-Z0-9+/=]+))?',
+                                   Protocol.TERMINATOR,
+                                   r'$']), userstr)
+        
+        if not match:
+            raise ProtocolParseError
+        
+        if match.groups()[0] is None:
+            return None
+        
+        return dandelion.util.decode_b64_bytes(match.groups()[1].encode())
+    
     @classmethod    
     def create_message_id_list(cls, time_cookie, messages=None):
         """Create the response string for sending message IDs from the server.
@@ -202,11 +254,7 @@ class Protocol:
          |                                                      | 
         """
         
-        if time_cookie is None:
-            raise ValueError
-    
-        if not isinstance(time_cookie, bytes):
-            raise TypeError
+        cls._assert_type(time_cookie, bytes)
 
         if messages is None: # Don't use mutable default (e.g. [])
             messages = []
@@ -221,7 +269,36 @@ class Protocol:
         return ''.join([cls._FIELD_SEPARATOR.join(msgparts),
                         Protocol.TERMINATOR])
 
+    @classmethod    
+    def create_user_id_list(cls, time_cookie, users=None):
+        """Create the response string for sending user IDs from the server.
         
+        The time_cookie (bytes) is required, but the list of IDs is
+        optional.
+        
+        [C]                                                    [S]
+         |                                                      | 
+         |     <time cookie>;<userid>;<userid>;...;<userid>     | 
+         |<-----------------------------------------------------| 
+         |                                                      | 
+        """
+        
+        cls._assert_type(time_cookie, bytes)
+
+        if users is None: # Don't use mutable default (e.g. [])
+            users = []
+
+        if not hasattr(users, '__iter__'):
+            raise TypeError
+        
+        tc_str = dandelion.util.encode_b64_bytes(time_cookie).decode()
+        
+        userparts = [tc_str]
+        userparts.extend([dandelion.util.encode_b64_bytes(user.fingerprint).decode() for user in users])
+        return ''.join([cls._FIELD_SEPARATOR.join(userparts),
+                        Protocol.TERMINATOR])
+
+                
     @classmethod
     def parse_message_id_list(cls, msgstr):
         """Parse the message ID response string from the server.
@@ -231,11 +308,7 @@ class Protocol:
         Raises a ProtocolParseError if the string can't be parsed.
         """
         
-        if msgstr is None:
-            raise ValueError
-        
-        if not isinstance(msgstr, str):
-            raise TypeError
+        cls._assert_type(msgstr, str)
 
         match = re.search(''.join([r'^', 
                                    r'([a-zA-Z0-9+/=]+)', 
@@ -254,18 +327,49 @@ class Protocol:
                 [dandelion.util.decode_b64_bytes(m.encode()) for m in msgstr[:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)[1:]])
 
     @classmethod
+    def parse_user_id_list(cls, userstr):
+        """Parse the user ID response string from the server.
+        
+        Returns a (tc, [userid]) tuple.
+        
+        Raises a ProtocolParseError if the string can't be parsed.
+        """
+        
+        cls._assert_type(userstr, str)
+
+        match = re.search(''.join([r'^', 
+                                   r'([a-zA-Z0-9+/=]+)', 
+                                   r'(;[a-zA-Z0-9+/=]+)*',
+                                   Protocol.TERMINATOR,
+                                   r'$']), userstr)
+        
+        if not match:
+            raise ProtocolParseError
+        
+        tc = match.groups()[0]
+        if tc is None:
+            raise ProtocolParseError
+        
+        return (dandelion.util.decode_b64_bytes(tc.encode()), 
+                [dandelion.util.decode_b64_bytes(userid.encode()) for userid in userstr[:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)[1:]])
+
+
+
+    @classmethod
     def is_message_list_request(cls, msgstr):
-        """Check if the string is a message request"""
-
-        if msgstr is None:
-            raise ValueError
-        
-        if not isinstance(msgstr, str):
-            raise TypeError
-        
+        """Check if the string is a message list request"""
+        cls._assert_type(msgstr, str)
+                
         return msgstr.startswith(cls._GETMESSAGES)
+    
+    @classmethod
+    def is_user_list_request(cls, userstr):
+        """Check if the string is a user list request"""
+        cls._assert_type(userstr, str)
+                
+        return userstr.startswith(cls._GETUSERS)
 
-        
+
     @classmethod
     def create_message_list_request(cls, msg_ids=None):
         """Create the request string used by the client to request a list of messages.
@@ -291,6 +395,31 @@ class Protocol:
         return '{0} {1}{2}'.format(cls._GETMESSAGES, msgid_str, Protocol.TERMINATOR)
         
     @classmethod
+    def create_user_list_request(cls, user_ids=None):
+        """Create the request string used by the client to request a list of users.
+        
+        [C]                                                    [S]
+         |                                                      | 
+         |    GETUSERS [[[<userid>];<userid>];...;<userid>]     | 
+         |----------------------------------------------------->| 
+         |                                                      |  
+        """
+
+        if user_ids is None: # Don't use mutable default (e.g. [])
+            user_ids = []
+
+        if not hasattr(user_ids, '__iter__'):
+            raise TypeError
+
+        if len(user_ids) == 0:
+            return ''.join([cls._GETUSERS, Protocol.TERMINATOR])
+        
+        userid_str = cls._FIELD_SEPARATOR.join([dandelion.util.encode_b64_bytes(uid).decode() for uid in user_ids])
+        
+        return '{0} {1}{2}'.format(cls._GETUSERS, userid_str, Protocol.TERMINATOR)
+    
+
+    @classmethod
     def parse_message_list_request(cls, msgstr):
         """Parse the message request string from the client
         
@@ -315,6 +444,31 @@ class Protocol:
         id_strings = msgstr[len(cls._GETMESSAGES) + 1:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)
         return [dandelion.util.decode_b64_bytes(id.encode()) for id in id_strings]
     
+    @classmethod
+    def parse_user_list_request(cls, userstr):
+        """Parse the user request string from the client
+        
+        Raises a ProtocolParseError if the string can't be parsed.
+        """
+        
+        if not cls.is_user_list_request(userstr):
+            raise ProtocolParseError
+
+        match = re.search(r''.join([r'^',
+                                    cls._GETUSERS, 
+                                    r'( [a-zA-Z0-9+/=]+)?', 
+                                    r'(;[a-zA-Z0-9+/=]+)*',
+                                    Protocol.TERMINATOR,
+                                    r'$']), userstr)
+        if not match:
+            raise ProtocolParseError
+
+        if not match.groups()[0]:
+            return None
+        
+        id_strings = userstr[len(cls._GETUSERS) + 1:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)
+        return [dandelion.util.decode_b64_bytes(id.encode()) for id in id_strings]
+
     
     @classmethod
     def create_message_list(cls, messages):
@@ -343,6 +497,34 @@ class Protocol:
         msg = cls._FIELD_SEPARATOR.join(msgstrings)
         
         return ''.join([msg, Protocol.TERMINATOR])
+    
+    @classmethod
+    def create_user_list(cls, users):
+        """Create the user transmission string.
+        
+        Create the response string used to transmits the requested
+        users from the server.
+        
+        [C]                                                    [S]
+         |                                                      | 
+         |             <user>;<user>;...;<user>                 | 
+         |<-----------------------------------------------------| 
+         |                                                      | 
+        """
+        
+        if users is None:
+            raise ValueError
+    
+        if not hasattr(users, '__iter__'):
+            raise TypeError
+        
+        userstrings = []
+        for user in users:
+            userstrings.extend([cls._user2string(user)])
+        
+        user = cls._FIELD_SEPARATOR.join(userstrings)
+        
+        return ''.join([user, Protocol.TERMINATOR])
 
     @classmethod
     def parse_message_list(cls, msgstr):
@@ -352,11 +534,7 @@ class Protocol:
         Returns a list of messages. 
         """
         
-        if msgstr is None:
-            raise ValueError
-        
-        if not isinstance(msgstr, str):
-            raise TypeError
+        cls._assert_type(msgstr, str)
 
         match = re.search(''.join([r'^(.+)(', 
                                    cls._FIELD_SEPARATOR, 
@@ -370,6 +548,41 @@ class Protocol:
         parts = msgstr[:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)
         
         return [cls._string2message(m) for m in parts]
+     
+    @classmethod
+    def parse_user_list(cls, userstr):
+        """Parse the user transmission string from the server.
+        
+        Raises a ProtocolParseError if the string can't be parsed.
+        Returns a list of users. 
+        """
+        
+        cls._assert_type(userstr, str)
+
+        match = re.search(''.join([r'^(.+)(', 
+                                   cls._FIELD_SEPARATOR, 
+                                   r'.+)*', 
+                                   Protocol.TERMINATOR, 
+                                   r'$']), userstr)
+
+        if not match:
+            raise ProtocolParseError
+
+        parts = userstr[:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)
+        
+        return [cls._string2user(user) for user in parts]
+
+    @classmethod
+    def _assert_type(cls, x, type):
+        """If x is a string this function does nothing. If it is None it raises a 
+        ValueError and if it's not a string it raises a TypeError.
+        """
+        if x is None:
+            raise ValueError
+        
+        if not isinstance(x, type):
+            raise TypeError
+
      
     @classmethod
     def _message2string(cls, msg):
@@ -407,3 +620,37 @@ class Protocol:
 
         return Message(text, receiver, sender, signature)
     
+    @classmethod
+    def _user2string(cls, user):
+        """Serialize a user to a DMS string"""
+
+        return cls._SUB_FIELD_SEPARATOR.join([
+                  dandelion.util.encode_b64_int(user.rsa_key.n).decode(),
+                  dandelion.util.encode_b64_int(user.rsa_key.e).decode(),
+                  dandelion.util.encode_b64_int(user.dsa_key.y).decode(),
+                  dandelion.util.encode_b64_int(user.dsa_key.g).decode(),
+                  dandelion.util.encode_b64_int(user.dsa_key.p).decode(),
+                  dandelion.util.encode_b64_int(user.dsa_key.q).decode()])
+
+
+    @classmethod
+    def _string2user(cls, userstr):
+        """Parse the string and create a user"""
+
+        RSA_N_INDEX, RSA_E_INDEX, DSA_Y_INDEX, DSA_G_INDEX, DSA_P_INDEX, DSA_Q_INDEX = (0,1,2,3,4,5)
+
+        uparts = userstr.split(cls._SUB_FIELD_SEPARATOR)
+        
+        if len(uparts) != 6:
+            raise ProtocolParseError
+
+        rsa_key = RSAKey(dandelion.util.decode_b64_int(uparts[RSA_N_INDEX].encode()), 
+                         dandelion.util.decode_b64_int(uparts[RSA_E_INDEX].encode()))
+                
+        dsa_key = DSAKey(dandelion.util.decode_b64_int(uparts[DSA_Y_INDEX].encode()), 
+                         dandelion.util.decode_b64_int(uparts[DSA_G_INDEX].encode()),
+                         dandelion.util.decode_b64_int(uparts[DSA_P_INDEX].encode()),
+                         dandelion.util.decode_b64_int(uparts[DSA_Q_INDEX].encode()))
+        
+        return Identity(dsa_key, rsa_key)
+

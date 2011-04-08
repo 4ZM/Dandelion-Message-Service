@@ -23,6 +23,7 @@ import re
 from dandelion.message import Message 
 from dandelion.protocol import Protocol, ProtocolParseError, ProtocolVersionError
 import dandelion
+from dandelion.identity import PrivateIdentity
 
 class ProtocolTest(unittest.TestCase):
     """Unit test suite for the DMS Protocol class"""
@@ -108,7 +109,7 @@ class ProtocolTest(unittest.TestCase):
         self.assertRaises(TypeError, Protocol.create_message_id_list_request, [])
         self.assertRaises(TypeError, Protocol.create_message_id_list_request, "1337")
         self.assertRaises(TypeError, Protocol.create_message_id_list_request, "XXX")
-                          
+
     def test_parse_message_id_list_request(self):
         """Test parsing the message ID list request string"""
         
@@ -194,7 +195,6 @@ class ProtocolTest(unittest.TestCase):
         self.assertRaises(TypeError, Protocol.create_message_id_list, 0, None)
         self.assertRaises(AttributeError, Protocol.create_message_id_list, tc, ['fo'])
 
-
     def test_parse_message_id_list(self):
         """Test parsing the message ID list request string"""
 
@@ -204,9 +204,9 @@ class ProtocolTest(unittest.TestCase):
         m1 = b'42'
         m2 = b'\x01\x23\x245'
         m3 = b'\x42\x42\x42'
-        m3_str = dandelion.util.encode_b64_bytes(m3).decode()
-        m2_str = dandelion.util.encode_b64_bytes(m2).decode()
         m1_str = dandelion.util.encode_b64_bytes(m1).decode()
+        m2_str = dandelion.util.encode_b64_bytes(m2).decode()
+        m3_str = dandelion.util.encode_b64_bytes(m3).decode()
 
         parsed_tc, msgidlist = Protocol.parse_message_id_list(''.join([';'.join([tc_str, m1_str, m2_str, m3_str]), '\n']))
         self.assertEqual(parsed_tc, tc)
@@ -256,7 +256,6 @@ class ProtocolTest(unittest.TestCase):
                           Protocol.parse_message_id_list, 
                           ';FF;FF\n')
 
-
     def test_roundtrip_message_id_list(self):
         """Test message ID list response creation / parsing by a round trip"""
         
@@ -270,7 +269,6 @@ class ProtocolTest(unittest.TestCase):
         self.assertTrue(msg1.id in msgids)
         self.assertTrue(msg2.id in msgids)
         self.assertTrue(msg3.id in msgids)
-
 
     def test_create_message_list_request(self):
         """Test message list request creation"""
@@ -301,7 +299,7 @@ class ProtocolTest(unittest.TestCase):
         self.assertRaises(TypeError, Protocol.create_message_list_request, -1337)
         self.assertRaises(TypeError, Protocol.create_message_list_request, "1337")
         self.assertRaises(TypeError, Protocol.create_message_list_request, "XXX")
-
+        
     def test_parse_message_list_request(self):
         """Test parsing the message list request string"""
         
@@ -358,7 +356,7 @@ class ProtocolTest(unittest.TestCase):
         self.assertRaises(ProtocolParseError, 
                           Protocol.parse_message_list_request, 
                           'GETMESSAGES ;FF;FF\n')
-
+        
     def test_roundtrip_message_list_request(self):
         """Test message list request creation / parsing by a round trip"""
         msg = Protocol.create_message_list_request()
@@ -407,6 +405,7 @@ class ProtocolTest(unittest.TestCase):
                           None)
 
     def test_message_list_roundtrip(self):
+        """Test message list creation / parsing by a round trip"""
         m1 = Message('M1')
         m2 = Message('M2')
         m3 = Message('M3')
@@ -417,6 +416,334 @@ class ProtocolTest(unittest.TestCase):
         self.assertTrue(m1 in mout)
         self.assertTrue(m2 in mout)
         self.assertTrue(m3 in mout)
+
+    def test_create_user_id_list_request(self):
+        """Test user ID list request creation"""
+
+        s = Protocol.create_user_id_list_request()
+        self.assertTrue('GETUSERLIST' in s)
+        self.assertTrue(Protocol.is_user_id_list_request(s))
+        
+        tc = b'\x01\x03\x03\x07'
+        s = Protocol.create_user_id_list_request(tc)
+        self.assertTrue(' '.join(['GETUSERLIST', dandelion.util.encode_b64_bytes(tc).decode()]) in s) 
+        self.assertTrue(Protocol.is_user_id_list_request(s))
+        
+        """Testing bad input"""
+        self.assertRaises(TypeError, Protocol.create_user_id_list_request, 0)
+        self.assertRaises(TypeError, Protocol.create_user_id_list_request, -1337)
+        self.assertRaises(TypeError, Protocol.create_user_id_list_request, [])
+        self.assertRaises(TypeError, Protocol.create_user_id_list_request, "1337")
+        self.assertRaises(TypeError, Protocol.create_user_id_list_request, "XXX")
+
+    def test_parse_user_id_list_request(self):
+        """Test parsing the user ID list request string"""
+        
+        tc_bin = b'\x01\x03\x03\x07'
+        tc_str = dandelion.util.encode_b64_bytes(tc_bin).decode()
+        
+        self.assertTrue(Protocol.is_user_id_list_request('GETUSERLIST {0}\n'.format(tc_str)))
+        tc = Protocol.parse_user_id_list_request('GETUSERLIST {0}\n'.format(tc_str))
+        self.assertEqual(tc, tc_bin)
+
+        self.assertTrue(Protocol.is_user_id_list_request('GETUSERLIST\n'))
+        tc = Protocol.parse_user_id_list_request('GETUSERLIST\n')
+        self.assertEqual(tc, None)
+
+        """Testing bad input"""
+        self.assertRaises(ValueError, Protocol.parse_user_id_list_request, None)
+        self.assertRaises(TypeError, Protocol.parse_user_id_list_request, 1337)
+        self.assertRaises(TypeError, Protocol.parse_user_id_list_request, [])
+        
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_id_list_request, 
+                          '')
+        
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_id_list_request, 
+                          'BAD\n')
+        
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_id_list_request, 
+                          'BAD BAD\n')
+        
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_id_list_request, 
+                          'GETUSERLIST ???\n')
+        
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_id_list_request, 
+                          'GETUSERLIST 01030307 01030307\n')
+        
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_id_list_request, 
+                          'GETUSERLISTXXX 01030307\n')
+
+
+    def test_roundtrip_create_user_id_list_request(self):
+        """Test user ID list request creation / parsing by a round trip"""
+        
+        tc = Protocol.parse_user_id_list_request(Protocol.create_user_id_list_request())
+        self.assertEqual(tc, None)
+        
+        ex_database_id_bin = b'\x01\x03\x03\x07'
+        tc = Protocol.parse_user_id_list_request(Protocol.create_user_id_list_request(ex_database_id_bin))
+        self.assertEqual(tc, ex_database_id_bin)
+
+    def test_create_user_id_list(self):
+        """Test user ID list request creation"""
+
+        id1 = PrivateIdentity.generate()
+        id2 = PrivateIdentity.generate()
+        id3 = PrivateIdentity.generate()
+        
+        tc = b'\x01\x03\x03\x07'
+        tc_str_ok = dandelion.util.encode_b64_bytes(tc).decode()
+        
+        str_ = Protocol.create_user_id_list(tc, [id1, id2, id3])[:-1]
+        tc_str, id1_str, id2_str, id3_str = str_.split(';')
+        self.assertEqual(tc_str, tc_str_ok)
+        self.assertEqual(id1.fingerprint, dandelion.util.decode_b64_bytes(id1_str.encode()))
+        self.assertEqual(id2.fingerprint, dandelion.util.decode_b64_bytes(id2_str.encode()))
+        self.assertEqual(id3.fingerprint, dandelion.util.decode_b64_bytes(id3_str.encode()))
+
+        str_ = Protocol.create_user_id_list(tc, None)[:-1]
+        self.assertEqual(str_, tc_str)
+        
+        str_ = Protocol.create_user_id_list(tc, [])[:-1]
+        self.assertEqual(str_, tc_str)
+
+        """Testing bad input"""
+        self.assertRaises(TypeError, Protocol.create_user_id_list, 1337, None)
+        self.assertRaises(TypeError, Protocol.create_user_id_list, tc, id1)
+        self.assertRaises(TypeError, Protocol.create_user_id_list, [id1], tc)
+        self.assertRaises(AttributeError, Protocol.create_user_id_list, tc, tc)
+        self.assertRaises(ValueError, Protocol.create_user_id_list, None, [])
+        self.assertRaises(TypeError, Protocol.create_user_id_list, 0, None)
+        self.assertRaises(AttributeError, Protocol.create_user_id_list, tc, ['fo'])
+
+
+    def test_parse_user_id_list(self):
+        """Test parsing the user ID list request string"""
+
+        tc = b'13\x01\x07'
+        tc_str = dandelion.util.encode_b64_bytes(tc).decode()
+                
+        id1 = b'42'
+        id2 = b'\x01\x23\x245'
+        id3 = b'\x42\x42\x42'
+        id1_str = dandelion.util.encode_b64_bytes(id1).decode()
+        id2_str = dandelion.util.encode_b64_bytes(id2).decode()
+        id3_str = dandelion.util.encode_b64_bytes(id3).decode()
+
+        parsed_tc, useridlist = Protocol.parse_user_id_list(''.join([';'.join([tc_str, id1_str, id2_str, id3_str]), '\n']))
+        self.assertEqual(parsed_tc, tc)
+        self.assertEqual(len(useridlist), 3)
+        self.assertTrue(id1 in useridlist)
+        self.assertTrue(id2 in useridlist)
+        self.assertTrue(id3 in useridlist)
+        
+        parsed_tc, useridlist = Protocol.parse_user_id_list(''.join([tc_str, '\n']))
+        self.assertEqual(parsed_tc, tc)
+        self.assertEqual(len(useridlist), 0)
+        
+        """Testing bad input"""
+        self.assertRaises(ValueError, Protocol.parse_user_id_list, None)
+        self.assertRaises(TypeError, Protocol.parse_user_id_list, 1337)
+        self.assertRaises(TypeError, Protocol.parse_user_id_list, [])
+        
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_id_list, 
+                          '')
+        
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_id_list, 
+                          '\n')
+
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_id_list, 
+                          '???\n')
+        
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_id_list, 
+                          'FF FF\n')
+        
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_id_list, 
+                          '???;???\n')
+
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_id_list, 
+                          'FF;;FF\n')
+
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_id_list, 
+                          'FF;FF;\n')
+
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_id_list, 
+                          ';FF;FF\n')
+
+    def test_roundtrip_user_id_list(self):
+        """Test user ID list response creation / parsing by a round trip"""
+        
+        id1 = PrivateIdentity.generate()
+        id2 = PrivateIdentity.generate()
+        id3 = PrivateIdentity.generate()
+        
+        tc, userids = Protocol.parse_user_id_list(Protocol.create_user_id_list(b'24', [id1, id2, id3]))
+        self.assertEqual(tc, b'24')
+        self.assertEqual(len(userids), 3)
+        self.assertTrue(id1.fingerprint in userids)
+        self.assertTrue(id2.fingerprint in userids)
+        self.assertTrue(id3.fingerprint in userids)
+
+    def test_create_user_list_request(self):
+        """Test user list request creation"""
+
+        id1 = b'42'
+        id2 = b'\x01\x23\x245'
+        id3 = b'\x42\x42\x42'
+        id1_str = dandelion.util.encode_b64_bytes(id1).decode()
+        id2_str = dandelion.util.encode_b64_bytes(id2).decode()
+        id3_str = dandelion.util.encode_b64_bytes(id3).decode()
+        
+        self.assertTrue(Protocol.is_user_list_request('GETUSERS\n'))
+        self.assertFalse(Protocol.is_user_list_request('GETUSE_XXX_RS\n'))
+        self.assertEqual(Protocol.create_user_list_request(), 'GETUSERS\n')
+        self.assertEqual(Protocol.create_user_list_request([]), 'GETUSERS\n')
+        
+        str_ = Protocol.create_user_list_request([id1, id2, id3])
+        self.assertTrue(Protocol.is_user_list_request(str_))
+        self.assertTrue('GETUSERS ' in str_)
+        self.assertEquals(str_.count(';'), 2)
+
+        self.assertTrue(id1_str in str_)
+        self.assertTrue(id2_str in str_)
+        self.assertTrue(id3_str in str_)        
+        
+        """Testing bad input"""
+        self.assertRaises(TypeError, Protocol.create_user_list_request, 0)
+        self.assertRaises(TypeError, Protocol.create_user_list_request, -1337)
+        self.assertRaises(TypeError, Protocol.create_user_list_request, "1337")
+        self.assertRaises(TypeError, Protocol.create_user_list_request, "XXX")
+
+    def test_parse_user_list_request(self):
+        """Test parsing the user list request string"""
+        
+        users = Protocol.parse_user_list_request('GETUSERS\n')
+        self.assertEqual(users, None)
+        
+        id1 = b'42'
+        id2 = b'\x01\x23\x245'
+        id3 = b'\x42\x42\x42'
+        id1_str = dandelion.util.encode_b64_bytes(id1).decode()
+        id2_str = dandelion.util.encode_b64_bytes(id2).decode()
+        id3_str = dandelion.util.encode_b64_bytes(id3).decode()
+               
+        users_ret = Protocol.parse_user_list_request('GETUSERS {0}\n'.format(';'.join([id1_str, id2_str, id3_str])))
+        self.assertEquals(len(users_ret), 3)
+        
+        self.assertTrue(id1 in users_ret)
+        self.assertTrue(id2 in users_ret)
+        self.assertTrue(id3 in users_ret)
+        
+        """Testing bad input"""
+        self.assertRaises(ValueError, Protocol.parse_user_list_request, None)
+        self.assertRaises(TypeError, Protocol.parse_user_list_request, 1337)
+        self.assertRaises(TypeError, Protocol.parse_user_list_request, [])
+        
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_list_request, 
+                          '')
+        
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_list_request, 
+                          'XXX\n')
+
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_list_request, 
+                          'FF\n')
+        
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_list_request, 
+                          'GETUSERSXX\n')
+        
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_list_request, 
+                          'GETUSERS ???;???\n')
+
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_list_request, 
+                          'GETUSERS FF;;FF\n')
+
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_list_request, 
+                          'GETUSERS FF;FF;\n')
+
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_list_request, 
+                          'GETUSERS ;FF;FF\n')
+
+    def test_roundtrip_user_list_request(self):
+        """Test user list request creation / parsing by a round trip"""
+        userreq = Protocol.create_user_list_request()
+        res = Protocol.parse_user_list_request(userreq)
+        self.assertEqual(res, None)
+        
+        userreq = Protocol.create_user_list_request([b'1', b'2'])
+        res = Protocol.parse_user_list_request(userreq)
+        self.assertEqual(res, [b'1', b'2'])
+
+    def test_create_user_list(self):
+        """Test user list creation"""
+        
+        id1 = PrivateIdentity.generate()
+        id2 = PrivateIdentity.generate()
+        id3 = PrivateIdentity.generate()
+        
+        users = Protocol.create_user_list([id1, id2, id3])
+        
+        self.assertTrue(len(users) > 0)
+        self.assertEqual(users.count(';'), 2)
+        self.assertTrue(dandelion.util.encode_b64_int(id1.rsa_key.n).decode() in users)
+        self.assertTrue(dandelion.util.encode_b64_int(id2.rsa_key.e).decode() in users)
+        self.assertTrue(dandelion.util.encode_b64_int(id3.dsa_key.q).decode() in users)
+        
+        users = Protocol.create_user_list([])
+        self.assertEqual(users, Protocol.TERMINATOR)
+        
+        self.assertRaises(ValueError, Protocol.create_user_list, None)
+        self.assertRaises(TypeError, Protocol.create_user_list, 1337)
+        
+    def test_parse_user_list(self):
+        """Test parsing the user list string"""
+        
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_list, 
+                          ';')
+        self.assertRaises(ProtocolParseError, 
+                          Protocol.parse_user_list, 
+                          '')
+        self.assertRaises(ValueError, 
+                          Protocol.parse_user_list, 
+                          None)
+
+    def test_user_list_roundtrip(self):
+        """Test user list creation / parsing by a round trip"""
+
+        id1 = PrivateIdentity.generate()
+        id2 = PrivateIdentity.generate()
+        id3 = PrivateIdentity.generate()
+        
+        userstr = Protocol.create_user_list([id1, id2, id3])
+        users = Protocol.parse_user_list(userstr)
+        self.assertEqual(len(users), 3)
+
+        self.assertTrue(id1 in users)
+        self.assertTrue(id2 in users)
+        self.assertTrue(id3 in users)
+
 
 if __name__ == '__main__':
     unittest.main()
