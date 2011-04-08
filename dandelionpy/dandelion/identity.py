@@ -99,7 +99,7 @@ class DSAKey:
 class Identity:
     """A class that represents the public identity of a node in the network"""
     
-    _FINGERPRINT_LENGTH_BYTES = 18 
+    _FINGERPRINT_LENGTH_BYTES = 12
     
     def __init__(self, dsa_key, rsa_key):
         """Create a new identity instance from the public or private keys."""

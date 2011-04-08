@@ -36,7 +36,7 @@ class ContentDB:
         def __get__(self, obj, type_):
             return self.fget.__get__(None, type_)()
     
-    _DBID_LENGTH_BYTES = 18 
+    _DBID_LENGTH_BYTES = 12 
     _TCID_LENGTH_BYTES = 9 
     
     __instance = None # Singleton instance

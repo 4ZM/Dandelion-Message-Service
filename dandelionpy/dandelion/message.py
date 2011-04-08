@@ -23,7 +23,7 @@ import dandelion.util
 class Message:
     """A DMS Message"""
     
-    _ID_LENGTH_BYTES = 18
+    _ID_LENGTH_BYTES = 12
     MAX_TEXT_LENGTH = 140 
     
     def __init__(self, text, receiver_fp=None, sender_fp=None, signature=None):
