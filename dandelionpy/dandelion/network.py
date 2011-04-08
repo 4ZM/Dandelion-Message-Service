@@ -257,10 +257,10 @@ class ClientTransaction(SocketTransaction):
             """Read greeting from server"""
             dbid = Protocol.parse_greeting_message(self._read().decode())
 
-            """TODO: We should use the remote tc from the last sync..."""
+            time_cookie = self._db.get_last_time_cookie(dbid)
             
             """Request and read message id's"""
-            self._write(Protocol.create_message_id_list_request().encode())
+            self._write(Protocol.create_message_id_list_request(time_cookie).encode())
             _, msgids = Protocol.parse_message_id_list(self._read().decode())
             
             req_msgids = [mid for mid in msgids if not self._db.contains_message(mid)]

@@ -101,6 +101,15 @@ class ContentDB:
     def contains_message(self, msgid):
         """Returns true if the database contains the msgid"""
 
+    def get_last_time_cookie(self, dbfp=None):
+        """Get the latest time cookie known in the data base for the remote 
+        data base with fingerprint dbfp. 
+        
+        If there is no record of the remote data base, return None.
+        
+        If dbfp is None, get the latest time cookie for the own database.
+        """
+
     def get_messages(self, msgids=None):
         """Get a list of all messages with specified message id"""
 
@@ -314,6 +323,26 @@ class SQLiteContentDB(ContentDB):
             else:
                 return True
 
+    def get_last_time_cookie(self, dbfp=None):
+        """Get the latest time cookie known in the data base for the remote 
+        data base with fingerprint dbfp. 
+        
+        If there is no record of the remote data base, return None.
+        
+        If dbfp is None, get the latest time cookie for the own database.
+        """
+        
+        if dbfp is None:
+            request_fp = self._encoded_id
+        else:
+            request_fp = dandelion.util.encode_b64_bytes(dbfp).decode()
+            
+        with sqlite3.connect(self._db_file) as conn:
+            c = conn.cursor()
+            row = c.execute('SELECT cookie, max(id) FROM time_cookies_db WHERE dbfp=?', (request_fp,)).fetchone()
+            
+            return None if row is None else dandelion.util.decode_b64_bytes(row[0].encode()) # Return cookie or None 
+
     def get_messages(self, msgids=None):
         """Get a list of all msg_rows with specified message id"""
 
@@ -482,6 +511,16 @@ class InMemoryContentDB(ContentDB):
             
         return len([m for (_, m) in self._messages if m.id == msgid]) > 0
 
+    def get_last_time_cookie(self, dbfp=None):
+        """Get the latest time cookie known in the data base for the remote 
+        data base with fingerprint dbfp. 
+        
+        If there is no record of the remote data base, return None.
+        
+        If dbfp is None, get the latest time cookie for the own database.
+        """
+        return None
+    
     def get_messages(self, msgids=None):
         """Get a list of all messages with specified message id"""
         

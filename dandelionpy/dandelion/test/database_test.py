@@ -200,6 +200,7 @@ class DatabaseTest(unittest.TestCase):
         first_cookie = db.add_messages([first_msg])
         self.assertNotEqual(first_cookie, None)
         self.assertTrue(isinstance(first_cookie, bytes))
+        self.assertTrue((db.get_last_time_cookie(None) is None) or (db.get_last_time_cookie(None) == first_cookie))
 
         # Same message again
         self.assertEqual(first_cookie, db.add_messages([first_msg]))
@@ -209,6 +210,7 @@ class DatabaseTest(unittest.TestCase):
         second_cookie = db.add_messages([second_msg])
         self.assertNotEqual(second_cookie, None)
         self.assertNotEqual(second_cookie, first_cookie)
+        self.assertTrue((db.get_last_time_cookie(None) is None) or (db.get_last_time_cookie(None) == second_cookie))
 
         # Since first should only be second
         tc, some_messages = db.get_messages_since(first_cookie)
