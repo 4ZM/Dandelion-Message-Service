@@ -183,7 +183,7 @@ The client requests a list of the servers user id fingerprints. This could be a 
 
    [C]                                                    [S]
     |                                                      | 
-    |               GETUIDLIST [<time cookie>]             | 
+    |           GETIDENTITYLIST [<time cookie>]            | 
     |----------------------------------------------------->| 
     |                                                      | 
     |    <time cookie>;<uid fp>;<uid fp>;...;<uid fp>      | 
@@ -205,7 +205,7 @@ The client requests one or more UIDs from the server by asking for them using th
 	
    [C]                                                    [S]
     |                                                      | 
-    |     GETUIDS [[[<uid fp>];<uid fp>];...;<uid fp>]     | 
+    |  GETIDENTITIES [[[<uid fp>];<uid fp>];...;<uid fp>]  | 
     |----------------------------------------------------->| 
     |                                                      | 
     |              <uid>;<uid>;...;<uid>;                  | 

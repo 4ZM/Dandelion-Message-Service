@@ -417,81 +417,81 @@ class ProtocolTest(unittest.TestCase):
         self.assertTrue(m2 in mout)
         self.assertTrue(m3 in mout)
 
-    def test_create_user_id_list_request(self):
-        """Test user ID list request creation"""
+    def test_create_identity_id_list_request(self):
+        """Test identity ID list request creation"""
 
-        s = Protocol.create_user_id_list_request()
-        self.assertTrue('GETUSERLIST' in s)
-        self.assertTrue(Protocol.is_user_id_list_request(s))
+        s = Protocol.create_identity_id_list_request()
+        self.assertTrue('GETIDENTITYLIST' in s)
+        self.assertTrue(Protocol.is_identity_id_list_request(s))
         
         tc = b'\x01\x03\x03\x07'
-        s = Protocol.create_user_id_list_request(tc)
-        self.assertTrue(' '.join(['GETUSERLIST', dandelion.util.encode_b64_bytes(tc).decode()]) in s) 
-        self.assertTrue(Protocol.is_user_id_list_request(s))
+        s = Protocol.create_identity_id_list_request(tc)
+        self.assertTrue(' '.join(['GETIDENTITYLIST', dandelion.util.encode_b64_bytes(tc).decode()]) in s) 
+        self.assertTrue(Protocol.is_identity_id_list_request(s))
         
         """Testing bad input"""
-        self.assertRaises(TypeError, Protocol.create_user_id_list_request, 0)
-        self.assertRaises(TypeError, Protocol.create_user_id_list_request, -1337)
-        self.assertRaises(TypeError, Protocol.create_user_id_list_request, [])
-        self.assertRaises(TypeError, Protocol.create_user_id_list_request, "1337")
-        self.assertRaises(TypeError, Protocol.create_user_id_list_request, "XXX")
+        self.assertRaises(TypeError, Protocol.create_identity_id_list_request, 0)
+        self.assertRaises(TypeError, Protocol.create_identity_id_list_request, -1337)
+        self.assertRaises(TypeError, Protocol.create_identity_id_list_request, [])
+        self.assertRaises(TypeError, Protocol.create_identity_id_list_request, "1337")
+        self.assertRaises(TypeError, Protocol.create_identity_id_list_request, "XXX")
 
-    def test_parse_user_id_list_request(self):
-        """Test parsing the user ID list request string"""
+    def test_parse_identity_id_list_request(self):
+        """Test parsing the identity ID list request string"""
         
         tc_bin = b'\x01\x03\x03\x07'
         tc_str = dandelion.util.encode_b64_bytes(tc_bin).decode()
         
-        self.assertTrue(Protocol.is_user_id_list_request('GETUSERLIST {0}\n'.format(tc_str)))
-        tc = Protocol.parse_user_id_list_request('GETUSERLIST {0}\n'.format(tc_str))
+        self.assertTrue(Protocol.is_identity_id_list_request('GETIDENTITYLIST {0}\n'.format(tc_str)))
+        tc = Protocol.parse_identity_id_list_request('GETIDENTITYLIST {0}\n'.format(tc_str))
         self.assertEqual(tc, tc_bin)
 
-        self.assertTrue(Protocol.is_user_id_list_request('GETUSERLIST\n'))
-        tc = Protocol.parse_user_id_list_request('GETUSERLIST\n')
+        self.assertTrue(Protocol.is_identity_id_list_request('GETIDENTITYLIST\n'))
+        tc = Protocol.parse_identity_id_list_request('GETIDENTITYLIST\n')
         self.assertEqual(tc, None)
 
         """Testing bad input"""
-        self.assertRaises(ValueError, Protocol.parse_user_id_list_request, None)
-        self.assertRaises(TypeError, Protocol.parse_user_id_list_request, 1337)
-        self.assertRaises(TypeError, Protocol.parse_user_id_list_request, [])
+        self.assertRaises(ValueError, Protocol.parse_identity_id_list_request, None)
+        self.assertRaises(TypeError, Protocol.parse_identity_id_list_request, 1337)
+        self.assertRaises(TypeError, Protocol.parse_identity_id_list_request, [])
         
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_id_list_request, 
+                          Protocol.parse_identity_id_list_request, 
                           '')
         
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_id_list_request, 
+                          Protocol.parse_identity_id_list_request, 
                           'BAD\n')
         
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_id_list_request, 
+                          Protocol.parse_identity_id_list_request, 
                           'BAD BAD\n')
         
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_id_list_request, 
-                          'GETUSERLIST ???\n')
+                          Protocol.parse_identity_id_list_request, 
+                          'GETIDENTITYLIST ???\n')
         
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_id_list_request, 
-                          'GETUSERLIST 01030307 01030307\n')
+                          Protocol.parse_identity_id_list_request, 
+                          'GETIDENTITYLIST 01030307 01030307\n')
         
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_id_list_request, 
-                          'GETUSERLISTXXX 01030307\n')
+                          Protocol.parse_identity_id_list_request, 
+                          'GETIDENTITYLISTXXX 01030307\n')
 
 
-    def test_roundtrip_create_user_id_list_request(self):
-        """Test user ID list request creation / parsing by a round trip"""
+    def test_roundtrip_create_identity_id_list_request(self):
+        """Test identity ID list request creation / parsing by a round trip"""
         
-        tc = Protocol.parse_user_id_list_request(Protocol.create_user_id_list_request())
+        tc = Protocol.parse_identity_id_list_request(Protocol.create_identity_id_list_request())
         self.assertEqual(tc, None)
         
         ex_database_id_bin = b'\x01\x03\x03\x07'
-        tc = Protocol.parse_user_id_list_request(Protocol.create_user_id_list_request(ex_database_id_bin))
+        tc = Protocol.parse_identity_id_list_request(Protocol.create_identity_id_list_request(ex_database_id_bin))
         self.assertEqual(tc, ex_database_id_bin)
 
-    def test_create_user_id_list(self):
-        """Test user ID list request creation"""
+    def test_create_identity_id_list(self):
+        """Test identity ID list request creation"""
 
         id1 = PrivateIdentity.generate()
         id2 = PrivateIdentity.generate()
@@ -500,31 +500,31 @@ class ProtocolTest(unittest.TestCase):
         tc = b'\x01\x03\x03\x07'
         tc_str_ok = dandelion.util.encode_b64_bytes(tc).decode()
         
-        str_ = Protocol.create_user_id_list(tc, [id1, id2, id3])[:-1]
+        str_ = Protocol.create_identity_id_list(tc, [id1, id2, id3])[:-1]
         tc_str, id1_str, id2_str, id3_str = str_.split(';')
         self.assertEqual(tc_str, tc_str_ok)
         self.assertEqual(id1.fingerprint, dandelion.util.decode_b64_bytes(id1_str.encode()))
         self.assertEqual(id2.fingerprint, dandelion.util.decode_b64_bytes(id2_str.encode()))
         self.assertEqual(id3.fingerprint, dandelion.util.decode_b64_bytes(id3_str.encode()))
 
-        str_ = Protocol.create_user_id_list(tc, None)[:-1]
+        str_ = Protocol.create_identity_id_list(tc, None)[:-1]
         self.assertEqual(str_, tc_str)
         
-        str_ = Protocol.create_user_id_list(tc, [])[:-1]
+        str_ = Protocol.create_identity_id_list(tc, [])[:-1]
         self.assertEqual(str_, tc_str)
 
         """Testing bad input"""
-        self.assertRaises(TypeError, Protocol.create_user_id_list, 1337, None)
-        self.assertRaises(TypeError, Protocol.create_user_id_list, tc, id1)
-        self.assertRaises(TypeError, Protocol.create_user_id_list, [id1], tc)
-        self.assertRaises(AttributeError, Protocol.create_user_id_list, tc, tc)
-        self.assertRaises(ValueError, Protocol.create_user_id_list, None, [])
-        self.assertRaises(TypeError, Protocol.create_user_id_list, 0, None)
-        self.assertRaises(AttributeError, Protocol.create_user_id_list, tc, ['fo'])
+        self.assertRaises(TypeError, Protocol.create_identity_id_list, 1337, None)
+        self.assertRaises(TypeError, Protocol.create_identity_id_list, tc, id1)
+        self.assertRaises(TypeError, Protocol.create_identity_id_list, [id1], tc)
+        self.assertRaises(AttributeError, Protocol.create_identity_id_list, tc, tc)
+        self.assertRaises(ValueError, Protocol.create_identity_id_list, None, [])
+        self.assertRaises(TypeError, Protocol.create_identity_id_list, 0, None)
+        self.assertRaises(AttributeError, Protocol.create_identity_id_list, tc, ['fo'])
 
 
-    def test_parse_user_id_list(self):
-        """Test parsing the user ID list request string"""
+    def test_parse_identity_id_list(self):
+        """Test parsing the identity ID list request string"""
 
         tc = b'13\x01\x07'
         tc_str = dandelion.util.encode_b64_bytes(tc).decode()
@@ -536,70 +536,70 @@ class ProtocolTest(unittest.TestCase):
         id2_str = dandelion.util.encode_b64_bytes(id2).decode()
         id3_str = dandelion.util.encode_b64_bytes(id3).decode()
 
-        parsed_tc, useridlist = Protocol.parse_user_id_list(''.join([';'.join([tc_str, id1_str, id2_str, id3_str]), '\n']))
+        parsed_tc, identityidlist = Protocol.parse_identity_id_list(''.join([';'.join([tc_str, id1_str, id2_str, id3_str]), '\n']))
         self.assertEqual(parsed_tc, tc)
-        self.assertEqual(len(useridlist), 3)
-        self.assertTrue(id1 in useridlist)
-        self.assertTrue(id2 in useridlist)
-        self.assertTrue(id3 in useridlist)
+        self.assertEqual(len(identityidlist), 3)
+        self.assertTrue(id1 in identityidlist)
+        self.assertTrue(id2 in identityidlist)
+        self.assertTrue(id3 in identityidlist)
         
-        parsed_tc, useridlist = Protocol.parse_user_id_list(''.join([tc_str, '\n']))
+        parsed_tc, identityidlist = Protocol.parse_identity_id_list(''.join([tc_str, '\n']))
         self.assertEqual(parsed_tc, tc)
-        self.assertEqual(len(useridlist), 0)
+        self.assertEqual(len(identityidlist), 0)
         
         """Testing bad input"""
-        self.assertRaises(ValueError, Protocol.parse_user_id_list, None)
-        self.assertRaises(TypeError, Protocol.parse_user_id_list, 1337)
-        self.assertRaises(TypeError, Protocol.parse_user_id_list, [])
+        self.assertRaises(ValueError, Protocol.parse_identity_id_list, None)
+        self.assertRaises(TypeError, Protocol.parse_identity_id_list, 1337)
+        self.assertRaises(TypeError, Protocol.parse_identity_id_list, [])
         
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_id_list, 
+                          Protocol.parse_identity_id_list, 
                           '')
         
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_id_list, 
+                          Protocol.parse_identity_id_list, 
                           '\n')
 
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_id_list, 
+                          Protocol.parse_identity_id_list, 
                           '???\n')
         
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_id_list, 
+                          Protocol.parse_identity_id_list, 
                           'FF FF\n')
         
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_id_list, 
+                          Protocol.parse_identity_id_list, 
                           '???;???\n')
 
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_id_list, 
+                          Protocol.parse_identity_id_list, 
                           'FF;;FF\n')
 
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_id_list, 
+                          Protocol.parse_identity_id_list, 
                           'FF;FF;\n')
 
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_id_list, 
+                          Protocol.parse_identity_id_list, 
                           ';FF;FF\n')
 
-    def test_roundtrip_user_id_list(self):
-        """Test user ID list response creation / parsing by a round trip"""
+    def test_roundtrip_identity_id_list(self):
+        """Test identity ID list response creation / parsing by a round trip"""
         
         id1 = PrivateIdentity.generate()
         id2 = PrivateIdentity.generate()
         id3 = PrivateIdentity.generate()
         
-        tc, userids = Protocol.parse_user_id_list(Protocol.create_user_id_list(b'24', [id1, id2, id3]))
+        tc, identityids = Protocol.parse_identity_id_list(Protocol.create_identity_id_list(b'24', [id1, id2, id3]))
         self.assertEqual(tc, b'24')
-        self.assertEqual(len(userids), 3)
-        self.assertTrue(id1.fingerprint in userids)
-        self.assertTrue(id2.fingerprint in userids)
-        self.assertTrue(id3.fingerprint in userids)
+        self.assertEqual(len(identityids), 3)
+        self.assertTrue(id1.fingerprint in identityids)
+        self.assertTrue(id2.fingerprint in identityids)
+        self.assertTrue(id3.fingerprint in identityids)
 
-    def test_create_user_list_request(self):
-        """Test user list request creation"""
+    def test_create_identity_list_request(self):
+        """Test identity list request creation"""
 
         id1 = b'42'
         id2 = b'\x01\x23\x245'
@@ -608,14 +608,14 @@ class ProtocolTest(unittest.TestCase):
         id2_str = dandelion.util.encode_b64_bytes(id2).decode()
         id3_str = dandelion.util.encode_b64_bytes(id3).decode()
         
-        self.assertTrue(Protocol.is_user_list_request('GETUSERS\n'))
-        self.assertFalse(Protocol.is_user_list_request('GETUSE_XXX_RS\n'))
-        self.assertEqual(Protocol.create_user_list_request(), 'GETUSERS\n')
-        self.assertEqual(Protocol.create_user_list_request([]), 'GETUSERS\n')
+        self.assertTrue(Protocol.is_identity_list_request('GETIDENTITIES\n'))
+        self.assertFalse(Protocol.is_identity_list_request('GETUSE_XXX_RS\n'))
+        self.assertEqual(Protocol.create_identity_list_request(), 'GETIDENTITIES\n')
+        self.assertEqual(Protocol.create_identity_list_request([]), 'GETIDENTITIES\n')
         
-        str_ = Protocol.create_user_list_request([id1, id2, id3])
-        self.assertTrue(Protocol.is_user_list_request(str_))
-        self.assertTrue('GETUSERS ' in str_)
+        str_ = Protocol.create_identity_list_request([id1, id2, id3])
+        self.assertTrue(Protocol.is_identity_list_request(str_))
+        self.assertTrue('GETIDENTITIES ' in str_)
         self.assertEquals(str_.count(';'), 2)
 
         self.assertTrue(id1_str in str_)
@@ -623,16 +623,16 @@ class ProtocolTest(unittest.TestCase):
         self.assertTrue(id3_str in str_)        
         
         """Testing bad input"""
-        self.assertRaises(TypeError, Protocol.create_user_list_request, 0)
-        self.assertRaises(TypeError, Protocol.create_user_list_request, -1337)
-        self.assertRaises(TypeError, Protocol.create_user_list_request, "1337")
-        self.assertRaises(TypeError, Protocol.create_user_list_request, "XXX")
+        self.assertRaises(TypeError, Protocol.create_identity_list_request, 0)
+        self.assertRaises(TypeError, Protocol.create_identity_list_request, -1337)
+        self.assertRaises(TypeError, Protocol.create_identity_list_request, "1337")
+        self.assertRaises(TypeError, Protocol.create_identity_list_request, "XXX")
 
-    def test_parse_user_list_request(self):
-        """Test parsing the user list request string"""
+    def test_parse_identity_list_request(self):
+        """Test parsing the identity list request string"""
         
-        users = Protocol.parse_user_list_request('GETUSERS\n')
-        self.assertEqual(users, None)
+        identities = Protocol.parse_identity_list_request('GETIDENTITIES\n')
+        self.assertEqual(identities, None)
         
         id1 = b'42'
         id2 = b'\x01\x23\x245'
@@ -641,108 +641,108 @@ class ProtocolTest(unittest.TestCase):
         id2_str = dandelion.util.encode_b64_bytes(id2).decode()
         id3_str = dandelion.util.encode_b64_bytes(id3).decode()
                
-        users_ret = Protocol.parse_user_list_request('GETUSERS {0}\n'.format(';'.join([id1_str, id2_str, id3_str])))
-        self.assertEquals(len(users_ret), 3)
+        identities_ret = Protocol.parse_identity_list_request('GETIDENTITIES {0}\n'.format(';'.join([id1_str, id2_str, id3_str])))
+        self.assertEquals(len(identities_ret), 3)
         
-        self.assertTrue(id1 in users_ret)
-        self.assertTrue(id2 in users_ret)
-        self.assertTrue(id3 in users_ret)
+        self.assertTrue(id1 in identities_ret)
+        self.assertTrue(id2 in identities_ret)
+        self.assertTrue(id3 in identities_ret)
         
         """Testing bad input"""
-        self.assertRaises(ValueError, Protocol.parse_user_list_request, None)
-        self.assertRaises(TypeError, Protocol.parse_user_list_request, 1337)
-        self.assertRaises(TypeError, Protocol.parse_user_list_request, [])
+        self.assertRaises(ValueError, Protocol.parse_identity_list_request, None)
+        self.assertRaises(TypeError, Protocol.parse_identity_list_request, 1337)
+        self.assertRaises(TypeError, Protocol.parse_identity_list_request, [])
         
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_list_request, 
+                          Protocol.parse_identity_list_request, 
                           '')
         
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_list_request, 
+                          Protocol.parse_identity_list_request, 
                           'XXX\n')
 
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_list_request, 
+                          Protocol.parse_identity_list_request, 
                           'FF\n')
         
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_list_request, 
-                          'GETUSERSXX\n')
+                          Protocol.parse_identity_list_request, 
+                          'GETIDENTITIESXX\n')
         
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_list_request, 
-                          'GETUSERS ???;???\n')
+                          Protocol.parse_identity_list_request, 
+                          'GETIDENTITIES ???;???\n')
 
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_list_request, 
-                          'GETUSERS FF;;FF\n')
+                          Protocol.parse_identity_list_request, 
+                          'GETIDENTITIES FF;;FF\n')
 
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_list_request, 
-                          'GETUSERS FF;FF;\n')
+                          Protocol.parse_identity_list_request, 
+                          'GETIDENTITIES FF;FF;\n')
 
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_list_request, 
-                          'GETUSERS ;FF;FF\n')
+                          Protocol.parse_identity_list_request, 
+                          'GETIDENTITIES ;FF;FF\n')
 
-    def test_roundtrip_user_list_request(self):
-        """Test user list request creation / parsing by a round trip"""
-        userreq = Protocol.create_user_list_request()
-        res = Protocol.parse_user_list_request(userreq)
+    def test_roundtrip_identity_list_request(self):
+        """Test identity list request creation / parsing by a round trip"""
+        identityreq = Protocol.create_identity_list_request()
+        res = Protocol.parse_identity_list_request(identityreq)
         self.assertEqual(res, None)
         
-        userreq = Protocol.create_user_list_request([b'1', b'2'])
-        res = Protocol.parse_user_list_request(userreq)
+        identityreq = Protocol.create_identity_list_request([b'1', b'2'])
+        res = Protocol.parse_identity_list_request(identityreq)
         self.assertEqual(res, [b'1', b'2'])
 
-    def test_create_user_list(self):
-        """Test user list creation"""
+    def test_create_identity_list(self):
+        """Test identity list creation"""
         
         id1 = PrivateIdentity.generate()
         id2 = PrivateIdentity.generate()
         id3 = PrivateIdentity.generate()
         
-        users = Protocol.create_user_list([id1, id2, id3])
+        identities = Protocol.create_identity_list([id1, id2, id3])
         
-        self.assertTrue(len(users) > 0)
-        self.assertEqual(users.count(';'), 2)
-        self.assertTrue(dandelion.util.encode_b64_int(id1.rsa_key.n).decode() in users)
-        self.assertTrue(dandelion.util.encode_b64_int(id2.rsa_key.e).decode() in users)
-        self.assertTrue(dandelion.util.encode_b64_int(id3.dsa_key.q).decode() in users)
+        self.assertTrue(len(identities) > 0)
+        self.assertEqual(identities.count(';'), 2)
+        self.assertTrue(dandelion.util.encode_b64_int(id1.rsa_key.n).decode() in identities)
+        self.assertTrue(dandelion.util.encode_b64_int(id2.rsa_key.e).decode() in identities)
+        self.assertTrue(dandelion.util.encode_b64_int(id3.dsa_key.q).decode() in identities)
         
-        users = Protocol.create_user_list([])
-        self.assertEqual(users, Protocol.TERMINATOR)
+        identities = Protocol.create_identity_list([])
+        self.assertEqual(identities, Protocol.TERMINATOR)
         
-        self.assertRaises(ValueError, Protocol.create_user_list, None)
-        self.assertRaises(TypeError, Protocol.create_user_list, 1337)
+        self.assertRaises(ValueError, Protocol.create_identity_list, None)
+        self.assertRaises(TypeError, Protocol.create_identity_list, 1337)
         
-    def test_parse_user_list(self):
-        """Test parsing the user list string"""
+    def test_parse_identity_list(self):
+        """Test parsing the identity list string"""
         
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_list, 
+                          Protocol.parse_identity_list, 
                           ';')
         self.assertRaises(ProtocolParseError, 
-                          Protocol.parse_user_list, 
+                          Protocol.parse_identity_list, 
                           '')
         self.assertRaises(ValueError, 
-                          Protocol.parse_user_list, 
+                          Protocol.parse_identity_list, 
                           None)
 
-    def test_user_list_roundtrip(self):
-        """Test user list creation / parsing by a round trip"""
+    def test_identity_list_roundtrip(self):
+        """Test identity list creation / parsing by a round trip"""
 
         id1 = PrivateIdentity.generate()
         id2 = PrivateIdentity.generate()
         id3 = PrivateIdentity.generate()
         
-        userstr = Protocol.create_user_list([id1, id2, id3])
-        users = Protocol.parse_user_list(userstr)
-        self.assertEqual(len(users), 3)
+        identitiestr = Protocol.create_identity_list([id1, id2, id3])
+        identities = Protocol.parse_identity_list(identitiestr)
+        self.assertEqual(len(identities), 3)
 
-        self.assertTrue(id1 in users)
-        self.assertTrue(id2 in users)
-        self.assertTrue(id3 in users)
+        self.assertTrue(id1 in identities)
+        self.assertTrue(id2 in identities)
+        self.assertTrue(id3 in identities)
 
 
 if __name__ == '__main__':

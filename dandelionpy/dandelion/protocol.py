@@ -49,8 +49,8 @@ class Protocol:
     _GETMESSAGELIST = 'GETMESSAGELIST'
     _GETMESSAGES = 'GETMESSAGES'
  
-    _GETUSERLIST = 'GETUSERLIST'
-    _GETUSERS = 'GETUSERS'
+    _GETUSERLIST = 'GETIDENTITYLIST'
+    _GETUSERS = 'GETIDENTITIES'
     
     
     @classmethod
@@ -126,8 +126,8 @@ class Protocol:
         return msgstr.startswith(cls._GETMESSAGELIST)
 
     @classmethod
-    def is_user_id_list_request(cls, msgstr):
-        """Check if the string is a user id request."""
+    def is_identity_id_list_request(cls, msgstr):
+        """Check if the string is a identity id request."""
 
         cls._assert_type(msgstr, str)
                 
@@ -158,8 +158,8 @@ class Protocol:
                                    Protocol.TERMINATOR)
             
     @classmethod
-    def create_user_id_list_request(cls, time_cookie=None):
-        """Create the user id request string.
+    def create_identity_id_list_request(cls, time_cookie=None):
+        """Create the identity id request string.
         
         The time cookie (bytes) is optional and will be serialized to some 
         readable format.
@@ -212,8 +212,8 @@ class Protocol:
         return dandelion.util.decode_b64_bytes(match.groups()[1].encode())
         
     @classmethod
-    def parse_user_id_list_request(cls, userstr):
-        """Parse the user id request string.
+    def parse_identity_id_list_request(cls, identitystr):
+        """Parse the identity id request string.
         
         If  a time cookie is present in the string it will be returned 
         as a bytes type. If not, None will be returned.
@@ -221,16 +221,16 @@ class Protocol:
         Raises a ProtocolParseError if the string can't be parsed.
         """
         
-        cls._assert_type(userstr, str)
+        cls._assert_type(identitystr, str)
                 
-        if not cls.is_user_id_list_request(userstr):
+        if not cls.is_identity_id_list_request(identitystr):
             raise ProtocolParseError
                 
         match = re.search(''.join([r'^', 
                                    cls._GETUSERLIST, 
                                    r'( ([a-zA-Z0-9+/=]+))?',
                                    Protocol.TERMINATOR,
-                                   r'$']), userstr)
+                                   r'$']), identitystr)
         
         if not match:
             raise ProtocolParseError
@@ -270,32 +270,32 @@ class Protocol:
                         Protocol.TERMINATOR])
 
     @classmethod    
-    def create_user_id_list(cls, time_cookie, users=None):
-        """Create the response string for sending user IDs from the server.
+    def create_identity_id_list(cls, time_cookie, identities=None):
+        """Create the response string for sending identity IDs from the server.
         
         The time_cookie (bytes) is required, but the list of IDs is
         optional.
         
         [C]                                                    [S]
          |                                                      | 
-         |     <time cookie>;<userid>;<userid>;...;<userid>     | 
+         |     <time cookie>;<identityid>;<identityid>;...;<identityid>     | 
          |<-----------------------------------------------------| 
          |                                                      | 
         """
         
         cls._assert_type(time_cookie, bytes)
 
-        if users is None: # Don't use mutable default (e.g. [])
-            users = []
+        if identities is None: # Don't use mutable default (e.g. [])
+            identities = []
 
-        if not hasattr(users, '__iter__'):
+        if not hasattr(identities, '__iter__'):
             raise TypeError
         
         tc_str = dandelion.util.encode_b64_bytes(time_cookie).decode()
         
-        userparts = [tc_str]
-        userparts.extend([dandelion.util.encode_b64_bytes(user.fingerprint).decode() for user in users])
-        return ''.join([cls._FIELD_SEPARATOR.join(userparts),
+        identityparts = [tc_str]
+        identityparts.extend([dandelion.util.encode_b64_bytes(identity.fingerprint).decode() for identity in identities])
+        return ''.join([cls._FIELD_SEPARATOR.join(identityparts),
                         Protocol.TERMINATOR])
 
                 
@@ -327,21 +327,21 @@ class Protocol:
                 [dandelion.util.decode_b64_bytes(m.encode()) for m in msgstr[:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)[1:]])
 
     @classmethod
-    def parse_user_id_list(cls, userstr):
-        """Parse the user ID response string from the server.
+    def parse_identity_id_list(cls, identitystr):
+        """Parse the identity ID response string from the server.
         
-        Returns a (tc, [userid]) tuple.
+        Returns a (tc, [identityid]) tuple.
         
         Raises a ProtocolParseError if the string can't be parsed.
         """
         
-        cls._assert_type(userstr, str)
+        cls._assert_type(identitystr, str)
 
         match = re.search(''.join([r'^', 
                                    r'([a-zA-Z0-9+/=]+)', 
                                    r'(;[a-zA-Z0-9+/=]+)*',
                                    Protocol.TERMINATOR,
-                                   r'$']), userstr)
+                                   r'$']), identitystr)
         
         if not match:
             raise ProtocolParseError
@@ -351,7 +351,7 @@ class Protocol:
             raise ProtocolParseError
         
         return (dandelion.util.decode_b64_bytes(tc.encode()), 
-                [dandelion.util.decode_b64_bytes(userid.encode()) for userid in userstr[:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)[1:]])
+                [dandelion.util.decode_b64_bytes(identityid.encode()) for identityid in identitystr[:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)[1:]])
 
 
 
@@ -363,11 +363,11 @@ class Protocol:
         return msgstr.startswith(cls._GETMESSAGES)
     
     @classmethod
-    def is_user_list_request(cls, userstr):
-        """Check if the string is a user list request"""
-        cls._assert_type(userstr, str)
+    def is_identity_list_request(cls, identitystr):
+        """Check if the string is a identity list request"""
+        cls._assert_type(identitystr, str)
                 
-        return userstr.startswith(cls._GETUSERS)
+        return identitystr.startswith(cls._GETUSERS)
 
 
     @classmethod
@@ -395,28 +395,28 @@ class Protocol:
         return '{0} {1}{2}'.format(cls._GETMESSAGES, msgid_str, Protocol.TERMINATOR)
         
     @classmethod
-    def create_user_list_request(cls, user_ids=None):
-        """Create the request string used by the client to request a list of users.
+    def create_identity_list_request(cls, identity_ids=None):
+        """Create the request string used by the client to request a list of identities.
         
         [C]                                                    [S]
          |                                                      | 
-         |    GETUSERS [[[<userid>];<userid>];...;<userid>]     | 
+         |    GETUSERS [[[<identityid>];<identityid>];...;<identityid>]     | 
          |----------------------------------------------------->| 
          |                                                      |  
         """
 
-        if user_ids is None: # Don't use mutable default (e.g. [])
-            user_ids = []
+        if identity_ids is None: # Don't use mutable default (e.g. [])
+            identity_ids = []
 
-        if not hasattr(user_ids, '__iter__'):
+        if not hasattr(identity_ids, '__iter__'):
             raise TypeError
 
-        if len(user_ids) == 0:
+        if len(identity_ids) == 0:
             return ''.join([cls._GETUSERS, Protocol.TERMINATOR])
         
-        userid_str = cls._FIELD_SEPARATOR.join([dandelion.util.encode_b64_bytes(uid).decode() for uid in user_ids])
+        identityid_str = cls._FIELD_SEPARATOR.join([dandelion.util.encode_b64_bytes(uid).decode() for uid in identity_ids])
         
-        return '{0} {1}{2}'.format(cls._GETUSERS, userid_str, Protocol.TERMINATOR)
+        return '{0} {1}{2}'.format(cls._GETUSERS, identityid_str, Protocol.TERMINATOR)
     
 
     @classmethod
@@ -445,13 +445,13 @@ class Protocol:
         return [dandelion.util.decode_b64_bytes(id.encode()) for id in id_strings]
     
     @classmethod
-    def parse_user_list_request(cls, userstr):
-        """Parse the user request string from the client
+    def parse_identity_list_request(cls, identitystr):
+        """Parse the identity request string from the client
         
         Raises a ProtocolParseError if the string can't be parsed.
         """
         
-        if not cls.is_user_list_request(userstr):
+        if not cls.is_identity_list_request(identitystr):
             raise ProtocolParseError
 
         match = re.search(r''.join([r'^',
@@ -459,14 +459,14 @@ class Protocol:
                                     r'( [a-zA-Z0-9+/=]+)?', 
                                     r'(;[a-zA-Z0-9+/=]+)*',
                                     Protocol.TERMINATOR,
-                                    r'$']), userstr)
+                                    r'$']), identitystr)
         if not match:
             raise ProtocolParseError
 
         if not match.groups()[0]:
             return None
         
-        id_strings = userstr[len(cls._GETUSERS) + 1:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)
+        id_strings = identitystr[len(cls._GETUSERS) + 1:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)
         return [dandelion.util.decode_b64_bytes(id.encode()) for id in id_strings]
 
     
@@ -499,32 +499,32 @@ class Protocol:
         return ''.join([msg, Protocol.TERMINATOR])
     
     @classmethod
-    def create_user_list(cls, users):
-        """Create the user transmission string.
+    def create_identity_list(cls, identities):
+        """Create the identity transmission string.
         
         Create the response string used to transmits the requested
-        users from the server.
+        identities from the server.
         
         [C]                                                    [S]
          |                                                      | 
-         |             <user>;<user>;...;<user>                 | 
+         |             <identity>;<identity>;...;<identity>                 | 
          |<-----------------------------------------------------| 
          |                                                      | 
         """
         
-        if users is None:
+        if identities is None:
             raise ValueError
     
-        if not hasattr(users, '__iter__'):
+        if not hasattr(identities, '__iter__'):
             raise TypeError
         
-        userstrings = []
-        for user in users:
-            userstrings.extend([cls._user2string(user)])
+        identitystrings = []
+        for identity in identities:
+            identitystrings.extend([cls._identity2string(identity)])
         
-        user = cls._FIELD_SEPARATOR.join(userstrings)
+        identity = cls._FIELD_SEPARATOR.join(identitystrings)
         
-        return ''.join([user, Protocol.TERMINATOR])
+        return ''.join([identity, Protocol.TERMINATOR])
 
     @classmethod
     def parse_message_list(cls, msgstr):
@@ -550,27 +550,27 @@ class Protocol:
         return [cls._string2message(m) for m in parts]
      
     @classmethod
-    def parse_user_list(cls, userstr):
-        """Parse the user transmission string from the server.
+    def parse_identity_list(cls, identitystr):
+        """Parse the identity transmission string from the server.
         
         Raises a ProtocolParseError if the string can't be parsed.
-        Returns a list of users. 
+        Returns a list of identities. 
         """
         
-        cls._assert_type(userstr, str)
+        cls._assert_type(identitystr, str)
 
         match = re.search(''.join([r'^(.+)(', 
                                    cls._FIELD_SEPARATOR, 
                                    r'.+)*', 
                                    Protocol.TERMINATOR, 
-                                   r'$']), userstr)
+                                   r'$']), identitystr)
 
         if not match:
             raise ProtocolParseError
 
-        parts = userstr[:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)
+        parts = identitystr[:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)
         
-        return [cls._string2user(user) for user in parts]
+        return [cls._string2identity(identity) for identity in parts]
 
     @classmethod
     def _assert_type(cls, x, type):
@@ -621,36 +621,36 @@ class Protocol:
         return Message(text, receiver, sender, signature)
     
     @classmethod
-    def _user2string(cls, user):
-        """Serialize a user to a DMS string"""
+    def _identity2string(cls, identity):
+        """Serialize a identity to a DMS string"""
 
         return cls._SUB_FIELD_SEPARATOR.join([
-                  dandelion.util.encode_b64_int(user.rsa_key.n).decode(),
-                  dandelion.util.encode_b64_int(user.rsa_key.e).decode(),
-                  dandelion.util.encode_b64_int(user.dsa_key.y).decode(),
-                  dandelion.util.encode_b64_int(user.dsa_key.g).decode(),
-                  dandelion.util.encode_b64_int(user.dsa_key.p).decode(),
-                  dandelion.util.encode_b64_int(user.dsa_key.q).decode()])
+                  dandelion.util.encode_b64_int(identity.rsa_key.n).decode(),
+                  dandelion.util.encode_b64_int(identity.rsa_key.e).decode(),
+                  dandelion.util.encode_b64_int(identity.dsa_key.y).decode(),
+                  dandelion.util.encode_b64_int(identity.dsa_key.g).decode(),
+                  dandelion.util.encode_b64_int(identity.dsa_key.p).decode(),
+                  dandelion.util.encode_b64_int(identity.dsa_key.q).decode()])
 
 
     @classmethod
-    def _string2user(cls, userstr):
-        """Parse the string and create a user"""
+    def _string2identity(cls, identitystr):
+        """Parse the string and create a identity"""
 
         RSA_N_INDEX, RSA_E_INDEX, DSA_Y_INDEX, DSA_G_INDEX, DSA_P_INDEX, DSA_Q_INDEX = (0,1,2,3,4,5)
 
-        uparts = userstr.split(cls._SUB_FIELD_SEPARATOR)
+        idparts = identitystr.split(cls._SUB_FIELD_SEPARATOR)
         
-        if len(uparts) != 6:
+        if len(idparts) != 6:
             raise ProtocolParseError
 
-        rsa_key = RSAKey(dandelion.util.decode_b64_int(uparts[RSA_N_INDEX].encode()), 
-                         dandelion.util.decode_b64_int(uparts[RSA_E_INDEX].encode()))
+        rsa_key = RSAKey(dandelion.util.decode_b64_int(idparts[RSA_N_INDEX].encode()), 
+                         dandelion.util.decode_b64_int(idparts[RSA_E_INDEX].encode()))
                 
-        dsa_key = DSAKey(dandelion.util.decode_b64_int(uparts[DSA_Y_INDEX].encode()), 
-                         dandelion.util.decode_b64_int(uparts[DSA_G_INDEX].encode()),
-                         dandelion.util.decode_b64_int(uparts[DSA_P_INDEX].encode()),
-                         dandelion.util.decode_b64_int(uparts[DSA_Q_INDEX].encode()))
+        dsa_key = DSAKey(dandelion.util.decode_b64_int(idparts[DSA_Y_INDEX].encode()), 
+                         dandelion.util.decode_b64_int(idparts[DSA_G_INDEX].encode()),
+                         dandelion.util.decode_b64_int(idparts[DSA_P_INDEX].encode()),
+                         dandelion.util.decode_b64_int(idparts[DSA_Q_INDEX].encode()))
         
         return Identity(dsa_key, rsa_key)
 
