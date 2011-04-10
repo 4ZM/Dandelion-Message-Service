@@ -29,6 +29,9 @@ class Synchronizer(Service):
     def __init__(self, config, db):
         self._config = config
         self._db = db
+        self._running = False
+        self._stop_requested = True
+        self._thread = None
         self._discoverer = Discoverer()
         
     def start(self):
@@ -44,10 +47,11 @@ class Synchronizer(Service):
         
         self._stop_requested = True
         #print('SYNCHRONIZER: Stopping')
-        self._thread.join(0.1)
-        if self._thread.is_alive():
-            raise Exception # Timeout
-            
+        if self._thread is not None:
+            self._thread.join(0.1)
+            if self._thread.is_alive():
+                raise Exception # Timeout
+                
         self._running = False
         
     

@@ -40,7 +40,6 @@ class CmdLine(cmd.Cmd):
         print('')
         return stop
 
-
     def do_say(self, args):
         """say message : Create a new message"""
         self._ui.say(args)
@@ -60,6 +59,10 @@ class CmdLine(cmd.Cmd):
     def do_msgs(self, args):
         """msgs : Show messages"""
         self._ui.show_messages()
+
+    def do_users(self, args):
+        """users : Show users"""
+        self._ui.show_users()
 
     def do_server(self, args):
         """server [op] : Perform a server operation [start|stop|restart|stat]"""
@@ -142,6 +145,15 @@ class UI:
                               'N/A' if not m.has_sender else dandelion.util.encode_b64_bytes(m.sender).decode()]))
 
         print(' --- MESSAGES END --- ')
+
+    def show_users(self):
+        users = self._db.get_users()
+        print(' --- USERS BEGIN --- ')
+        
+        for u in users:
+            print(' : '.join([dandelion.util.encode_b64_bytes(u.fingerprint).decode()]))
+
+        print(' --- USERS END --- ')
 
     def server_ctrl(self, op=OP_STATUS):
         self._service_ctrl(self._server, op)

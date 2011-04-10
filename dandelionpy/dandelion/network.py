@@ -22,7 +22,6 @@ import socket
 import socketserver
 
 from dandelion.protocol import Protocol, ProtocolParseError
-from dandelion.database import InMemoryContentDB
 from dandelion.service import Service
     
     
@@ -183,6 +182,7 @@ class Server(Service):
         self._db = db
         self._identity = id
         self._running = False
+        self._server = None
     
     def start(self):
         """Start the service. Blocking call."""
@@ -193,7 +193,10 @@ class Server(Service):
     def stop(self):
         """Stop the service. Blocking call."""
 #        print('SERVER: Stopping')
-        self._server.shutdown()
+        if self._server is not None:
+            self._server.shutdown()
+            
+        self._server = None
         self._running = False
 #        print('SERVER: Stopped')
     

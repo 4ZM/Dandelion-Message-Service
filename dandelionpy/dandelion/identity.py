@@ -17,8 +17,9 @@ You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import dandelion.util
 import hashlib
-import dandelion
+import random
 
 class IdentityManager:
     def __init__(self, config):
@@ -33,6 +34,9 @@ class RSAKey:
 
         The n,e,d are integers and d is optional.
         """
+        
+        if not isinstance(n, int) or not isinstance(e, int) or (d is not None and not isinstance(d, int)):
+            raise TypeError 
             
         self._n = n
         self._e = e
@@ -64,6 +68,10 @@ class DSAKey:
     
     def __init__(self, y, g, p, q, x=None):
         """Create a DSA signature key."""
+        
+        if not isinstance(y, int) or not isinstance(g, int) or not isinstance(p, int) or not isinstance(q, int) or (x is not None and not isinstance(g, int)):
+            raise TypeError 
+
         
         self._y = y
         self._g = g
@@ -197,4 +205,5 @@ class PrivateIdentity(Identity):
     def generate(cls):
         """Factory class method to create a new private identity"""
         
-        return PrivateIdentity(DSAKey(0,0,0,0,0), RSAKey(0,0,0)) # Dummy impl.
+        return PrivateIdentity(DSAKey(int(random.random() * 255),int(random.random() * 255),int(random.random() * 255),int(random.random() * 255),int(random.random() * 255)), 
+                               RSAKey(int(random.random() * 255),int(random.random() * 255),int(random.random() * 255))) # Dummy impl.

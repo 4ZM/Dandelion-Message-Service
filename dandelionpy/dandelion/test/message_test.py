@@ -84,7 +84,7 @@ class MessageTest(unittest.TestCase):
         id_sender = PrivateIdentity.generate()
         id_receiver = PrivateIdentity.generate()
         m = Message(id_receiver.encrypt(txt), receiver_fp=id_receiver.fingerprint, 
-                    sender_fp=id_receiver.fingerprint, signature=id_receiver.sign(txt))
+                    sender_fp=id_sender.fingerprint, signature=id_receiver.sign(txt))
         self.assertNotEqual(m.text, txt)
         self.assertTrue(m.has_receiver)
         self.assertTrue(m.has_sender)

@@ -21,6 +21,7 @@ import unittest
 import os
 
 from dandelion.config import *
+from dandelion.database import ContentDB
 
 class MessageTest(unittest.TestCase):
     """Unit test suite for the DMS configuration classes"""
@@ -35,7 +36,7 @@ class MessageTest(unittest.TestCase):
         self.assertTrue(isinstance(cm.synchronizer_config, SynchronizerConfig))
         self.assertTrue(isinstance(cm.identity_manager_config, IdentityConfig))
         self.assertTrue(isinstance(cm.ui_config, UiConfig))
-        self.assertTrue(isinstance(cm.content_db, InMemoryContentDB))
+        self.assertTrue(isinstance(cm.content_db, ContentDB))
         
     def test_default_file(self):
         cm = ConfigManager()

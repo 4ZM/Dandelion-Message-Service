@@ -27,17 +27,13 @@ class DandelionApp:
     def __init__(self, config_file=None):
         self._config_manager = ConfigManager(config_file)
     
-    def start_server(self): 
         self._server = Server(self._config_manager.server_config, 
                               self._config_manager.content_db,
                               self._config_manager.identity) 
-        self._server.start()
-    
-    def start_content_synchronizer(self): 
+
         self._synchronizer = Synchronizer(self._config_manager.synchronizer_config,
                                           self._config_manager.content_db)
-        self._synchronizer.start()
-    
+
     def run_ui(self): 
         
         self._ui = UI(self._config_manager.ui_config, 
@@ -45,6 +41,7 @@ class DandelionApp:
                       self._config_manager.identity,
                       self._server, 
                       self._synchronizer)
+        
         self._ui.run()
     
     def exit(self):
@@ -56,9 +53,9 @@ if __name__ == '__main__':
     
     app = DandelionApp('dandelion.conf')
     #print('APP: Starting Server')
-    app.start_server()
+    #app.start_server()
     #print('APP: Starting Synchronizer')
-    app.start_content_synchronizer()
+    #app.start_content_synchronizer()
     #print('APP: Starting UI')
     app.run_ui()
     #print('APP: Exiting')

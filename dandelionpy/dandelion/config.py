@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from dandelion.database import InMemoryContentDB
+from dandelion.database import SQLiteContentDB
 from dandelion.identity import Identity, PrivateIdentity, PrivateIdentity
 import configparser
 
@@ -136,7 +136,7 @@ class ConfigManager:
         
         self.read_file()
         
-        self._content_db = InMemoryContentDB()
+        self._content_db = SQLiteContentDB(":memory:")
         self._identity = PrivateIdentity.generate()
 
     @property

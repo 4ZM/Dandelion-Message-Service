@@ -17,14 +17,16 @@ You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import unittest
-import socket
-import threading
-
-from dandelion.network import SocketTransaction, ServerTransaction, ClientTransaction
-from dandelion.database import InMemoryContentDB
+from dandelion.database import SQLiteContentDB
 from dandelion.message import Message
+from dandelion.network import SocketTransaction, ServerTransaction, \
+    ClientTransaction
 from dandelion.protocol import Protocol
+import socket
+import tempfile
+import threading
+import unittest
+
 
 HOST = '127.0.0.1'
 PORT = 1337
@@ -212,7 +214,7 @@ class MessageTest(unittest.TestCase):
     def test_basic_server_transaction(self):
         """Tests the server transaction protocol and logic""" 
     
-        db = InMemoryContentDB()
+        db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
         tc = db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
     
         with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
@@ -242,11 +244,13 @@ class MessageTest(unittest.TestCase):
 
     def test_basic_client_transaction(self):
         """Tests the client transaction protocol and logic""" 
-        
-        client_db = InMemoryContentDB()
-        srv_db = InMemoryContentDB()
+
+        client_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        srv_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+
+        self.assertEqual(client_db.message_count, 0)
         tc = srv_db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
-    
+
         self.assertEqual(client_db.message_count, 0)
         self.assertEqual(srv_db.message_count, 3)
     
@@ -287,7 +291,7 @@ class MessageTest(unittest.TestCase):
     def test_server_transaction_protocol_violation(self):
         """Tests the servers response to an invalid request""" 
     
-        db = InMemoryContentDB()
+        db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
 
         with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
             srv_transaction = ServerTransaction(server_helper.sock, db)
@@ -313,7 +317,7 @@ class MessageTest(unittest.TestCase):
     def test_client_transaction_protocol_violation(self):
         """Tests the client transaction protocol and logic""" 
         
-        client_db = InMemoryContentDB()
+        client_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
    
         with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
             
@@ -334,8 +338,8 @@ class MessageTest(unittest.TestCase):
     def test_client_server_transaction(self):
         """Tests the whole, client driven transaction protocol and logic""" 
         
-        client_db = InMemoryContentDB()
-        server_db = InMemoryContentDB()
+        client_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        server_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
         server_db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
     
         self.assertEqual(client_db.message_count, 0)
@@ -364,8 +368,8 @@ class MessageTest(unittest.TestCase):
     def test_client_server_transaction_empty_db(self):
         """Tests the whole, client driven transaction protocol and logic with an empty db""" 
         
-        client_db = InMemoryContentDB()
-        server_db = InMemoryContentDB()
+        client_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        server_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
     
         self.assertEqual(client_db.message_count, 0)
         self.assertEqual(server_db.message_count, 0)
@@ -392,8 +396,8 @@ class MessageTest(unittest.TestCase):
     def test_client_server_transaction_partial_sync(self):
         """Tests the whole, client driven transaction protocol and logic""" 
         
-        client_db = InMemoryContentDB()
-        server_db = InMemoryContentDB()
+        client_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        server_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
         client_db.add_messages([Message('fubar')])
         server_db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
     
