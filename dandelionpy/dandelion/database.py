@@ -398,7 +398,10 @@ class SQLiteContentDB(ContentDB):
                 except AttributeError:
                     raise TypeError
                 
-            return [Message(m[0], m[1], m[2], m[3]) for m in msg_rows] 
+            return [Message(m[0], 
+                            None if m[1] is None else self._decode_id(m[1]), 
+                            None if m[2] is None else self._decode_id(m[2]), 
+                            None if m[3] is None else self._decode_id(m[3])) for m in msg_rows] 
 
     def get_messages_since(self, time_cookie=None):
         """Get messages from the data base.

@@ -20,6 +20,7 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 from dandelion.database import SQLiteContentDB
 from dandelion.identity import Identity, PrivateIdentity, PrivateIdentity
 import configparser
+import tempfile
 
 class ConfigException(Exception):
     pass
@@ -136,8 +137,9 @@ class ConfigManager:
         
         self.read_file()
         
-        self._content_db = SQLiteContentDB(":memory:")
+        self._content_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
         self._identity = PrivateIdentity.generate()
+        self._content_db.add_identities([self._identity])
 
     @property
     def config_file(self):

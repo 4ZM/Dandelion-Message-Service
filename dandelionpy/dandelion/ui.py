@@ -60,9 +60,9 @@ class CmdLine(cmd.Cmd):
         """msgs : Show messages"""
         self._ui.show_messages()
 
-    def do_users(self, args):
-        """users : Show users"""
-        self._ui.show_users()
+    def do_identities(self, args):
+        """identities : Show identities"""
+        self._ui.show_identities()
 
     def do_server(self, args):
         """server [op] : Perform a server operation [start|stop|restart|stat]"""
@@ -114,23 +114,15 @@ class UI:
             receiver_ = None
         
         if sign and receiver_:
-            print(''.join(['SAY: ', msg, ' (Sign: YES) (Receiver: ', receiver_name, ')']))
-            print('My ID: ', self._identity.fingerprint)
-            print('Recv ID: ', receiver_.fingerprint)
             m = Message.create(msg, sender=self._identity, receiver=receiver_)
             self._db.add_messages([m])
         elif sign:
-            print(''.join(['SAY: ', msg, ' (Sign: YES) (Receiver: N/A)']))
-            print('My ID: ', self._identity.fingerprint)
             m = Message.create(msg, sender=self._identity)
             self._db.add_messages([m])
         elif receiver_:
-            print(''.join(['SAY: ', msg, ' (Sign: N/A) (Receiver: ', receiver_name, ')']))
-            print('Recv ID: ', receiver_.fingerprint)
             m = Message.create(msg, receiver=receiver_)
             self._db.add_messages([m])
         else:
-            print(''.join(['SAY: ', msg, ' (Sign: N/A) (Receiver: N/A)']))
             m = Message.create(msg)
             self._db.add_messages([m])
 
@@ -146,14 +138,14 @@ class UI:
 
         print(' --- MESSAGES END --- ')
 
-    def show_users(self):
-        users = self._db.get_users()
-        print(' --- USERS BEGIN --- ')
+    def show_identities(self):
+        identities = self._db.get_identities()
+        print(' --- IDENTITIES BEGIN --- ')
         
-        for u in users:
-            print(' : '.join([dandelion.util.encode_b64_bytes(u.fingerprint).decode()]))
+        for id in identities:
+            print(' : '.join([dandelion.util.encode_b64_bytes(id.fingerprint).decode()]))
 
-        print(' --- USERS END --- ')
+        print(' --- IDENTITIES END --- ')
 
     def server_ctrl(self, op=OP_STATUS):
         self._service_ctrl(self._server, op)

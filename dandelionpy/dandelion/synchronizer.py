@@ -89,8 +89,11 @@ class Synchronizer(Service):
             host = "localhost"
             port = 1337
             
-            with Client(host, port, self._db) as client:
-                client.execute_transaction()
-            
+            try: 
+                with Client(host, port, self._db) as client:
+                    client.execute_transaction()
+            except:
+                continue
+                
             t1 = time.time()
     
