@@ -49,8 +49,8 @@ class Protocol:
     _GETMESSAGELIST = 'GETMESSAGELIST'
     _GETMESSAGES = 'GETMESSAGES'
  
-    _GETUSERLIST = 'GETIDENTITYLIST'
-    _GETUSERS = 'GETIDENTITIES'
+    _GETIDENTITYLIST = 'GETIDENTITYLIST'
+    _GETIDENTITIES = 'GETIDENTITIES'
     
     
     @classmethod
@@ -131,7 +131,7 @@ class Protocol:
 
         cls._assert_type(msgstr, str)
                 
-        return msgstr.startswith(cls._GETUSERLIST)    
+        return msgstr.startswith(cls._GETIDENTITYLIST)    
         
     @classmethod
     def create_message_id_list_request(cls, time_cookie=None):
@@ -172,12 +172,12 @@ class Protocol:
         """         
 
         if time_cookie is None:
-            return ''.join([cls._GETUSERLIST, Protocol.TERMINATOR])
+            return ''.join([cls._GETIDENTITYLIST, Protocol.TERMINATOR])
     
         if not isinstance(time_cookie, bytes):
             raise TypeError
         
-        return '{0} {1}{2}'.format(cls._GETUSERLIST, 
+        return '{0} {1}{2}'.format(cls._GETIDENTITYLIST, 
                                    dandelion.util.encode_b64_bytes(time_cookie).decode(), 
                                    Protocol.TERMINATOR)
 
@@ -227,7 +227,7 @@ class Protocol:
             raise ProtocolParseError
                 
         match = re.search(''.join([r'^', 
-                                   cls._GETUSERLIST, 
+                                   cls._GETIDENTITYLIST, 
                                    r'( ([a-zA-Z0-9+/=]+))?',
                                    Protocol.TERMINATOR,
                                    r'$']), identitystr)
@@ -278,7 +278,7 @@ class Protocol:
         
         [C]                                                    [S]
          |                                                      | 
-         |     <time cookie>;<identityid>;<identityid>;...;<identityid>     | 
+         |         <time cookie>;<uid>;<uid>;...;<uid>          | 
          |<-----------------------------------------------------| 
          |                                                      | 
         """
@@ -367,7 +367,7 @@ class Protocol:
         """Check if the string is a identity list request"""
         cls._assert_type(identitystr, str)
                 
-        return identitystr.startswith(cls._GETUSERS)
+        return identitystr.startswith(cls._GETIDENTITIES)
 
 
     @classmethod
@@ -400,7 +400,7 @@ class Protocol:
         
         [C]                                                    [S]
          |                                                      | 
-         |    GETUSERS [[[<identityid>];<identityid>];...;<identityid>]     | 
+         |    GETIDENTITIES [[[<identityid>];<identityid>];...;<identityid>]     | 
          |----------------------------------------------------->| 
          |                                                      |  
         """
@@ -412,11 +412,10 @@ class Protocol:
             raise TypeError
 
         if len(identity_ids) == 0:
-            return ''.join([cls._GETUSERS, Protocol.TERMINATOR])
-        
+            return ''.join([cls._GETIDENTITIES, Protocol.TERMINATOR])
         identityid_str = cls._FIELD_SEPARATOR.join([dandelion.util.encode_b64_bytes(uid).decode() for uid in identity_ids])
         
-        return '{0} {1}{2}'.format(cls._GETUSERS, identityid_str, Protocol.TERMINATOR)
+        return '{0} {1}{2}'.format(cls._GETIDENTITIES, identityid_str, Protocol.TERMINATOR)
     
 
     @classmethod
@@ -455,7 +454,7 @@ class Protocol:
             raise ProtocolParseError
 
         match = re.search(r''.join([r'^',
-                                    cls._GETUSERS, 
+                                    cls._GETIDENTITIES, 
                                     r'( [a-zA-Z0-9+/=]+)?', 
                                     r'(;[a-zA-Z0-9+/=]+)*',
                                     Protocol.TERMINATOR,
@@ -466,7 +465,7 @@ class Protocol:
         if not match.groups()[0]:
             return None
         
-        id_strings = identitystr[len(cls._GETUSERS) + 1:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)
+        id_strings = identitystr[len(cls._GETIDENTITIES) + 1:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)
         return [dandelion.util.decode_b64_bytes(id.encode()) for id in id_strings]
 
     
@@ -589,8 +588,8 @@ class Protocol:
         """Serialize a message to a DMS string"""
         
         text = msg.text.encode() if isinstance(msg.text, str) else msg.text # Convert to bytes string
-        receiver = b'' if msg.receiver is None else msg.receiver.encode()
-        sender, signature = (b'',b'') if msg.sender is None else (msg.sender.encode(), msg.signature.encode())
+        receiver = b'' if msg.receiver is None else msg.receiver
+        sender, signature = (b'',b'') if msg.sender is None else (msg.sender, msg.signature)
 
         return cls._SUB_FIELD_SEPARATOR.join([
                   dandelion.util.encode_b64_bytes(text).decode(),
@@ -601,7 +600,7 @@ class Protocol:
     @classmethod
     def _string2message(cls, mstr):
         """Parse the string and create a message"""
-        
+
         TEXT_INDEX, RECEIVER_INDEX, SENDER_INDEX, SIGNATURE_INDEX = (0,1,2,3)
 
         mparts = mstr.split(cls._SUB_FIELD_SEPARATOR)
@@ -611,12 +610,12 @@ class Protocol:
         
         if (mparts[SENDER_INDEX] != b'' and mparts[SIGNATURE_INDEX] == b'') or (mparts[SENDER_INDEX] == b'' and mparts[SIGNATURE_INDEX] != b''):
             raise  ProtocolParseError
-        
-        receiver = dandelion.util.decode_b64_bytes(mparts[RECEIVER_INDEX].encode()).decode() if mparts[RECEIVER_INDEX] == b'' else None 
+
+        receiver = None if mparts[RECEIVER_INDEX] == b'' else dandelion.util.decode_b64_bytes(mparts[RECEIVER_INDEX].encode()) 
         text = dandelion.util.decode_b64_bytes(mparts[TEXT_INDEX].encode())
         text = text.decode() if receiver is None else text # Decode unless encrypted 
-        sender = dandelion.util.decode_b64_bytes(mparts[SENDER_INDEX].encode()).decode() if mparts[SENDER_INDEX] == b'' else None
-        signature = dandelion.util.decode_b64_bytes(mparts[SIGNATURE_INDEX].encode()).decode() if mparts[SIGNATURE_INDEX] == b'' else None
+        sender = None if mparts[SENDER_INDEX] == b'' else dandelion.util.decode_b64_bytes(mparts[SENDER_INDEX].encode())
+        signature = None if mparts[SIGNATURE_INDEX] == b'' else dandelion.util.decode_b64_bytes(mparts[SIGNATURE_INDEX].encode())
 
         return Message(text, receiver, sender, signature)
     

@@ -390,7 +390,7 @@ class SQLiteContentDB(ContentDB):
             else:
                 msg_rows = []
                 try:
-                    for m in msgids: 
+                    for m in msgids:
                         c.execute("""SELECT msg, receiver, sender, signature 
                                      FROM messages JOIN time_cookies_db ON messages.cookieid = time_cookies_db.id 
                                      WHERE msgid = ? AND dbfp = ?""", (self._encode_id(m), self._encoded_id))
@@ -401,7 +401,7 @@ class SQLiteContentDB(ContentDB):
             return [Message(m[0], 
                             None if m[1] is None else self._decode_id(m[1]), 
                             None if m[2] is None else self._decode_id(m[2]), 
-                            None if m[3] is None else self._decode_id(m[3])) for m in msg_rows] 
+                            None if m[3] is None else self._decode_id(m[3])) for m in msg_rows if m is not None] 
 
     def get_messages_since(self, time_cookie=None):
         """Get messages from the data base.
@@ -416,7 +416,7 @@ class SQLiteContentDB(ContentDB):
             c = conn.cursor()
             
             if time_cookie is None:
-                c.execute("""SELECT msg, sender, receiver 
+                c.execute("""SELECT msg, receiver, sender, signature 
                              FROM messages JOIN time_cookies_db ON messages.cookieid = time_cookies_db.id 
                              WHERE time_cookies_db.dbfp = ?""", (self._encoded_id,))
             else:
@@ -431,15 +431,16 @@ class SQLiteContentDB(ContentDB):
                            self._encoded_id)).fetchone()[0] == 0:
                     raise ValueError 
                 
-                c.execute("""SELECT msg, receiver, sender 
+                c.execute("""SELECT msg, receiver, sender, signature 
                              FROM messages JOIN new_cookies ON messages.cookieid = new_cookies.tcid
                              WHERE new_cookies.old_cookie=? AND new_cookies.dbfp=?""", 
                              (self._encode_id(time_cookie), self._encoded_id)) 
 
-            msgs = [Message(row[0], row[1], row[2]) for row in c.fetchall()]
-            
+            msgs = [Message(row[0], 
+                            None if row[1] is None else self._decode_id(row[1]), 
+                            None if row[2] is None else self._decode_id(row[2]), 
+                            None if row[3] is None else self._decode_id(row[3])) for row in c.fetchall()]
             current_tc = self._get_last_time_cookie(c)
-
             return (current_tc, msgs)
 
     def add_identities(self, identities):
@@ -576,8 +577,8 @@ class SQLiteContentDB(ContentDB):
             c = conn.cursor()
             
             if time_cookie is None:
-                c.execute("""SELECT msg, sender, receiver 
-                             FROM messages JOIN time_cookies_db ON messages.cookieid = time_cookies_db.id 
+                c.execute("""SELECT fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e
+                             FROM identities JOIN time_cookies_db ON identities.cookieid = time_cookies_db.id 
                              WHERE time_cookies_db.dbfp = ?""", (self._encoded_id,))
             else:
                 if not isinstance(time_cookie, bytes):
@@ -595,9 +596,14 @@ class SQLiteContentDB(ContentDB):
                              WHERE new_cookies.old_cookie=? AND new_cookies.dbfp=?""", 
                              (self._encode_id(time_cookie), self._encoded_id)) 
 
-            ids = [Identity(DSAKey(id[1], id[2], id[3], id[4]), RSAKey(id[5], id[6])) for id in c.fetchall()]
-            
-            current_tc = c.execute("""SELECT new_cookie, max(tcid) FROM new_cookies WHERE dbfp=?""", (self._encoded_id,)).fetchone()[0] 
+            ids = [Identity(DSAKey(dandelion.util.decode_b64_int(id[1]), 
+                                    dandelion.util.decode_b64_int(id[2]), 
+                                    dandelion.util.decode_b64_int(id[3]), 
+                                    dandelion.util.decode_b64_int(id[4])), 
+                             RSAKey(dandelion.util.decode_b64_int(id[5]), 
+                                    dandelion.util.decode_b64_int(id[6]))) for id in c.fetchall()] 
+
+            current_tc = self._get_last_time_cookie(c) 
 
             return (current_tc, ids)
 

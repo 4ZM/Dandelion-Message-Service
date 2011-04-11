@@ -37,6 +37,18 @@ class Message:
         
         if receiver_fp is None and len(text) > Message.MAX_TEXT_LENGTH: # Limit only applies to plaintext data
             raise ValueError
+        
+        if receiver_fp is None and not isinstance(text, str):
+            raise TypeError
+
+        if receiver_fp is not None and not isinstance(text, bytes):
+            raise TypeError
+        
+        if (receiver_fp is not None and not isinstance(receiver_fp, bytes)):
+            return TypeError 
+         
+        if (sender_fp is not None and not isinstance(sender_fp, bytes)):
+            raise TypeError 
 
         # Must have both sender and signature if it has one
         if (sender_fp is None and signature is not None) or (sender_fp is not None and signature is None):
@@ -47,14 +59,14 @@ class Message:
         self._receiver_fp = receiver_fp
         self._sender_fp = sender_fp
         self._signature = signature
-                
+
     @property
     def id(self):
         """Message Id (bytes)"""
 
         if self._id is None: # Lazy hashing
             h = hashlib.sha256()
-            h.update(self._text.encode())
+            h.update(self._text if self._receiver_fp is not None else self._text.encode()) # Decode unless encrypted
             
             if self._receiver_fp is not None:
                 h.update(self._receiver_fp)
@@ -116,7 +128,7 @@ class Message:
             return Message(text, sender_fp=sender.fingerprint, signature=sig)
         else: # sender and receiver
             text = receiver.encrypt(text)
-            sig = sender.sign(text.encode())
+            sig = sender.sign(text)
             return Message(text, receiver_fp=receiver.fingerprint, sender_fp=sender.fingerprint, signature=sig)
             
     def __str__(self):

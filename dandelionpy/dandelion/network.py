@@ -76,6 +76,9 @@ class SocketTransaction(Transaction):
             raise ValueError        
         
         self._sock = sock
+        self._sock.settimeout(10.0)
+        #self._sock.setblocking(True)
+        
         self._terminator = terminator
         self._buff_size = buff_size
     
@@ -91,7 +94,7 @@ class SocketTransaction(Transaction):
 
         while True:
             data = self._sock.recv(self._buff_size)
-#            print("SOCKTRANSACTION: read chunk: ", data)
+            #print("SOCKTRANSACTION: read chunk: ", data)
             
             if len(data) == 0:
                 break
@@ -102,7 +105,7 @@ class SocketTransaction(Transaction):
             
             total_data.extend(data)
 
-#        print("SOCKTRANSACTION: read: ", total_data)
+        #print("SOCKTRANSACTION: read: ", total_data)
         return total_data
     
     def _write(self, data):
@@ -128,7 +131,7 @@ class ServerTransaction(SocketTransaction):
         Starts by sending a greeting. Will then service the connected client 
         repeatedly until it disconnects or the server times out."""
          
-#        print("SERVER TRANSACTION: Starting server transaction")
+        #print("SERVER TRANSACTION: Starting server transaction")
         
         """Write greeting"""
         self._write(Protocol.create_greeting_message(self._db.id).encode())
@@ -142,10 +145,10 @@ class ServerTransaction(SocketTransaction):
             try:
                 self._process_data(bdata)
             except ServerTransaction._AbortTransactionException:
-#                print("SERVER TRANSACTION: Ending server transaction A")
+                #print("SERVER TRANSACTION: Ending server transaction A")
                 return
             
-#        print("SERVER TRANSACTION: Ending server transaction")
+        #print("SERVER TRANSACTION: Ending server transaction")
 
 
     def _process_data(self, bdata):
@@ -153,20 +156,29 @@ class ServerTransaction(SocketTransaction):
          
         try:
             data = bdata.decode()
-
+            
+            #print("SERVER Read data: ", data)
+            
             if Protocol.is_message_id_list_request(data):
-                
                 tc = Protocol.parse_message_id_list_request(data)
                 tc, msgs = self._db.get_messages_since(tc)
                 response_str = Protocol.create_message_id_list(tc, msgs)
                 self._write(response_str.encode()) 
-
             elif Protocol.is_message_list_request(data):
                 msgids = Protocol.parse_message_list_request(data)
                 msgs = self._db.get_messages(msgids)
                 response_str = Protocol.create_message_list(msgs)
                 self._write(response_str.encode())
-
+            elif Protocol.is_identity_id_list_request(data):
+                tc = Protocol.parse_identity_id_list_request(data)
+                tc, ids = self._db.get_identities_since(tc)
+                response_str = Protocol.create_identity_id_list(tc, ids)
+                self._write(response_str.encode()) 
+            elif Protocol.is_identity_list_request(data):
+                identities = Protocol.parse_identity_list_request(data)
+                ids = self._db.get_identities(identities)
+                response_str = Protocol.create_identity_list(ids)
+                self._write(response_str.encode())
             else:
                 raise ProtocolParseError
         
@@ -234,7 +246,7 @@ class _ServerHandler(socketserver.BaseRequestHandler):
 
     def setup(self):
         self.request.settimeout(5.0)
-        #self.request.setblocking(False)
+        #self.request.setblocking(True)
         
     def handle(self):
 
@@ -268,22 +280,35 @@ class ClientTransaction(SocketTransaction):
             
             req_msgids = [mid for mid in msgids if not self._db.contains_message(mid)]
 
-            if len(req_msgids) == 0: # Nothing to fetch
-#                print("CLIENT TRANSACTION: hanging up - 0 sync")
-                return 
-            
-            """Request and read messages"""        
-            self._write(Protocol.create_message_list_request(req_msgids).encode())
-            msgs = Protocol.parse_message_list(self._read().decode())
+            if len(req_msgids) > 0: # Anything to fetch?
+                """Request and read messages"""        
+                self._write(Protocol.create_message_list_request(req_msgids).encode())
+                msgs = Protocol.parse_message_list(self._read().decode())
+    
+                """Store the new messages"""
+                self._db.add_messages(msgs)
 
-            """Store the new messages"""
-            self._db.add_messages(msgs)
+            """Request and read user id's"""
+            self._write(Protocol.create_identity_id_list_request(time_cookie).encode())
+            _, identityids = Protocol.parse_identity_id_list(self._read().decode())
+
+            req_ids = [id for id in identityids if not self._db.contains_identity(id)]
+            
+            if len(req_ids) > 0: # Anything to fetch?
+
+                """Request and read identities"""        
+                self._write(Protocol.create_identity_list_request(req_ids).encode())
+                ids = Protocol.parse_identity_list(self._read().decode())
+    
+                """Store the new identities"""
+                self._db.add_identities(ids)
+
             
         except (socket.timeout, ProtocolParseError, ValueError, TypeError):
             """Do nothing on error, just hang up"""
             #print("CLIENT TRANSACTION: Error processing data from server")
 
-        # print("CLIENT TRANSACTION: hanging up")
+        #print("CLIENT TRANSACTION: hanging up")
 
 
 class Client:
@@ -294,7 +319,7 @@ class Client:
     
     def __enter__(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._sock.settimeout(5.0)
+        self._sock.settimeout(10.0)
         #print("CLIENT: connecting")
         self._sock.connect((self._ip, self._port))
         return self

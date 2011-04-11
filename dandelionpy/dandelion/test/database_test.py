@@ -133,7 +133,9 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual(first_cookie, db.add_messages([first_msg]))
 
         # New message, new cookie
-        second_msg = Message('Another Single Message')
+        id1 = PrivateIdentity.generate()
+        id2 = PrivateIdentity.generate()
+        second_msg = Message.create('Another Single Message', id1, id2)
         second_cookie = db.add_messages([second_msg])
         self.assertNotEqual(second_cookie, None)
         self.assertNotEqual(second_cookie, first_cookie)
@@ -232,11 +234,19 @@ class DatabaseTest(unittest.TestCase):
         _, mlist = db.get_messages_since()
         self.assertEqual(mlist, [])
 
+        id1 = PrivateIdentity.generate()
+        id2 = PrivateIdentity.generate()
         m1 = Message('M1')
         m2 = Message('M2')
-        m3 = Message('M3')
+        m3 = Message.create('M3', id1, id2)
         
+        db.add_identities([id1])
         db.add_messages([m1, m2, m3])
+        
+        _, mlist = db.get_messages_since()
+        self.assertTrue(m1 in mlist)
+        self.assertTrue(m2 in mlist)
+        self.assertTrue(m3 in mlist)
         
         mlist = db.get_messages()
         self.assertTrue(m1 in mlist)
@@ -313,6 +323,13 @@ class DatabaseTest(unittest.TestCase):
         id3 = PrivateIdentity.generate()
         
         db.add_identities([id1, id2, id3])
+        db.add_messages([Message("fu")])
+        
+        _, idlist = db.get_identities_since()
+        
+        self.assertTrue(id1 in idlist)
+        self.assertTrue(id2 in idlist)
+        self.assertTrue(id3 in idlist)
         
         idlist = db.get_identities()
         self.assertTrue(id1 in idlist)

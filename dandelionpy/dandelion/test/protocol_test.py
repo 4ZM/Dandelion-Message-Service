@@ -18,7 +18,6 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import unittest
-import binascii
 import re
 from dandelion.message import Message 
 from dandelion.protocol import Protocol, ProtocolParseError, ProtocolVersionError
@@ -166,7 +165,9 @@ class ProtocolTest(unittest.TestCase):
     def test_create_message_id_list(self):
         """Test message ID list request creation"""
 
-        msg1 = Message('M1')
+        id1 = PrivateIdentity.generate()
+        id2 = PrivateIdentity.generate()
+        msg1 = Message.create('M1', id1, id2)
         msg2 = Message('M2')
         msg3 = Message('M3')
         
@@ -259,16 +260,20 @@ class ProtocolTest(unittest.TestCase):
     def test_roundtrip_message_id_list(self):
         """Test message ID list response creation / parsing by a round trip"""
         
+        id1 = PrivateIdentity.generate()
+        id2 = PrivateIdentity.generate()
         msg1 = Message('M1')
-        msg2 = Message('M2')
-        msg3 = Message('M3')
+        msg2 = Message.create('M2', id1, id2)
+        msg3 = Message.create('M3', id1)
+        msg4 = Message.create('M3', None, id2)
         
-        tc, msgids = Protocol.parse_message_id_list(Protocol.create_message_id_list(b'24', [msg1, msg2, msg3]))
+        tc, msgids = Protocol.parse_message_id_list(Protocol.create_message_id_list(b'24', [msg1, msg2, msg3, msg4]))
         self.assertEqual(tc, b'24')
-        self.assertEqual(len(msgids), 3)
+        self.assertEqual(len(msgids), 4)
         self.assertTrue(msg1.id in msgids)
         self.assertTrue(msg2.id in msgids)
         self.assertTrue(msg3.id in msgids)
+        self.assertTrue(msg4.id in msgids)
 
     def test_create_message_list_request(self):
         """Test message list request creation"""
@@ -370,17 +375,21 @@ class ProtocolTest(unittest.TestCase):
     def test_create_message_list(self):
         """Test message list creation"""
         
+        id1 = PrivateIdentity.generate()
+        id2 = PrivateIdentity.generate()
+        
         m1 = Message('FUBAR')
         m2 = Message('f00')
         m3 = Message('13;@|37')
+        m4 = Message.create('fu', id1, id2)
         m1_txt_b64 = 'RlVCQVI='
         m2_txt_b64 = 'ZjAw'
         m3_txt_b64 = 'MTM7QHwzNw=='
         
-        msg = Protocol.create_message_list([m1, m2, m3])
-        
+        msg = Protocol.create_message_list([m1, m2, m3, m4])
+
         self.assertTrue(len(msg) > 0)
-        self.assertEqual(msg.count(';'), 2)
+        self.assertEqual(msg.count(';'), 3)
         self.assertTrue(m1_txt_b64 in msg)
         self.assertTrue(m2_txt_b64 in msg)
         self.assertTrue(m3_txt_b64 in msg)
@@ -406,16 +415,21 @@ class ProtocolTest(unittest.TestCase):
 
     def test_message_list_roundtrip(self):
         """Test message list creation / parsing by a round trip"""
-        m1 = Message('M1')
-        m2 = Message('M2')
-        m3 = Message('M3')
-        
-        msg = Protocol.create_message_list([m1, m2, m3])
+
+        id1 = PrivateIdentity.generate()
+        id2 = PrivateIdentity.generate()
+        m1 = Message.create('M1')
+        m2 = Message.create('M2', sender=id1)
+        m3 = Message.create('M3', receiver=id1)
+        m4 = Message.create('M4', receiver=id1, sender=id2)
+                            
+        msg = Protocol.create_message_list([m1, m2, m3, m4])
         mout = Protocol.parse_message_list(msg)
-        self.assertEqual(len(mout), 3)
+        self.assertEqual(len(mout), 4)
         self.assertTrue(m1 in mout)
         self.assertTrue(m2 in mout)
         self.assertTrue(m3 in mout)
+        self.assertTrue(m4 in mout)
 
     def test_create_identity_id_list_request(self):
         """Test identity ID list request creation"""

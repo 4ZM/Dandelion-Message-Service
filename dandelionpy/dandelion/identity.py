@@ -163,7 +163,7 @@ class Identity:
         
         The plaintext message is a bytes string and the returned encrypted message is a bytes string.
         """
-        return plaintext[::-1] # Dummy impl
+        return plaintext[::-1].encode() # Dummy impl
     
     def __str__(self):
         """String conversion is user Base64 encoded fingerprint"""
@@ -199,7 +199,7 @@ class PrivateIdentity(Identity):
         
         The ciphertext and the returned plaintext are bytes strings.
         """
-        return ciphertext[::-1] # Dummy impl.
+        return ciphertext[::-1].decode() # Dummy impl.
 
     @classmethod
     def generate(cls):

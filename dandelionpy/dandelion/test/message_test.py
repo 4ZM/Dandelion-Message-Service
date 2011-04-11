@@ -67,7 +67,7 @@ class MessageTest(unittest.TestCase):
     def test_construction_with_receiver(self):
         """Testing message construction when specifying a receiver"""
 
-        txt = b"plain_text"
+        txt = "plain_text"
         id = PrivateIdentity.generate()
         m = Message(id.encrypt(txt), receiver_fp=id.fingerprint)
         self.assertNotEqual(m.text, txt)
@@ -80,7 +80,7 @@ class MessageTest(unittest.TestCase):
     def test_construction_with_sender_and_receiver(self):
         """Testing message construction when specifying a sender and a receiver"""
         
-        txt = b"plain_text"
+        txt = "plain_text"
         id_sender = PrivateIdentity.generate()
         id_receiver = PrivateIdentity.generate()
         m = Message(id_receiver.encrypt(txt), receiver_fp=id_receiver.fingerprint, 
