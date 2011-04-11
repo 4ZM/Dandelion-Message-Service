@@ -1,11 +1,13 @@
-Design Document
 
-Dandelion Message Service 
+                   DANDELION MESSAGE SERVICE 
+                    PROTOCOL DESIGN DOCUMENT
+					
+                      Draft version 1.0
 
-Draft version 1.0
-
-
-
+					  
+  This document enumerates the terms and the data in the Dandelion domain. It also includes the specification of the Dandelion communication protocol, used for data transfer between nodes.					  
+					   
+					   
 Abstract User Identity Syntax
 =============================
 
