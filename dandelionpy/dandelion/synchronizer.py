@@ -64,13 +64,17 @@ class Synchronizer(Service):
     def status(self):
         """A string with information about the service"""
         print(''.join(['Synchronizer status: Running: ', str(self._running)]))
-        
     
     @property 
     def running(self):
         """Returns True if the service is running, False otherwise"""
         return self._running
         
+    def sync(self, host, port):
+        """Perform a synchronization with a specific node"""
+        with Client(host, port, self._db) as client:
+            client.execute_transaction()
+
     def _sync_loop(self):
         #print('SYNCHRONIZER: Running')
 
@@ -90,8 +94,7 @@ class Synchronizer(Service):
             port = 1337
             
             try: 
-                with Client(host, port, self._db) as client:
-                    client.execute_transaction()
+                self.sync(host, port)
             except:
                 continue
                 

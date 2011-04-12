@@ -49,8 +49,7 @@ class DandelionApp:
         self._server.stop()
 
 
-if __name__ == '__main__':
-    
+def run():
     app = DandelionApp('dandelion.conf')
     #print('APP: Starting Server')
     #app.start_server()
@@ -60,3 +59,6 @@ if __name__ == '__main__':
     app.run_ui()
     #print('APP: Exiting')
     app.exit()
+
+if __name__ == '__main__':
+    run()

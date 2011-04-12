@@ -66,11 +66,33 @@ class CmdLine(cmd.Cmd):
 
     def do_server(self, args):
         """server [op] : Perform a server operation [start|stop|restart|stat]"""
-        self._ui.server_ctrl(self._parse_service_op(args))
+        args = args.split(' ')
+        if args[0] == 'bind' and len(args) == 3:
+            try:
+                self._ui.listen_to(args[1], int(args[2]))
+            except:
+                print("Server Bind Config Error")
+            return
+
+        try:
+            self._ui.server_ctrl(self._parse_service_op(args[0]))
+        except:
+            print("SYNTAX ERROR")
     
     def do_synchronizer(self, args):
         """synchronizer [op] : Perform a synchronizer operation [start|stop|restart|stat]"""
-        self._ui.synchronizer_ctrl(self._parse_service_op(args))
+        args = args.split(' ')
+        if args[0] == 'sync' and len(args) == 3:
+            try:
+                self._ui.singel_sync(args[1], int(args[2]))
+            except:
+                print("Sync Error")
+            return
+        
+        try:
+            self._ui.synchronizer_ctrl(self._parse_service_op(args[0]))
+        except:
+            print("SYNTAX ERROR")
 
     def do_exit(self, args):
         """exit : Exit the program"""
@@ -149,6 +171,13 @@ class UI:
 
     def server_ctrl(self, op=OP_STATUS):
         self._service_ctrl(self._server, op)
+    
+    def listen_to(self, host, port):
+        self._server.ip = host
+        self._server.port = port
+    
+    def singel_sync(self, host, port):
+        self._synchronizer.sync(host, port)
     
     def synchronizer_ctrl(self, op=OP_STATUS):
         self._service_ctrl(self._synchronizer, op)

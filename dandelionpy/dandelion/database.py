@@ -185,7 +185,6 @@ class ContentDB:
     def _decode_id(self, id):
         """Text to binary decoding of id's"""
         return dandelion.util.decode_b64_bytes(id.encode())
-    
 
 class SQLiteContentDB(ContentDB):
     """A content database with a sqlite backend."""

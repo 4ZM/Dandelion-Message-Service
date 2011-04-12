@@ -213,6 +213,38 @@ class Server(Service):
 #        print('SERVER: Stopped')
     
     @property
+    def ip(self):
+        """Get the IP the server currently binds to."""
+        return self._ip
+    
+    @ip.setter
+    def ip(self, value):
+        """Set the IP the server should bind to. 
+        Note: The sever must be stopped before setting the address.
+        """
+        
+        if self._running:
+            raise Exception
+        
+        self._ip = value
+    
+    @property
+    def port(self):
+        """Get the port the server currently listens to."""
+        return self._port
+    
+    @port.setter
+    def port(self, value):
+        """Set the port the server should listen to. 
+        Note: The sever must be stopped before setting the port.
+        """
+        
+        if self._running:
+            raise Exception
+        
+        self._port = value
+
+    @property
     def status(self):
         """A string with information about the service"""
         print(''.join(['Server status: Running: ', str(self._running), ' (', self._ip, ':', str(self._port), ')']))
