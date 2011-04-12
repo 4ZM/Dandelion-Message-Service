@@ -55,7 +55,7 @@ def encode_int(x):
     if len(hstr) % 2 != 0:
         hstr = ''.join(['0', hstr])
 
-    return binascii.a2b_hex(hstr)
+    return binascii.a2b_hex(hstr.encode())
 
 def decode_int(bstr):
     """bytes to int conversion"""
