@@ -16,12 +16,13 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
+from dandelion.identity import Identity, DSA_key, RSA_key
+from dandelion.message import Message
+from dandelion.util import encode_b64_bytes, decode_b64_bytes, encode_b64_int, \
+    decode_b64_int
 import random
 import sqlite3
 
-from dandelion.message import Message
-import dandelion.util
-from dandelion.identity import Identity, DSA_key, RSA_key
 
 class ContentDBException(Exception):
     pass
@@ -179,12 +180,12 @@ class ContentDB:
     @classmethod
     def _encode_id(self, id):
         """Binary to text encoding of id's"""
-        return dandelion.util.encode_b64_bytes(id).decode()
+        return encode_b64_bytes(id).decode()
 
     @classmethod
     def _decode_id(self, id):
         """Text to binary decoding of id's"""
-        return dandelion.util.decode_b64_bytes(id.encode())
+        return decode_b64_bytes(id.encode())
 
 class SQLiteContentDB(ContentDB):
     """A content database with a sqlite backend."""
@@ -467,12 +468,12 @@ class SQLiteContentDB(ContentDB):
                 for id in identities:
                     c.execute("""INSERT OR IGNORE INTO identities (fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e, cookieid) VALUES (?,?,?,?,?,?,?,?)""", 
                               (self._encode_id(id.fingerprint), 
-                               dandelion.util.encode_b64_int(id.dsa_key.y),
-                               dandelion.util.encode_b64_int(id.dsa_key.g),
-                               dandelion.util.encode_b64_int(id.dsa_key.p),
-                               dandelion.util.encode_b64_int(id.dsa_key.q),
-                               dandelion.util.encode_b64_int(id.rsa_key.n),
-                               dandelion.util.encode_b64_int(id.rsa_key.e),
+                               encode_b64_int(id.dsa_key.y),
+                               encode_b64_int(id.dsa_key.g),
+                               encode_b64_int(id.dsa_key.p),
+                               encode_b64_int(id.dsa_key.q),
+                               encode_b64_int(id.rsa_key.n),
+                               encode_b64_int(id.rsa_key.e),
                                tcid))
             except AttributeError: # Typically caused by types other than Identity in list
                 raise TypeError
@@ -556,12 +557,12 @@ class SQLiteContentDB(ContentDB):
                 except AttributeError:
                     raise TypeError
                 
-            return [Identity(DSA_key(dandelion.util.decode_b64_int(id[1]), 
-                                    dandelion.util.decode_b64_int(id[2]), 
-                                    dandelion.util.decode_b64_int(id[3]), 
-                                    dandelion.util.decode_b64_int(id[4])), 
-                             RSA_key(dandelion.util.decode_b64_int(id[5]), 
-                                    dandelion.util.decode_b64_int(id[6]))) for id in id_rows] 
+            return [Identity(DSA_key(decode_b64_int(id[1]), 
+                                    decode_b64_int(id[2]), 
+                                    decode_b64_int(id[3]), 
+                                    decode_b64_int(id[4])), 
+                             RSA_key(decode_b64_int(id[5]), 
+                                    decode_b64_int(id[6]))) for id in id_rows] 
 
     def get_identities_since(self, time_cookie=None):
         """Get identities from the data base.
@@ -595,12 +596,12 @@ class SQLiteContentDB(ContentDB):
                              WHERE new_cookies.old_cookie=? AND new_cookies.dbfp=?""", 
                              (self._encode_id(time_cookie), self._encoded_id)) 
 
-            ids = [Identity(DSA_key(dandelion.util.decode_b64_int(id[1]), 
-                                    dandelion.util.decode_b64_int(id[2]), 
-                                    dandelion.util.decode_b64_int(id[3]), 
-                                    dandelion.util.decode_b64_int(id[4])), 
-                             RSA_key(dandelion.util.decode_b64_int(id[5]), 
-                                    dandelion.util.decode_b64_int(id[6]))) for id in c.fetchall()] 
+            ids = [Identity(DSA_key(decode_b64_int(id[1]), 
+                                    decode_b64_int(id[2]), 
+                                    decode_b64_int(id[3]), 
+                                    decode_b64_int(id[4])), 
+                             RSA_key(decode_b64_int(id[5]), 
+                                    decode_b64_int(id[6]))) for id in c.fetchall()] 
 
             current_tc = self._get_last_time_cookie(c) 
 

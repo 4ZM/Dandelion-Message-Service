@@ -17,10 +17,11 @@ You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import cmd
-from dandelion.message import Message
-import dandelion
 from dandelion.identity import PrivateIdentity
+from dandelion.message import Message
+from dandelion.util import encode_b64_bytes
+import cmd
+import dandelion
 
 class CmdLine(cmd.Cmd):
     """Simple command processor example."""
@@ -153,10 +154,10 @@ class UI:
         print(' --- MESSAGES BEGIN --- ')
         
         for m in msgs:
-            print(' : '.join([dandelion.util.encode_b64_bytes(m.id).decode(), 
-                              m.text if not m.has_receiver else dandelion.util.encode_b64_bytes(m.text).decode(), 
-                              'N/A' if not m.has_receiver else dandelion.util.encode_b64_bytes(m.receiver).decode(), 
-                              'N/A' if not m.has_sender else dandelion.util.encode_b64_bytes(m.sender).decode()]))
+            print(' : '.join([encode_b64_bytes(m.id).decode(), 
+                              m.text if not m.has_receiver else encode_b64_bytes(m.text).decode(), 
+                              'N/A' if not m.has_receiver else encode_b64_bytes(m.receiver).decode(), 
+                              'N/A' if not m.has_sender else encode_b64_bytes(m.sender).decode()]))
 
         print(' --- MESSAGES END --- ')
 
@@ -165,7 +166,7 @@ class UI:
         print(' --- IDENTITIES BEGIN --- ')
         
         for id in identities:
-            print(' : '.join([dandelion.util.encode_b64_bytes(id.fingerprint).decode()]))
+            print(' : '.join([encode_b64_bytes(id.fingerprint).decode()]))
 
         print(' --- IDENTITIES END --- ')
 

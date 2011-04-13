@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import dandelion.util
+from dandelion.util import encode_int, encode_b64_bytes
 import hashlib
 import random
 
@@ -130,11 +130,11 @@ class Identity:
         """
         if self._fp is None: # Lazy hashing
             h = hashlib.sha256()
-            h.update(dandelion.util.encode_int(self._rsa_key.n))
-            h.update(dandelion.util.encode_int(self._rsa_key.e))
-            h.update(dandelion.util.encode_int(self._dsa_key.y))
-            h.update(dandelion.util.encode_int(self._dsa_key.g))
-            h.update(dandelion.util.encode_int(self._dsa_key.p))
+            h.update(encode_int(self._rsa_key.n))
+            h.update(encode_int(self._rsa_key.e))
+            h.update(encode_int(self._dsa_key.y))
+            h.update(encode_int(self._dsa_key.g))
+            h.update(encode_int(self._dsa_key.p))
             self._fp = h.digest()[- Identity._FINGERPRINT_LENGTH_BYTES:] 
         
         return self._fp
@@ -167,7 +167,7 @@ class Identity:
     
     def __str__(self):
         """String conversion is user Base64 encoded fingerprint"""
-        return dandelion.util.encode_b64_bytes(self.fingerprint).decode()
+        return encode_b64_bytes(self.fingerprint).decode()
          
     def __eq__(self, other):
         return isinstance(other, Identity) and self.fingerprint == other.fingerprint

@@ -17,12 +17,13 @@ You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import unittest
-import re
-from dandelion.message import Message 
-from dandelion.protocol import Protocol, ProtocolParseError, ProtocolVersionError
-import dandelion
 from dandelion.identity import PrivateIdentity
+from dandelion.message import Message
+from dandelion.protocol import Protocol, ProtocolParseError, \
+    ProtocolVersionError
+from dandelion.util import encode_b64_bytes, encode_b64_int, decode_b64_bytes
+import re
+import unittest
 
 class ProtocolTest(unittest.TestCase):
     """Unit test suite for the DMS Protocol class"""
@@ -41,7 +42,7 @@ class ProtocolTest(unittest.TestCase):
         """Test construction of greeting message"""
         
         ex_database_id_bin = b'\x01\x03\x03\x07'
-        ex_database_id_str = dandelion.util.encode_b64_bytes(ex_database_id_bin).decode()
+        ex_database_id_str = encode_b64_bytes(ex_database_id_bin).decode()
 
         greeting = Protocol.create_greeting_message(ex_database_id_bin)
         pc, pv, dbid = greeting[:-1].split(';')
@@ -59,7 +60,7 @@ class ProtocolTest(unittest.TestCase):
         """Test parsing greeting message"""
 
         ex_database_id_bin = b'\x01\x03\x03\x07'
-        ex_database_id_str = dandelion.util.encode_b64_bytes(ex_database_id_bin).decode()
+        ex_database_id_str = encode_b64_bytes(ex_database_id_bin).decode()
 
         dbid = Protocol.parse_greeting_message('DMS;{0};{1}\n'.format(Protocol.PROTOCOL_VERSION, ex_database_id_str))
         self.assertEqual(dbid, ex_database_id_bin)
@@ -99,7 +100,7 @@ class ProtocolTest(unittest.TestCase):
         
         tc = b'\x01\x03\x03\x07'
         s = Protocol.create_message_id_list_request(tc)
-        self.assertTrue(' '.join(['GETMESSAGELIST', dandelion.util.encode_b64_bytes(tc).decode()]) in s) 
+        self.assertTrue(' '.join(['GETMESSAGELIST', encode_b64_bytes(tc).decode()]) in s) 
         self.assertTrue(Protocol.is_message_id_list_request(s))
         
         """Testing bad input"""
@@ -113,7 +114,7 @@ class ProtocolTest(unittest.TestCase):
         """Test parsing the message ID list request string"""
         
         tc_bin = b'\x01\x03\x03\x07'
-        tc_str = dandelion.util.encode_b64_bytes(tc_bin).decode()
+        tc_str = encode_b64_bytes(tc_bin).decode()
         
         self.assertTrue(Protocol.is_message_id_list_request('GETMESSAGELIST {0}\n'.format(tc_str)))
         tc = Protocol.parse_message_id_list_request('GETMESSAGELIST {0}\n'.format(tc_str))
@@ -172,14 +173,14 @@ class ProtocolTest(unittest.TestCase):
         msg3 = Message('M3')
         
         tc = b'\x01\x03\x03\x07'
-        tc_str_ok = dandelion.util.encode_b64_bytes(tc).decode()
+        tc_str_ok = encode_b64_bytes(tc).decode()
         
         str_ = Protocol.create_message_id_list(tc, [msg1, msg2, msg3])[:-1]
         tc_str, m1_str, m2_str, m3_str = str_.split(';')
         self.assertEqual(tc_str, tc_str_ok)
-        self.assertEqual(msg1.id, dandelion.util.decode_b64_bytes(m1_str.encode()))
-        self.assertEqual(msg2.id, dandelion.util.decode_b64_bytes(m2_str.encode()))
-        self.assertEqual(msg3.id, dandelion.util.decode_b64_bytes(m3_str.encode()))
+        self.assertEqual(msg1.id, decode_b64_bytes(m1_str.encode()))
+        self.assertEqual(msg2.id, decode_b64_bytes(m2_str.encode()))
+        self.assertEqual(msg3.id, decode_b64_bytes(m3_str.encode()))
 
         str_ = Protocol.create_message_id_list(tc, None)[:-1]
         self.assertEqual(str_, tc_str)
@@ -200,14 +201,14 @@ class ProtocolTest(unittest.TestCase):
         """Test parsing the message ID list request string"""
 
         tc = b'13\x01\x07'
-        tc_str = dandelion.util.encode_b64_bytes(tc).decode()
+        tc_str = encode_b64_bytes(tc).decode()
                 
         m1 = b'42'
         m2 = b'\x01\x23\x245'
         m3 = b'\x42\x42\x42'
-        m1_str = dandelion.util.encode_b64_bytes(m1).decode()
-        m2_str = dandelion.util.encode_b64_bytes(m2).decode()
-        m3_str = dandelion.util.encode_b64_bytes(m3).decode()
+        m1_str = encode_b64_bytes(m1).decode()
+        m2_str = encode_b64_bytes(m2).decode()
+        m3_str = encode_b64_bytes(m3).decode()
 
         parsed_tc, msgidlist = Protocol.parse_message_id_list(''.join([';'.join([tc_str, m1_str, m2_str, m3_str]), '\n']))
         self.assertEqual(parsed_tc, tc)
@@ -281,9 +282,9 @@ class ProtocolTest(unittest.TestCase):
         m1 = b'42'
         m2 = b'\x01\x23\x245'
         m3 = b'\x42\x42\x42'
-        m3_str = dandelion.util.encode_b64_bytes(m3).decode()
-        m2_str = dandelion.util.encode_b64_bytes(m2).decode()
-        m1_str = dandelion.util.encode_b64_bytes(m1).decode()
+        m3_str = encode_b64_bytes(m3).decode()
+        m2_str = encode_b64_bytes(m2).decode()
+        m1_str = encode_b64_bytes(m1).decode()
         
         self.assertTrue(Protocol.is_message_list_request('GETMESSAGES\n'))
         self.assertFalse(Protocol.is_message_list_request('GETMES_XXX_SAGES\n'))
@@ -314,9 +315,9 @@ class ProtocolTest(unittest.TestCase):
         m1 = b'42'
         m2 = b'\x01\x23\x245'
         m3 = b'\x42\x42\x42'
-        m3_str = dandelion.util.encode_b64_bytes(m3).decode()
-        m2_str = dandelion.util.encode_b64_bytes(m2).decode()
-        m1_str = dandelion.util.encode_b64_bytes(m1).decode()
+        m3_str = encode_b64_bytes(m3).decode()
+        m2_str = encode_b64_bytes(m2).decode()
+        m1_str = encode_b64_bytes(m1).decode()
        
         msgs_ret = Protocol.parse_message_list_request('GETMESSAGES {0}\n'.format(';'.join([m1_str, m2_str, m3_str])))
         self.assertEquals(len(msgs_ret), 3)
@@ -440,7 +441,7 @@ class ProtocolTest(unittest.TestCase):
         
         tc = b'\x01\x03\x03\x07'
         s = Protocol.create_identity_id_list_request(tc)
-        self.assertTrue(' '.join(['GETIDENTITYLIST', dandelion.util.encode_b64_bytes(tc).decode()]) in s) 
+        self.assertTrue(' '.join(['GETIDENTITYLIST', encode_b64_bytes(tc).decode()]) in s) 
         self.assertTrue(Protocol.is_identity_id_list_request(s))
         
         """Testing bad input"""
@@ -454,7 +455,7 @@ class ProtocolTest(unittest.TestCase):
         """Test parsing the identity ID list request string"""
         
         tc_bin = b'\x01\x03\x03\x07'
-        tc_str = dandelion.util.encode_b64_bytes(tc_bin).decode()
+        tc_str = encode_b64_bytes(tc_bin).decode()
         
         self.assertTrue(Protocol.is_identity_id_list_request('GETIDENTITYLIST {0}\n'.format(tc_str)))
         tc = Protocol.parse_identity_id_list_request('GETIDENTITYLIST {0}\n'.format(tc_str))
@@ -512,14 +513,14 @@ class ProtocolTest(unittest.TestCase):
         id3 = PrivateIdentity.generate()
         
         tc = b'\x01\x03\x03\x07'
-        tc_str_ok = dandelion.util.encode_b64_bytes(tc).decode()
+        tc_str_ok = encode_b64_bytes(tc).decode()
         
         str_ = Protocol.create_identity_id_list(tc, [id1, id2, id3])[:-1]
         tc_str, id1_str, id2_str, id3_str = str_.split(';')
         self.assertEqual(tc_str, tc_str_ok)
-        self.assertEqual(id1.fingerprint, dandelion.util.decode_b64_bytes(id1_str.encode()))
-        self.assertEqual(id2.fingerprint, dandelion.util.decode_b64_bytes(id2_str.encode()))
-        self.assertEqual(id3.fingerprint, dandelion.util.decode_b64_bytes(id3_str.encode()))
+        self.assertEqual(id1.fingerprint, decode_b64_bytes(id1_str.encode()))
+        self.assertEqual(id2.fingerprint, decode_b64_bytes(id2_str.encode()))
+        self.assertEqual(id3.fingerprint, decode_b64_bytes(id3_str.encode()))
 
         str_ = Protocol.create_identity_id_list(tc, None)[:-1]
         self.assertEqual(str_, tc_str)
@@ -541,14 +542,14 @@ class ProtocolTest(unittest.TestCase):
         """Test parsing the identity ID list request string"""
 
         tc = b'13\x01\x07'
-        tc_str = dandelion.util.encode_b64_bytes(tc).decode()
+        tc_str = encode_b64_bytes(tc).decode()
                 
         id1 = b'42'
         id2 = b'\x01\x23\x245'
         id3 = b'\x42\x42\x42'
-        id1_str = dandelion.util.encode_b64_bytes(id1).decode()
-        id2_str = dandelion.util.encode_b64_bytes(id2).decode()
-        id3_str = dandelion.util.encode_b64_bytes(id3).decode()
+        id1_str = encode_b64_bytes(id1).decode()
+        id2_str = encode_b64_bytes(id2).decode()
+        id3_str = encode_b64_bytes(id3).decode()
 
         parsed_tc, identityidlist = Protocol.parse_identity_id_list(''.join([';'.join([tc_str, id1_str, id2_str, id3_str]), '\n']))
         self.assertEqual(parsed_tc, tc)
@@ -618,9 +619,9 @@ class ProtocolTest(unittest.TestCase):
         id1 = b'42'
         id2 = b'\x01\x23\x245'
         id3 = b'\x42\x42\x42'
-        id1_str = dandelion.util.encode_b64_bytes(id1).decode()
-        id2_str = dandelion.util.encode_b64_bytes(id2).decode()
-        id3_str = dandelion.util.encode_b64_bytes(id3).decode()
+        id1_str = encode_b64_bytes(id1).decode()
+        id2_str = encode_b64_bytes(id2).decode()
+        id3_str = encode_b64_bytes(id3).decode()
         
         self.assertTrue(Protocol.is_identity_list_request('GETIDENTITIES\n'))
         self.assertFalse(Protocol.is_identity_list_request('GETUSE_XXX_RS\n'))
@@ -651,9 +652,9 @@ class ProtocolTest(unittest.TestCase):
         id1 = b'42'
         id2 = b'\x01\x23\x245'
         id3 = b'\x42\x42\x42'
-        id1_str = dandelion.util.encode_b64_bytes(id1).decode()
-        id2_str = dandelion.util.encode_b64_bytes(id2).decode()
-        id3_str = dandelion.util.encode_b64_bytes(id3).decode()
+        id1_str = encode_b64_bytes(id1).decode()
+        id2_str = encode_b64_bytes(id2).decode()
+        id3_str = encode_b64_bytes(id3).decode()
                
         identities_ret = Protocol.parse_identity_list_request('GETIDENTITIES {0}\n'.format(';'.join([id1_str, id2_str, id3_str])))
         self.assertEquals(len(identities_ret), 3)
@@ -720,9 +721,9 @@ class ProtocolTest(unittest.TestCase):
         
         self.assertTrue(len(identities) > 0)
         self.assertEqual(identities.count(';'), 2)
-        self.assertTrue(dandelion.util.encode_b64_int(id1.rsa_key.n).decode() in identities)
-        self.assertTrue(dandelion.util.encode_b64_int(id2.rsa_key.e).decode() in identities)
-        self.assertTrue(dandelion.util.encode_b64_int(id3.dsa_key.q).decode() in identities)
+        self.assertTrue(encode_b64_int(id1.rsa_key.n).decode() in identities)
+        self.assertTrue(encode_b64_int(id2.rsa_key.e).decode() in identities)
+        self.assertTrue(encode_b64_int(id3.dsa_key.q).decode() in identities)
         
         identities = Protocol.create_identity_list([])
         self.assertEqual(identities, Protocol.TERMINATOR)

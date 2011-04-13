@@ -17,10 +17,11 @@ You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import re
-from dandelion.message import Message
-import dandelion.util
 from dandelion.identity import Identity, RSA_key, DSA_key
+from dandelion.message import Message
+from dandelion.util import encode_b64_bytes, decode_b64_bytes, encode_b64_int, \
+    decode_b64_int
+import re
 
 class ProtocolParseError(Exception):
     pass
@@ -75,7 +76,7 @@ class Protocol:
         
         return '{0}{3}{1}{3}{2}{4}'.format(cls._PROTOCOL_COOKIE, 
                                            Protocol.PROTOCOL_VERSION, 
-                                           dandelion.util.encode_b64_bytes(dbid).decode(),
+                                           encode_b64_bytes(dbid).decode(),
                                            cls._FIELD_SEPARATOR,
                                            Protocol.TERMINATOR)
 
@@ -111,7 +112,7 @@ class Protocol:
             raise ProtocolVersionError('Incompatible Protocol versions')
         
         try:
-            dbid = dandelion.util.decode_b64_bytes(dbid_str.encode())
+            dbid = decode_b64_bytes(dbid_str.encode())
         except ValueError:
             raise ProtocolParseError
         
@@ -154,7 +155,7 @@ class Protocol:
             raise TypeError
         
         return '{0} {1}{2}'.format(cls._GETMESSAGELIST, 
-                                   dandelion.util.encode_b64_bytes(time_cookie).decode(), 
+                                   encode_b64_bytes(time_cookie).decode(), 
                                    Protocol.TERMINATOR)
             
     @classmethod
@@ -178,7 +179,7 @@ class Protocol:
             raise TypeError
         
         return '{0} {1}{2}'.format(cls._GETIDENTITYLIST, 
-                                   dandelion.util.encode_b64_bytes(time_cookie).decode(), 
+                                   encode_b64_bytes(time_cookie).decode(), 
                                    Protocol.TERMINATOR)
 
         
@@ -209,7 +210,7 @@ class Protocol:
         if match.groups()[0] is None:
             return None
         
-        return dandelion.util.decode_b64_bytes(match.groups()[1].encode())
+        return decode_b64_bytes(match.groups()[1].encode())
         
     @classmethod
     def parse_identity_id_list_request(cls, identitystr):
@@ -238,7 +239,7 @@ class Protocol:
         if match.groups()[0] is None:
             return None
         
-        return dandelion.util.decode_b64_bytes(match.groups()[1].encode())
+        return decode_b64_bytes(match.groups()[1].encode())
     
     @classmethod    
     def create_message_id_list(cls, time_cookie, messages=None):
@@ -262,10 +263,10 @@ class Protocol:
         if not hasattr(messages, '__iter__'):
             raise TypeError
         
-        tc_str = dandelion.util.encode_b64_bytes(time_cookie).decode()
+        tc_str = encode_b64_bytes(time_cookie).decode()
         
         msgparts = [tc_str]
-        msgparts.extend([dandelion.util.encode_b64_bytes(msg.id).decode() for msg in messages])
+        msgparts.extend([encode_b64_bytes(msg.id).decode() for msg in messages])
         return ''.join([cls._FIELD_SEPARATOR.join(msgparts),
                         Protocol.TERMINATOR])
 
@@ -291,10 +292,10 @@ class Protocol:
         if not hasattr(identities, '__iter__'):
             raise TypeError
         
-        tc_str = dandelion.util.encode_b64_bytes(time_cookie).decode()
+        tc_str = encode_b64_bytes(time_cookie).decode()
         
         identityparts = [tc_str]
-        identityparts.extend([dandelion.util.encode_b64_bytes(identity.fingerprint).decode() for identity in identities])
+        identityparts.extend([encode_b64_bytes(identity.fingerprint).decode() for identity in identities])
         return ''.join([cls._FIELD_SEPARATOR.join(identityparts),
                         Protocol.TERMINATOR])
 
@@ -323,8 +324,8 @@ class Protocol:
         if tc is None:
             raise ProtocolParseError
         
-        return (dandelion.util.decode_b64_bytes(tc.encode()), 
-                [dandelion.util.decode_b64_bytes(m.encode()) for m in msgstr[:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)[1:]])
+        return (decode_b64_bytes(tc.encode()), 
+                [decode_b64_bytes(m.encode()) for m in msgstr[:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)[1:]])
 
     @classmethod
     def parse_identity_id_list(cls, identitystr):
@@ -350,8 +351,8 @@ class Protocol:
         if tc is None:
             raise ProtocolParseError
         
-        return (dandelion.util.decode_b64_bytes(tc.encode()), 
-                [dandelion.util.decode_b64_bytes(identityid.encode()) for identityid in identitystr[:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)[1:]])
+        return (decode_b64_bytes(tc.encode()), 
+                [decode_b64_bytes(identityid.encode()) for identityid in identitystr[:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)[1:]])
 
 
 
@@ -390,7 +391,7 @@ class Protocol:
         if len(msg_ids) == 0:
             return ''.join([cls._GETMESSAGES, Protocol.TERMINATOR])
         
-        msgid_str = cls._FIELD_SEPARATOR.join([dandelion.util.encode_b64_bytes(mid).decode() for mid in msg_ids])
+        msgid_str = cls._FIELD_SEPARATOR.join([encode_b64_bytes(mid).decode() for mid in msg_ids])
         
         return '{0} {1}{2}'.format(cls._GETMESSAGES, msgid_str, Protocol.TERMINATOR)
         
@@ -413,7 +414,7 @@ class Protocol:
 
         if len(identity_ids) == 0:
             return ''.join([cls._GETIDENTITIES, Protocol.TERMINATOR])
-        identityid_str = cls._FIELD_SEPARATOR.join([dandelion.util.encode_b64_bytes(uid).decode() for uid in identity_ids])
+        identityid_str = cls._FIELD_SEPARATOR.join([encode_b64_bytes(uid).decode() for uid in identity_ids])
         
         return '{0} {1}{2}'.format(cls._GETIDENTITIES, identityid_str, Protocol.TERMINATOR)
     
@@ -441,7 +442,7 @@ class Protocol:
             return None
         
         id_strings = msgstr[len(cls._GETMESSAGES) + 1:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)
-        return [dandelion.util.decode_b64_bytes(id.encode()) for id in id_strings]
+        return [decode_b64_bytes(id.encode()) for id in id_strings]
     
     @classmethod
     def parse_identity_list_request(cls, identitystr):
@@ -466,7 +467,7 @@ class Protocol:
             return None
         
         id_strings = identitystr[len(cls._GETIDENTITIES) + 1:-len(Protocol.TERMINATOR)].split(cls._FIELD_SEPARATOR)
-        return [dandelion.util.decode_b64_bytes(id.encode()) for id in id_strings]
+        return [decode_b64_bytes(id.encode()) for id in id_strings]
 
     
     @classmethod
@@ -592,10 +593,10 @@ class Protocol:
         sender, signature = (b'',b'') if msg.sender is None else (msg.sender, msg.signature)
 
         return cls._SUB_FIELD_SEPARATOR.join([
-                  dandelion.util.encode_b64_bytes(text).decode(),
-                  dandelion.util.encode_b64_bytes(receiver).decode(),
-                  dandelion.util.encode_b64_bytes(sender).decode(),
-                  dandelion.util.encode_b64_bytes(signature).decode()])
+                  encode_b64_bytes(text).decode(),
+                  encode_b64_bytes(receiver).decode(),
+                  encode_b64_bytes(sender).decode(),
+                  encode_b64_bytes(signature).decode()])
         
     @classmethod
     def _string2message(cls, mstr):
@@ -611,11 +612,11 @@ class Protocol:
         if (mparts[SENDER_INDEX] != b'' and mparts[SIGNATURE_INDEX] == b'') or (mparts[SENDER_INDEX] == b'' and mparts[SIGNATURE_INDEX] != b''):
             raise  ProtocolParseError
 
-        receiver = None if mparts[RECEIVER_INDEX] == b'' else dandelion.util.decode_b64_bytes(mparts[RECEIVER_INDEX].encode()) 
-        text = dandelion.util.decode_b64_bytes(mparts[TEXT_INDEX].encode())
+        receiver = None if mparts[RECEIVER_INDEX] == b'' else decode_b64_bytes(mparts[RECEIVER_INDEX].encode()) 
+        text = decode_b64_bytes(mparts[TEXT_INDEX].encode())
         text = text.decode() if receiver is None else text # Decode unless encrypted 
-        sender = None if mparts[SENDER_INDEX] == b'' else dandelion.util.decode_b64_bytes(mparts[SENDER_INDEX].encode())
-        signature = None if mparts[SIGNATURE_INDEX] == b'' else dandelion.util.decode_b64_bytes(mparts[SIGNATURE_INDEX].encode())
+        sender = None if mparts[SENDER_INDEX] == b'' else decode_b64_bytes(mparts[SENDER_INDEX].encode())
+        signature = None if mparts[SIGNATURE_INDEX] == b'' else decode_b64_bytes(mparts[SIGNATURE_INDEX].encode())
 
         return Message(text, receiver, sender, signature)
     
@@ -624,12 +625,12 @@ class Protocol:
         """Serialize a identity to a DMS string"""
 
         return cls._SUB_FIELD_SEPARATOR.join([
-                  dandelion.util.encode_b64_int(identity.rsa_key.n).decode(),
-                  dandelion.util.encode_b64_int(identity.rsa_key.e).decode(),
-                  dandelion.util.encode_b64_int(identity.dsa_key.y).decode(),
-                  dandelion.util.encode_b64_int(identity.dsa_key.g).decode(),
-                  dandelion.util.encode_b64_int(identity.dsa_key.p).decode(),
-                  dandelion.util.encode_b64_int(identity.dsa_key.q).decode()])
+                  encode_b64_int(identity.rsa_key.n).decode(),
+                  encode_b64_int(identity.rsa_key.e).decode(),
+                  encode_b64_int(identity.dsa_key.y).decode(),
+                  encode_b64_int(identity.dsa_key.g).decode(),
+                  encode_b64_int(identity.dsa_key.p).decode(),
+                  encode_b64_int(identity.dsa_key.q).decode()])
 
 
     @classmethod
@@ -643,13 +644,13 @@ class Protocol:
         if len(idparts) != 6:
             raise ProtocolParseError
 
-        rsa_key = RSA_key(dandelion.util.decode_b64_int(idparts[RSA_N_INDEX].encode()), 
-                         dandelion.util.decode_b64_int(idparts[RSA_E_INDEX].encode()))
+        rsa_key = RSA_key(decode_b64_int(idparts[RSA_N_INDEX].encode()), 
+                         decode_b64_int(idparts[RSA_E_INDEX].encode()))
                 
-        dsa_key = DSA_key(dandelion.util.decode_b64_int(idparts[DSA_Y_INDEX].encode()), 
-                         dandelion.util.decode_b64_int(idparts[DSA_G_INDEX].encode()),
-                         dandelion.util.decode_b64_int(idparts[DSA_P_INDEX].encode()),
-                         dandelion.util.decode_b64_int(idparts[DSA_Q_INDEX].encode()))
+        dsa_key = DSA_key(decode_b64_int(idparts[DSA_Y_INDEX].encode()), 
+                         decode_b64_int(idparts[DSA_G_INDEX].encode()),
+                         decode_b64_int(idparts[DSA_P_INDEX].encode()),
+                         decode_b64_int(idparts[DSA_Q_INDEX].encode()))
         
         return Identity(dsa_key, rsa_key)
 
