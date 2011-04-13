@@ -26,7 +26,7 @@ class IdentityManager:
         self._config = config
 
 
-class RSAKey:
+class RSA_key:
     """Encryption key for the RSA crypto"""
     
     def __init__(self, n, e, d=None):
@@ -63,7 +63,7 @@ class RSAKey:
         return self._d
     
     
-class DSAKey:
+class DSA_key:
     """Signing key for the DSA signature"""
     
     def __init__(self, y, g, p, q, x=None):
@@ -205,5 +205,5 @@ class PrivateIdentity(Identity):
     def generate(cls):
         """Factory class method to create a new private identity"""
         
-        return PrivateIdentity(DSAKey(int(random.random() * 255),int(random.random() * 255),int(random.random() * 255),int(random.random() * 255),int(random.random() * 255)), 
-                               RSAKey(int(random.random() * 255),int(random.random() * 255),int(random.random() * 255))) # Dummy impl.
+        return PrivateIdentity(DSA_key(int(random.random() * 255),int(random.random() * 255),int(random.random() * 255),int(random.random() * 255),int(random.random() * 255)), 
+                               RSA_key(int(random.random() * 255),int(random.random() * 255),int(random.random() * 255))) # Dummy impl.

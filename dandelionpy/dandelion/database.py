@@ -21,7 +21,7 @@ import sqlite3
 
 from dandelion.message import Message
 import dandelion.util
-from dandelion.identity import Identity, DSAKey, RSAKey
+from dandelion.identity import Identity, DSA_key, RSA_key
 
 class ContentDBException(Exception):
     pass
@@ -556,11 +556,11 @@ class SQLiteContentDB(ContentDB):
                 except AttributeError:
                     raise TypeError
                 
-            return [Identity(DSAKey(dandelion.util.decode_b64_int(id[1]), 
+            return [Identity(DSA_key(dandelion.util.decode_b64_int(id[1]), 
                                     dandelion.util.decode_b64_int(id[2]), 
                                     dandelion.util.decode_b64_int(id[3]), 
                                     dandelion.util.decode_b64_int(id[4])), 
-                             RSAKey(dandelion.util.decode_b64_int(id[5]), 
+                             RSA_key(dandelion.util.decode_b64_int(id[5]), 
                                     dandelion.util.decode_b64_int(id[6]))) for id in id_rows] 
 
     def get_identities_since(self, time_cookie=None):
@@ -595,11 +595,11 @@ class SQLiteContentDB(ContentDB):
                              WHERE new_cookies.old_cookie=? AND new_cookies.dbfp=?""", 
                              (self._encode_id(time_cookie), self._encoded_id)) 
 
-            ids = [Identity(DSAKey(dandelion.util.decode_b64_int(id[1]), 
+            ids = [Identity(DSA_key(dandelion.util.decode_b64_int(id[1]), 
                                     dandelion.util.decode_b64_int(id[2]), 
                                     dandelion.util.decode_b64_int(id[3]), 
                                     dandelion.util.decode_b64_int(id[4])), 
-                             RSAKey(dandelion.util.decode_b64_int(id[5]), 
+                             RSA_key(dandelion.util.decode_b64_int(id[5]), 
                                     dandelion.util.decode_b64_int(id[6]))) for id in c.fetchall()] 
 
             current_tc = self._get_last_time_cookie(c) 

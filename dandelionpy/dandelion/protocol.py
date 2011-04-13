@@ -20,7 +20,7 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 import re
 from dandelion.message import Message
 import dandelion.util
-from dandelion.identity import Identity, RSAKey, DSAKey
+from dandelion.identity import Identity, RSA_key, DSA_key
 
 class ProtocolParseError(Exception):
     pass
@@ -643,10 +643,10 @@ class Protocol:
         if len(idparts) != 6:
             raise ProtocolParseError
 
-        rsa_key = RSAKey(dandelion.util.decode_b64_int(idparts[RSA_N_INDEX].encode()), 
+        rsa_key = RSA_key(dandelion.util.decode_b64_int(idparts[RSA_N_INDEX].encode()), 
                          dandelion.util.decode_b64_int(idparts[RSA_E_INDEX].encode()))
                 
-        dsa_key = DSAKey(dandelion.util.decode_b64_int(idparts[DSA_Y_INDEX].encode()), 
+        dsa_key = DSA_key(dandelion.util.decode_b64_int(idparts[DSA_Y_INDEX].encode()), 
                          dandelion.util.decode_b64_int(idparts[DSA_G_INDEX].encode()),
                          dandelion.util.decode_b64_int(idparts[DSA_P_INDEX].encode()),
                          dandelion.util.decode_b64_int(idparts[DSA_Q_INDEX].encode()))
