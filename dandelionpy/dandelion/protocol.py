@@ -609,16 +609,16 @@ class Protocol:
         if len(mparts) != 4:
             raise ProtocolParseError
         
-        if (mparts[SENDER_INDEX] != b'' and mparts[SIGNATURE_INDEX] == b'') or (mparts[SENDER_INDEX] == b'' and mparts[SIGNATURE_INDEX] != b''):
+        if (mparts[SENDER_INDEX] != '' and mparts[SIGNATURE_INDEX] == '') or (mparts[SENDER_INDEX] == '' and mparts[SIGNATURE_INDEX] != ''):
             raise  ProtocolParseError
 
-        receiver = None if mparts[RECEIVER_INDEX] == b'' else decode_b64_bytes(mparts[RECEIVER_INDEX].encode()) 
+        receiver = None if mparts[RECEIVER_INDEX] == '' else decode_b64_bytes(mparts[RECEIVER_INDEX].encode()) 
         text = decode_b64_bytes(mparts[TEXT_INDEX].encode())
-        text = text.decode() if receiver is None else text # Decode unless encrypted 
-        sender = None if mparts[SENDER_INDEX] == b'' else decode_b64_bytes(mparts[SENDER_INDEX].encode())
-        signature = None if mparts[SIGNATURE_INDEX] == b'' else decode_b64_bytes(mparts[SIGNATURE_INDEX].encode())
+        textstr = text.decode() if receiver is None else text # Decode unless encrypted
+        sender = None if mparts[SENDER_INDEX] == '' else decode_b64_bytes(mparts[SENDER_INDEX].encode())
+        signature = None if mparts[SIGNATURE_INDEX] == '' else decode_b64_bytes(mparts[SIGNATURE_INDEX].encode())
 
-        return Message(text, receiver, sender, signature)
+        return Message(textstr, receiver, sender, signature)
     
     @classmethod
     def _identity2string(cls, identity):
