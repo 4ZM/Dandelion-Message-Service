@@ -17,14 +17,13 @@ You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import dandelion.identity
 import unittest
-
-from dandelion.identity import PrivateIdentity
 
 class UtilTest(unittest.TestCase):
     
     def test_creation(self):
-        id = PrivateIdentity.generate()
+        id = dandelion.identity.generate()
         self.assertIsNotNone(id.fingerprint)
         
     

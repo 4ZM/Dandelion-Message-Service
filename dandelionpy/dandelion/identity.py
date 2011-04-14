@@ -201,9 +201,9 @@ class PrivateIdentity(Identity):
         """
         return ciphertext[::-1].decode() # Dummy impl.
 
-    @classmethod
-    def generate(cls):
-        """Factory class method to create a new private identity"""
-        
-        return PrivateIdentity(DSA_key(int(random.random() * 255),int(random.random() * 255),int(random.random() * 255),int(random.random() * 255),int(random.random() * 255)), 
-                               RSA_key(int(random.random() * 255),int(random.random() * 255),int(random.random() * 255))) # Dummy impl.
+
+def generate():
+    """Factory method to create a new private identity"""
+    
+    return PrivateIdentity(DSA_key(int(random.random() * 255),int(random.random() * 255),int(random.random() * 255),int(random.random() * 255),int(random.random() * 255)), 
+                           RSA_key(int(random.random() * 255),int(random.random() * 255),int(random.random() * 255))) # Dummy impl.

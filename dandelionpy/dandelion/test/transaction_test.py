@@ -216,7 +216,7 @@ class MessageTest(unittest.TestCase):
         """Tests the server transaction protocol and logic""" 
     
         db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
-        db.add_identities([PrivateIdentity.generate(), PrivateIdentity.generate()])
+        db.add_identities([dandelion.identity.generate(), dandelion.identity.generate()])
         tc = db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
     
         with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
@@ -261,7 +261,7 @@ class MessageTest(unittest.TestCase):
         srv_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
 
         self.assertEqual(client_db.message_count, 0)
-        srv_db.add_identities([PrivateIdentity.generate(), PrivateIdentity.generate()])
+        srv_db.add_identities([dandelion.identity.generate(), dandelion.identity.generate()])
         tc = srv_db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
 
         self.assertEqual(client_db.message_count, 0)
@@ -371,8 +371,8 @@ class MessageTest(unittest.TestCase):
         client_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
         server_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
         
-        id1 = PrivateIdentity.generate()
-        id2 = PrivateIdentity.generate()
+        id1 = dandelion.identity.generate()
+        id2 = dandelion.identity.generate()
         server_db.add_identities([id1, id2])
         server_db.add_messages([Message('fubar'), dandelion.message.create('foo', id1, id2), Message('bar')])
     
@@ -443,8 +443,8 @@ class MessageTest(unittest.TestCase):
         client_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
         server_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
         
-        id1 = PrivateIdentity.generate()
-        id2 = PrivateIdentity.generate()
+        id1 = dandelion.identity.generate()
+        id2 = dandelion.identity.generate()
         
         client_db.add_identities([id1])
         server_db.add_identities([id1, id2])

@@ -132,7 +132,7 @@ class UI:
     def say(self, msg, sign=None, receiver_name=None):
         
         if receiver_name:
-            receiver_ = PrivateIdentity.generate() # Should look up id of receiver
+            receiver_ = dandelion.identity.generate() # Should look up id of receiver
         else:
             receiver_ = None
         

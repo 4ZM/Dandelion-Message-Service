@@ -166,8 +166,8 @@ class ProtocolTest(unittest.TestCase):
     def test_create_message_id_list(self):
         """Test message ID list request creation"""
 
-        id1 = PrivateIdentity.generate()
-        id2 = PrivateIdentity.generate()
+        id1 = dandelion.identity.generate()
+        id2 = dandelion.identity.generate()
         msg1 = dandelion.message.create('M1', id1, id2)
         msg2 = Message('M2')
         msg3 = Message('M3')
@@ -261,8 +261,8 @@ class ProtocolTest(unittest.TestCase):
     def test_roundtrip_message_id_list(self):
         """Test message ID list response creation / parsing by a round trip"""
         
-        id1 = PrivateIdentity.generate()
-        id2 = PrivateIdentity.generate()
+        id1 = dandelion.identity.generate()
+        id2 = dandelion.identity.generate()
         msg1 = Message('M1')
         msg2 = dandelion.message.create('M2', id1, id2)
         msg3 = dandelion.message.create('M3', id1)
@@ -376,8 +376,8 @@ class ProtocolTest(unittest.TestCase):
     def test_create_message_list(self):
         """Test message list creation"""
         
-        id1 = PrivateIdentity.generate()
-        id2 = PrivateIdentity.generate()
+        id1 = dandelion.identity.generate()
+        id2 = dandelion.identity.generate()
         
         m1 = Message('FUBAR')
         m2 = Message('f00')
@@ -417,8 +417,8 @@ class ProtocolTest(unittest.TestCase):
     def test_message_list_roundtrip(self):
         """Test message list creation / parsing by a round trip"""
 
-        id1 = PrivateIdentity.generate()
-        id2 = PrivateIdentity.generate()
+        id1 = dandelion.identity.generate()
+        id2 = dandelion.identity.generate()
         m1 = dandelion.message.create('M1')
         m2 = dandelion.message.create('M2', sender=id1)
         m3 = dandelion.message.create('M3', receiver=id1)
@@ -508,9 +508,9 @@ class ProtocolTest(unittest.TestCase):
     def test_create_identity_id_list(self):
         """Test identity ID list request creation"""
 
-        id1 = PrivateIdentity.generate()
-        id2 = PrivateIdentity.generate()
-        id3 = PrivateIdentity.generate()
+        id1 = dandelion.identity.generate()
+        id2 = dandelion.identity.generate()
+        id3 = dandelion.identity.generate()
         
         tc = b'\x01\x03\x03\x07'
         tc_str_ok = encode_b64_bytes(tc).decode()
@@ -602,9 +602,9 @@ class ProtocolTest(unittest.TestCase):
     def test_roundtrip_identity_id_list(self):
         """Test identity ID list response creation / parsing by a round trip"""
         
-        id1 = PrivateIdentity.generate()
-        id2 = PrivateIdentity.generate()
-        id3 = PrivateIdentity.generate()
+        id1 = dandelion.identity.generate()
+        id2 = dandelion.identity.generate()
+        id3 = dandelion.identity.generate()
         
         tc, identityids = dandelion.protocol.parse_identity_id_list(dandelion.protocol.create_identity_id_list(b'24', [id1, id2, id3]))
         self.assertEqual(tc, b'24')
@@ -713,9 +713,9 @@ class ProtocolTest(unittest.TestCase):
     def test_create_identity_list(self):
         """Test identity list creation"""
         
-        id1 = PrivateIdentity.generate()
-        id2 = PrivateIdentity.generate()
-        id3 = PrivateIdentity.generate()
+        id1 = dandelion.identity.generate()
+        id2 = dandelion.identity.generate()
+        id3 = dandelion.identity.generate()
         
         identities = dandelion.protocol.create_identity_list([id1, id2, id3])
         
@@ -747,9 +747,9 @@ class ProtocolTest(unittest.TestCase):
     def test_identity_list_roundtrip(self):
         """Test identity list creation / parsing by a round trip"""
 
-        id1 = PrivateIdentity.generate()
-        id2 = PrivateIdentity.generate()
-        id3 = PrivateIdentity.generate()
+        id1 = dandelion.identity.generate()
+        id2 = dandelion.identity.generate()
+        id3 = dandelion.identity.generate()
         
         identitiestr = dandelion.protocol.create_identity_list([id1, id2, id3])
         identities = dandelion.protocol.parse_identity_list(identitiestr)

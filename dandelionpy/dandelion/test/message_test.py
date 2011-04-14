@@ -17,12 +17,11 @@ You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from dandelion.message import Message
 import binascii
+import dandelion.identity
 import unittest
 
-from dandelion.identity import PrivateIdentity
-from dandelion.message import Message
-import dandelion
 
 class MessageTest(unittest.TestCase):
     """Unit test suite for the DMS Message class"""
@@ -55,7 +54,7 @@ class MessageTest(unittest.TestCase):
         """Testing message construction when specifying a sender"""
         
         txt = "text"
-        id = PrivateIdentity.generate()
+        id = dandelion.identity.generate()
         m = Message(txt, sender_fp=id.fingerprint, signature=id.sign(txt))
         self.assertEqual(m.text, txt)
         self.assertFalse(m.has_receiver)
@@ -68,7 +67,7 @@ class MessageTest(unittest.TestCase):
         """Testing message construction when specifying a receiver"""
 
         txt = "plain_text"
-        id = PrivateIdentity.generate()
+        id = dandelion.identity.generate()
         m = Message(id.encrypt(txt), receiver_fp=id.fingerprint)
         self.assertNotEqual(m.text, txt)
         self.assertTrue(m.has_receiver)
@@ -81,8 +80,8 @@ class MessageTest(unittest.TestCase):
         """Testing message construction when specifying a sender and a receiver"""
         
         txt = "plain_text"
-        id_sender = PrivateIdentity.generate()
-        id_receiver = PrivateIdentity.generate()
+        id_sender = dandelion.identity.generate()
+        id_receiver = dandelion.identity.generate()
         m = Message(id_receiver.encrypt(txt), receiver_fp=id_receiver.fingerprint, 
                     sender_fp=id_sender.fingerprint, signature=id_receiver.sign(txt))
         self.assertNotEqual(m.text, txt)
@@ -94,7 +93,7 @@ class MessageTest(unittest.TestCase):
         
     def test_construction_with_factory(self):
         txt = "plain_text"
-        id = PrivateIdentity.generate()
+        id = dandelion.identity.generate()
         m = dandelion.message.create(txt, id)
         self.assertEqual(m.text, txt)
         self.assertFalse(m.has_receiver)
