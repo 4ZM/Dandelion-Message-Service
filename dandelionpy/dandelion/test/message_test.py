@@ -95,7 +95,7 @@ class MessageTest(unittest.TestCase):
     def test_construction_with_factory(self):
         txt = "plain_text"
         id = PrivateIdentity.generate()
-        m = Message.create(txt, id)
+        m = dandelion.message.create(txt, id)
         self.assertEqual(m.text, txt)
         self.assertFalse(m.has_receiver)
         self.assertTrue(m.has_sender)

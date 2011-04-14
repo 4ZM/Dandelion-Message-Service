@@ -19,6 +19,7 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 
 import unittest
 import tempfile
+import dandelion.message
 from dandelion.message import Message
 from dandelion.database import ContentDB, SQLiteContentDB, ContentDBException
 from dandelion.identity import PrivateIdentity
@@ -135,7 +136,7 @@ class DatabaseTest(unittest.TestCase):
         # New message, new cookie
         id1 = PrivateIdentity.generate()
         id2 = PrivateIdentity.generate()
-        second_msg = Message.create('Another Single Message', id1, id2)
+        second_msg = dandelion.message.create('Another Single Message', id1, id2)
         second_cookie = db.add_messages([second_msg])
         self.assertNotEqual(second_cookie, None)
         self.assertNotEqual(second_cookie, first_cookie)
@@ -180,9 +181,9 @@ class DatabaseTest(unittest.TestCase):
         id1 = PrivateIdentity.generate()
         id2 = PrivateIdentity.generate()
         first_msg_list = [Message('A'), Message('B'), 
-                          Message.create("W Sender", sender=id1), 
-                          Message.create("W Receiver", receiver=id2), 
-                          Message.create("W Sender And Receiver", sender=id1, receiver=id2)]
+                          dandelion.message.create("W Sender", sender=id1), 
+                          dandelion.message.create("W Receiver", receiver=id2), 
+                          dandelion.message.create("W Sender And Receiver", sender=id1, receiver=id2)]
 
         # Try to add junk
         self.assertRaises(ValueError, db.add_messages, None)
@@ -238,7 +239,7 @@ class DatabaseTest(unittest.TestCase):
         id2 = PrivateIdentity.generate()
         m1 = Message('M1')
         m2 = Message('M2')
-        m3 = Message.create('M3', id1, id2)
+        m3 = dandelion.message.create('M3', id1, id2)
         
         db.add_identities([id1])
         db.add_messages([m1, m2, m3])

@@ -115,22 +115,6 @@ class Message:
         """Returns true if the message has a receiver"""
         return self._receiver_fp is not None
 
-    @classmethod         
-    def create(cls, text, sender=None, receiver=None):
-        """Factory method for Messages"""
-        
-        if sender is None and receiver is None:
-            return Message(text)
-        elif sender is None and receiver is not None:
-            return Message(receiver.encrypt(text), receiver_fp=receiver.fingerprint)
-        elif sender is not None and receiver is None:
-            sig = sender.sign(text.encode())
-            return Message(text, sender_fp=sender.fingerprint, signature=sig)
-        else: # sender and receiver
-            text = receiver.encrypt(text)
-            sig = sender.sign(text)
-            return Message(text, receiver_fp=receiver.fingerprint, sender_fp=sender.fingerprint, signature=sig)
-            
     def __str__(self):
         """String conversion is Base64 encoded message ID"""
         return dandelion.util.encode_b64_bytes(self.id).decode()
@@ -140,3 +124,19 @@ class Message:
     
     def __ne__(self, other):
         return not self.__eq__(other)
+             
+def create(text, sender=None, receiver=None):
+    """Factory method for Messages"""
+    
+    if sender is None and receiver is None:
+        return Message(text)
+    elif sender is None and receiver is not None:
+        return Message(receiver.encrypt(text), receiver_fp=receiver.fingerprint)
+    elif sender is not None and receiver is None:
+        sig = sender.sign(text.encode())
+        return Message(text, sender_fp=sender.fingerprint, signature=sig)
+    else: # sender and receiver
+        text = receiver.encrypt(text)
+        sig = sender.sign(text)
+        return Message(text, receiver_fp=receiver.fingerprint, sender_fp=sender.fingerprint, signature=sig)
+        

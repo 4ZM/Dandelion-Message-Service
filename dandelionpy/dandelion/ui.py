@@ -137,16 +137,16 @@ class UI:
             receiver_ = None
         
         if sign and receiver_:
-            m = Message.create(msg, sender=self._identity, receiver=receiver_)
+            m = dandelion.message.create(msg, sender=self._identity, receiver=receiver_)
             self._db.add_messages([m])
         elif sign:
-            m = Message.create(msg, sender=self._identity)
+            m = dandelion.message.create(msg, sender=self._identity)
             self._db.add_messages([m])
         elif receiver_:
-            m = Message.create(msg, receiver=receiver_)
+            m = dandelion.message.create(msg, receiver=receiver_)
             self._db.add_messages([m])
         else:
-            m = Message.create(msg)
+            m = dandelion.message.create(msg)
             self._db.add_messages([m])
 
     def show_messages(self):

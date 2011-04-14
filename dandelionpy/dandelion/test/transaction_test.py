@@ -374,7 +374,7 @@ class MessageTest(unittest.TestCase):
         id1 = PrivateIdentity.generate()
         id2 = PrivateIdentity.generate()
         server_db.add_identities([id1, id2])
-        server_db.add_messages([Message('fubar'), Message.create('foo', id1, id2), Message('bar')])
+        server_db.add_messages([Message('fubar'), dandelion.message.create('foo', id1, id2), Message('bar')])
     
         self.assertEqual(client_db.message_count, 0)
         self.assertEqual(client_db.identity_count, 0)
