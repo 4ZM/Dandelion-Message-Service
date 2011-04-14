@@ -21,7 +21,7 @@ from dandelion.database import SQLiteContentDB
 from dandelion.message import Message
 from dandelion.network import SocketTransaction, ServerTransaction, \
     ClientTransaction
-from dandelion.protocol import Protocol
+import dandelion.protocol
 import socket
 import tempfile
 import threading
@@ -229,27 +229,27 @@ class MessageTest(unittest.TestCase):
 
             """Check greeting from server"""
             rcv = test_client._read()
-            self.assertEqual(rcv, Protocol.create_greeting_message(db.id).encode())
+            self.assertEqual(rcv, dandelion.protocol.create_greeting_message(db.id).encode())
             
             """Check response to mdgid list req"""
-            test_client._write(Protocol.create_message_id_list_request(tc).encode())
+            test_client._write(dandelion.protocol.create_message_id_list_request(tc).encode())
             rcv = test_client._read()
-            self.assertEqual(rcv, Protocol.create_message_id_list(tc, None).encode())
+            self.assertEqual(rcv, dandelion.protocol.create_message_id_list(tc, None).encode())
 
             """Check response to identityid list req"""
-            test_client._write(Protocol.create_identity_id_list_request(tc).encode())
+            test_client._write(dandelion.protocol.create_identity_id_list_request(tc).encode())
             rcv = test_client._read()
-            self.assertEqual(rcv, Protocol.create_identity_id_list(tc, None).encode())
+            self.assertEqual(rcv, dandelion.protocol.create_identity_id_list(tc, None).encode())
 
             """Check response to mdg req"""
-            test_client._write(Protocol.create_message_list_request([msg.id for msg in db.get_messages()]).encode())
+            test_client._write(dandelion.protocol.create_message_list_request([msg.id for msg in db.get_messages()]).encode())
             rcv = test_client._read()
-            self.assertEqual(rcv, Protocol.create_message_list(db.get_messages()).encode())
+            self.assertEqual(rcv, dandelion.protocol.create_message_list(db.get_messages()).encode())
 
             """Check response to identity req"""
-            test_client._write(Protocol.create_identity_list_request([id.fingerprint for id in db.get_identities()]).encode())
+            test_client._write(dandelion.protocol.create_identity_list_request([id.fingerprint for id in db.get_identities()]).encode())
             rcv = test_client._read()
-            self.assertEqual(rcv, Protocol.create_identity_list(db.get_identities()).encode())
+            self.assertEqual(rcv, dandelion.protocol.create_identity_list(db.get_identities()).encode())
 
             """Wait for server (will time out if no requests)"""
             thread.join(2*TIMEOUT)
@@ -279,36 +279,36 @@ class MessageTest(unittest.TestCase):
             thread.start()
             
             """Send a greeting (should be req. by client)"""
-            srv_sock._write(Protocol.create_greeting_message(srv_db.id).encode())
+            srv_sock._write(dandelion.protocol.create_greeting_message(srv_db.id).encode())
             
             """Reading msg id list request"""
             rcv = srv_sock._read()
-            self.assertEqual(rcv, Protocol.create_message_id_list_request().encode())
+            self.assertEqual(rcv, dandelion.protocol.create_message_id_list_request().encode())
 
             """Sending the msg id list"""
-            srv_sock._write(Protocol.create_message_id_list(tc, srv_db.get_messages()).encode())
+            srv_sock._write(dandelion.protocol.create_message_id_list(tc, srv_db.get_messages()).encode())
 
             """Reading msg list request"""
             rcv = srv_sock._read()
-            self.assertEqual(rcv, Protocol.create_message_list_request([msg.id for msg in srv_db.get_messages()]).encode())
+            self.assertEqual(rcv, dandelion.protocol.create_message_list_request([msg.id for msg in srv_db.get_messages()]).encode())
 
             """Sending the msg id list"""
-            srv_sock._write(Protocol.create_message_list(srv_db.get_messages()).encode())
+            srv_sock._write(dandelion.protocol.create_message_list(srv_db.get_messages()).encode())
 
 
             """Reading identity id list request"""
             rcv = srv_sock._read()
-            self.assertEqual(rcv, Protocol.create_identity_id_list_request().encode())
+            self.assertEqual(rcv, dandelion.protocol.create_identity_id_list_request().encode())
 
             """Sending the identity id list"""
-            srv_sock._write(Protocol.create_identity_id_list(tc, srv_db.get_identities()).encode())
+            srv_sock._write(dandelion.protocol.create_identity_id_list(tc, srv_db.get_identities()).encode())
 
             """Reading identity list request"""
             rcv = srv_sock._read()
-            self.assertEqual(rcv, Protocol.create_identity_list_request([id.fingerprint for id in srv_db.get_identities()]).encode())
+            self.assertEqual(rcv, dandelion.protocol.create_identity_list_request([id.fingerprint for id in srv_db.get_identities()]).encode())
 
             """Sending the msg id list"""
-            srv_sock._write(Protocol.create_identity_list(srv_db.get_identities()).encode())
+            srv_sock._write(dandelion.protocol.create_identity_list(srv_db.get_identities()).encode())
             
             """Wait for client to hang up"""
             thread.join(2*TIMEOUT)
@@ -333,7 +333,7 @@ class MessageTest(unittest.TestCase):
 
             """Check greeting from server"""
             rcv = test_client._read()
-            self.assertEqual(rcv, Protocol.create_greeting_message(db.id).encode())
+            self.assertEqual(rcv, dandelion.protocol.create_greeting_message(db.id).encode())
             
             """Check response to mdgid list req"""
             test_client._write(b'NON PROTOCOL MESSAGE\n')

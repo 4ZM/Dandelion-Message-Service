@@ -21,7 +21,8 @@ import threading
 import socket
 import socketserver
 
-from dandelion.protocol import Protocol, ProtocolParseError
+import dandelion.protocol
+from dandelion.protocol import ProtocolParseError
 from dandelion.service import Service
     
     
@@ -122,7 +123,7 @@ class ServerTransaction(SocketTransaction):
         """Exception for internal signaling that the transaction should end.""" 
      
     def __init__(self, sock, db, buff_size=1024):
-        super().__init__(sock, Protocol.TERMINATOR.encode(), buff_size)
+        super().__init__(sock, dandelion.protocol.TERMINATOR.encode(), buff_size)
         self._db = db
      
     def process(self):
@@ -134,7 +135,7 @@ class ServerTransaction(SocketTransaction):
         #print("SERVER TRANSACTION: Starting server transaction")
         
         """Write greeting"""
-        self._write(Protocol.create_greeting_message(self._db.id).encode())
+        self._write(dandelion.protocol.create_greeting_message(self._db.id).encode())
 
         while True: # Serve client as long as it is active 
             try:
@@ -159,25 +160,25 @@ class ServerTransaction(SocketTransaction):
             
             #print("SERVER Read data: ", data)
             
-            if Protocol.is_message_id_list_request(data):
-                tc = Protocol.parse_message_id_list_request(data)
+            if dandelion.protocol.is_message_id_list_request(data):
+                tc = dandelion.protocol.parse_message_id_list_request(data)
                 tc, msgs = self._db.get_messages_since(tc)
-                response_str = Protocol.create_message_id_list(tc, msgs)
+                response_str = dandelion.protocol.create_message_id_list(tc, msgs)
                 self._write(response_str.encode()) 
-            elif Protocol.is_message_list_request(data):
-                msgids = Protocol.parse_message_list_request(data)
+            elif dandelion.protocol.is_message_list_request(data):
+                msgids = dandelion.protocol.parse_message_list_request(data)
                 msgs = self._db.get_messages(msgids)
-                response_str = Protocol.create_message_list(msgs)
+                response_str = dandelion.protocol.create_message_list(msgs)
                 self._write(response_str.encode())
-            elif Protocol.is_identity_id_list_request(data):
-                tc = Protocol.parse_identity_id_list_request(data)
+            elif dandelion.protocol.is_identity_id_list_request(data):
+                tc = dandelion.protocol.parse_identity_id_list_request(data)
                 tc, ids = self._db.get_identities_since(tc)
-                response_str = Protocol.create_identity_id_list(tc, ids)
+                response_str = dandelion.protocol.create_identity_id_list(tc, ids)
                 self._write(response_str.encode()) 
-            elif Protocol.is_identity_list_request(data):
-                identities = Protocol.parse_identity_list_request(data)
+            elif dandelion.protocol.is_identity_list_request(data):
+                identities = dandelion.protocol.parse_identity_list_request(data)
                 ids = self._db.get_identities(identities)
-                response_str = Protocol.create_identity_list(ids)
+                response_str = dandelion.protocol.create_identity_list(ids)
                 self._write(response_str.encode())
             else:
                 raise ProtocolParseError
@@ -294,7 +295,7 @@ class ClientTransaction(SocketTransaction):
     """The client communication transaction logic for the dandelion communication protocol."""
 
     def __init__(self, sock, db, buff_size=1024):
-        super().__init__(sock, Protocol.TERMINATOR.encode(), buff_size)
+        super().__init__(sock, dandelion.protocol.TERMINATOR.encode(), buff_size)
         self._db = db
      
     def process(self):
@@ -302,35 +303,35 @@ class ClientTransaction(SocketTransaction):
         
         try:
             """Read greeting from server"""
-            dbid = Protocol.parse_greeting_message(self._read().decode())
+            dbid = dandelion.protocol.parse_greeting_message(self._read().decode())
 
             time_cookie = self._db.get_last_time_cookie(dbid)
             
             """Request and read message id's"""
-            self._write(Protocol.create_message_id_list_request(time_cookie).encode())
-            _, msgids = Protocol.parse_message_id_list(self._read().decode())
+            self._write(dandelion.protocol.create_message_id_list_request(time_cookie).encode())
+            _, msgids = dandelion.protocol.parse_message_id_list(self._read().decode())
             
             req_msgids = [mid for mid in msgids if not self._db.contains_message(mid)]
 
             if len(req_msgids) > 0: # Anything to fetch?
                 """Request and read messages"""        
-                self._write(Protocol.create_message_list_request(req_msgids).encode())
-                msgs = Protocol.parse_message_list(self._read().decode())
+                self._write(dandelion.protocol.create_message_list_request(req_msgids).encode())
+                msgs = dandelion.protocol.parse_message_list(self._read().decode())
     
                 """Store the new messages"""
                 self._db.add_messages(msgs)
 
             """Request and read user id's"""
-            self._write(Protocol.create_identity_id_list_request(time_cookie).encode())
-            _, identityids = Protocol.parse_identity_id_list(self._read().decode())
+            self._write(dandelion.protocol.create_identity_id_list_request(time_cookie).encode())
+            _, identityids = dandelion.protocol.parse_identity_id_list(self._read().decode())
 
             req_ids = [id for id in identityids if not self._db.contains_identity(id)]
             
             if len(req_ids) > 0: # Anything to fetch?
 
                 """Request and read identities"""        
-                self._write(Protocol.create_identity_list_request(req_ids).encode())
-                ids = Protocol.parse_identity_list(self._read().decode())
+                self._write(dandelion.protocol.create_identity_list_request(req_ids).encode())
+                ids = dandelion.protocol.parse_identity_list(self._read().decode())
     
                 """Store the new identities"""
                 self._db.add_identities(ids)
