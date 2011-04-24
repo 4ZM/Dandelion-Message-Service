@@ -1,20 +1,20 @@
 """
 Copyright (c) 2011 Anders Sundman <anders@4zm.org>
 
-This file is part of dandelionpy
+This file is part of Dandelion Messaging System.
 
-dandelionpy is free software: you can redistribute it and/or modify
+Dandelion is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-dandelionpy is distributed in the hope that it will be useful,
+Dandelion is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
+along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 #from config import ConfigManager 
@@ -34,21 +34,21 @@ class DandelionApp:
                               self._config_manager.local_port, 
                               self._config_manager.server,  #info_dict
                               self._config_manager.content_db) 
-        self._server.start()
     
     def start_content_synchronizer(self): 
         self._synchronizer = Synchronizer(self._config_manager.local_address,
                                           self._config_manager.local_port,
                                           self._config_manager.type,
                                           self._config_manager.content_db)
-        self._synchronizer.start()
-    
+
     def run_ui(self): 
         
         self._ui = UI(self._config_manager.ui,  #dict 
                       self._config_manager.content_db,
+                      self._config_manager.identity,
                       self._server, 
                       self._synchronizer)
+        
         self._ui.run()
     
     def exit(self):
@@ -56,15 +56,16 @@ class DandelionApp:
         self._server.stop()
 
 
-if __name__ == '__main__':
-    
-    logging.basicConfig( level = logging.DEBUG )
+def run():
     app = DandelionApp('dandelion.conf')
-    print('APP: Starting Server')
-    app.start_server()
-    print('APP: Starting Synchronizer')
-    app.start_content_synchronizer()
-    print('APP: Starting UI')
+    #print('APP: Starting Server')
+    #app.start_server()
+    #print('APP: Starting Synchronizer')
+    #app.start_content_synchronizer()
+    #print('APP: Starting UI')
     app.run_ui()
-    print('APP: Exiting')
+    #print('APP: Exiting')
     app.exit()
+
+if __name__ == '__main__':
+    run()

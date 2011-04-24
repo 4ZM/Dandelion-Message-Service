@@ -1,20 +1,20 @@
 """
 Copyright (c) 2011 Anders Sundman <anders@4zm.org>
 
-This file is part of dandelionpy
+This file is part of Dandelion Messaging System.
 
-dandelionpy is free software: you can redistribute it and/or modify
+Dandelion is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-dandelionpy is distributed in the hope that it will be useful,
+Dandelion is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
+along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from threading import Thread
@@ -32,6 +32,9 @@ class Synchronizer(Service):
         self._port = port
         self._type = type
         self._db = db
+        self._running = False
+        self._stop_requested = True
+        self._thread = None
         self._discoverer = Discoverer(self._type)
         
     def start(self):
@@ -47,10 +50,11 @@ class Synchronizer(Service):
         
         self._stop_requested = True
         #print('SYNCHRONIZER: Stopping')
-        self._thread.join(0.1)
-        if self._thread.is_alive():
-            raise Exception # Timeout
-            
+        if self._thread is not None:
+            self._thread.join(0.1)
+            if self._thread.is_alive():
+                raise Exception # Timeout
+                
         self._running = False
         
     
@@ -63,13 +67,17 @@ class Synchronizer(Service):
     def status(self):
         """A string with information about the service"""
         print(''.join(['Synchronizer status: Running: ', str(self._running)]))
-        
     
     @property 
     def running(self):
         """Returns True if the service is running, False otherwise"""
         return self._running
         
+    def sync(self, host, port):
+        """Perform a synchronization with a specific node"""
+        with Client(host, port, self._db) as client:
+            client.execute_transaction()
+
     def _sync_loop(self):
         #print('SYNCHRONIZER: Running')
 
@@ -88,9 +96,11 @@ class Synchronizer(Service):
             host = "localhost"
             port = 1337
             
-            with Client(host, port, self._db) as client:
-                client.execute_transaction()
-            
+            try: 
+                self.sync(host, port)
+            except:
+                continue
+                
             t1 = time.time()
     
     def start(self):

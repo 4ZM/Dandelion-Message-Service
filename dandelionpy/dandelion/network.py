@@ -1,28 +1,28 @@
 """
 Copyright (c) 2011 Anders Sundman <anders@4zm.org>
 
-This file is part of dandelionpy
+This file is part of Dandelion Messaging System.
 
-dandelionpy is free software: you can redistribute it and/or modify
+Dandelion is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-dandelionpy is distributed in the hope that it will be useful,
+Dandelion is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
+along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import threading
 import socket
 import socketserver
 
-from dandelion.protocol import Protocol, ProtocolParseError
-from dandelion.database import ContentDB
+import dandelion.protocol
+from dandelion.protocol import ProtocolParseError
 from dandelion.service import Service
 from dandelion.zservice import ZeroconfService
     
@@ -77,6 +77,9 @@ class SocketTransaction(Transaction):
             raise ValueError        
         
         self._sock = sock
+        self._sock.settimeout(10.0)
+        #self._sock.setblocking(True)
+        
         self._terminator = terminator
         self._buff_size = buff_size
     
@@ -92,7 +95,7 @@ class SocketTransaction(Transaction):
 
         while True:
             data = self._sock.recv(self._buff_size)
-#            print("SOCKTRANSACTION: read chunk: ", data)
+            #print("SOCKTRANSACTION: read chunk: ", data)
             
             if len(data) == 0:
                 break
@@ -103,7 +106,7 @@ class SocketTransaction(Transaction):
             
             total_data.extend(data)
 
-#        print("SOCKTRANSACTION: read: ", total_data)
+        #print("SOCKTRANSACTION: read: ", total_data)
         return total_data
     
     def _write(self, data):
@@ -120,7 +123,7 @@ class ServerTransaction(SocketTransaction):
         """Exception for internal signaling that the transaction should end.""" 
      
     def __init__(self, sock, db, buff_size=1024):
-        super().__init__(sock, Protocol.TERMINATOR.encode(), buff_size)
+        super().__init__(sock, dandelion.protocol.TERMINATOR.encode(), buff_size)
         self._db = db
      
     def process(self):
@@ -129,10 +132,10 @@ class ServerTransaction(SocketTransaction):
         Starts by sending a greeting. Will then service the connected client 
         repeatedly until it disconnects or the server times out."""
          
-#        print("SERVER TRANSACTION: Starting server transaction")
+        #print("SERVER TRANSACTION: Starting server transaction")
         
         """Write greeting"""
-        self._write(Protocol.create_greeting_message(self._db.id).encode())
+        self._write(dandelion.protocol.create_greeting_message(self._db.id).encode())
 
         while True: # Serve client as long as it is active 
             try:
@@ -143,10 +146,10 @@ class ServerTransaction(SocketTransaction):
             try:
                 self._process_data(bdata)
             except ServerTransaction._AbortTransactionException:
-#                print("SERVER TRANSACTION: Ending server transaction A")
+                #print("SERVER TRANSACTION: Ending server transaction A")
                 return
             
-#        print("SERVER TRANSACTION: Ending server transaction")
+        #print("SERVER TRANSACTION: Ending server transaction")
 
 
     def _process_data(self, bdata):
@@ -154,20 +157,29 @@ class ServerTransaction(SocketTransaction):
          
         try:
             data = bdata.decode()
-
-            if Protocol.is_message_id_list_request(data):
-                
-                tc = Protocol.parse_message_id_list_request(data)
-                tc, msgs = self._db.messages_since(tc)
-                response_str = Protocol.create_message_id_list(tc, msgs)
+            
+            #print("SERVER Read data: ", data)
+            
+            if dandelion.protocol.is_message_id_list_request(data):
+                tc = dandelion.protocol.parse_message_id_list_request(data)
+                tc, msgs = self._db.get_messages_since(tc)
+                response_str = dandelion.protocol.create_message_id_list(tc, msgs)
                 self._write(response_str.encode()) 
-
-            elif Protocol.is_message_list_request(data):
-                msgids = Protocol.parse_message_list_request(data)
+            elif dandelion.protocol.is_message_list_request(data):
+                msgids = dandelion.protocol.parse_message_list_request(data)
                 msgs = self._db.get_messages(msgids)
-                response_str = Protocol.create_message_list(msgs)
+                response_str = dandelion.protocol.create_message_list(msgs)
                 self._write(response_str.encode())
-
+            elif dandelion.protocol.is_identity_id_list_request(data):
+                tc = dandelion.protocol.parse_identity_id_list_request(data)
+                tc, ids = self._db.get_identities_since(tc)
+                response_str = dandelion.protocol.create_identity_id_list(tc, ids)
+                self._write(response_str.encode()) 
+            elif dandelion.protocol.is_identity_list_request(data):
+                identities = dandelion.protocol.parse_identity_list_request(data)
+                ids = self._db.get_identities(identities)
+                response_str = dandelion.protocol.create_identity_list(ids)
+                self._write(response_str.encode())
             else:
                 raise ProtocolParseError
         
@@ -177,21 +189,25 @@ class ServerTransaction(SocketTransaction):
 
 class Server(Service):
     """
-    def __init__(self, config, db):
+    def __init__(self, config, db, id):
         self._ip = config.ip
         self._port = config.port
         self._db = db
+        self._identity = id
         self._running = False
+        self._server = None
     """    
-    def __init__(self, ip, port, info_dict, db):
+    def __init__(self, ip, port, info_dict, db, id):
         self._ip = ip
         self._port = int(port)
         self._db = db
+        self._identity = id
         self._info_dict = info_dict # to be passed to the zeroconf part
         
         self._zeroconf_service = ZeroconfService(self._info_dict)
         
         self._running = False
+        self._server = None
         print(ip, port, )
 
 
@@ -206,11 +222,47 @@ class Server(Service):
     def stop(self):
         """Stop the service. Blocking call."""
         #print('SERVER: Stopping')
+        if self._server is not None:
+            self._server.shutdown()
+
         self._zeroconf_service.unregister()
         self._server.shutdown()
+        self._server = None
         self._running = False
         #print('SERVER: Stopped')
     
+    @property
+    def ip(self):
+        """Get the IP the server currently binds to."""
+        return self._ip
+    
+    @ip.setter
+    def ip(self, value):
+        """Set the IP the server should bind to. 
+        Note: The sever must be stopped before setting the address.
+        """
+        
+        if self._running:
+            raise Exception
+        
+        self._ip = value
+    
+    @property
+    def port(self):
+        """Get the port the server currently listens to."""
+        return self._port
+    
+    @port.setter
+    def port(self, value):
+        """Set the port the server should listen to. 
+        Note: The sever must be stopped before setting the port.
+        """
+        
+        if self._running:
+            raise Exception
+        
+        self._port = value
+
     @property
     def status(self):
         """A string with information about the service"""
@@ -245,7 +297,7 @@ class _ServerHandler(socketserver.BaseRequestHandler):
 
     def setup(self):
         self.request.settimeout(5.0)
-        #self.request.setblocking(False)
+        #self.request.setblocking(True)
         
     def handle(self):
 
@@ -261,7 +313,7 @@ class ClientTransaction(SocketTransaction):
     """The client communication transaction logic for the dandelion communication protocol."""
 
     def __init__(self, sock, db, buff_size=1024):
-        super().__init__(sock, Protocol.TERMINATOR.encode(), buff_size)
+        super().__init__(sock, dandelion.protocol.TERMINATOR.encode(), buff_size)
         self._db = db
      
     def process(self):
@@ -269,32 +321,45 @@ class ClientTransaction(SocketTransaction):
         
         try:
             """Read greeting from server"""
-            dbid = Protocol.parse_greeting_message(self._read().decode())
+            dbid = dandelion.protocol.parse_greeting_message(self._read().decode())
 
-            """TODO: We should use the remote tc from the last sync..."""
+            time_cookie = self._db.get_last_time_cookie(dbid)
             
             """Request and read message id's"""
-            self._write(Protocol.create_message_id_list_request().encode())
-            _, msgids = Protocol.parse_message_id_list(self._read().decode())
+            self._write(dandelion.protocol.create_message_id_list_request(time_cookie).encode())
+            _, msgids = dandelion.protocol.parse_message_id_list(self._read().decode())
             
             req_msgids = [mid for mid in msgids if not self._db.contains_message(mid)]
 
-            if len(req_msgids) == 0: # Nothing to fetch
-#                print("CLIENT TRANSACTION: hanging up - 0 sync")
-                return 
-            
-            """Request and read messages"""        
-            self._write(Protocol.create_message_list_request(req_msgids).encode())
-            msgs = Protocol.parse_message_list(self._read().decode())
+            if len(req_msgids) > 0: # Anything to fetch?
+                """Request and read messages"""        
+                self._write(dandelion.protocol.create_message_list_request(req_msgids).encode())
+                msgs = dandelion.protocol.parse_message_list(self._read().decode())
+    
+                """Store the new messages"""
+                self._db.add_messages(msgs)
 
-            """Store the new messages"""
-            self._db.add_messages(msgs)
+            """Request and read user id's"""
+            self._write(dandelion.protocol.create_identity_id_list_request(time_cookie).encode())
+            _, identityids = dandelion.protocol.parse_identity_id_list(self._read().decode())
+
+            req_ids = [id for id in identityids if not self._db.contains_identity(id)]
+            
+            if len(req_ids) > 0: # Anything to fetch?
+
+                """Request and read identities"""        
+                self._write(dandelion.protocol.create_identity_list_request(req_ids).encode())
+                ids = dandelion.protocol.parse_identity_list(self._read().decode())
+    
+                """Store the new identities"""
+                self._db.add_identities(ids)
+
             
         except (socket.timeout, ProtocolParseError, ValueError, TypeError):
             """Do nothing on error, just hang up"""
             #print("CLIENT TRANSACTION: Error processing data from server")
 
-        print("CLIENT TRANSACTION: hanging up")
+        #print("CLIENT TRANSACTION: hanging up")
 
 
 class Client:
@@ -305,7 +370,7 @@ class Client:
     
     def __enter__(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._sock.settimeout(5.0)
+        self._sock.settimeout(10.0)
         #print("CLIENT: connecting")
         self._sock.connect((self._ip, self._port))
         return self

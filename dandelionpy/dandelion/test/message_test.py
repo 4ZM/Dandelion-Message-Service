@@ -1,26 +1,27 @@
 """
 Copyright (c) 2011 Anders Sundman <anders@4zm.org>
 
-This file is part of dandelionpy
+This file is part of Dandelion Messaging System.
 
-dandelionpy is free software: you can redistribute it and/or modify
+Dandelion is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-dandelionpy is distributed in the hope that it will be useful,
+Dandelion is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
+along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import unittest
+from dandelion.message import Message
 import binascii
-from dandelion.message import Message 
-import dandelion
+import dandelion.identity
+import unittest
+
 
 class MessageTest(unittest.TestCase):
     """Unit test suite for the DMS Message class"""
@@ -43,24 +44,64 @@ class MessageTest(unittest.TestCase):
         self.assertNotEqual(msg.id, None)
         self.assertTrue(len(msg.id) > 0)
 
-        self.assertFalse(msg.has_sender())
+        self.assertFalse(msg.has_sender)
         self.assertEqual(msg.sender, None)
         
-        self.assertFalse(msg.has_receiver())
+        self.assertFalse(msg.has_receiver)
         self.assertEqual(msg.receiver, None)
 
     def test_construction_with_sender(self):
         """Testing message construction when specifying a sender"""
-        # TODO
-
+        
+        txt = "text"
+        id = dandelion.identity.generate()
+        m = Message(txt, sender_fp=id.fingerprint, signature=id.sign(txt))
+        self.assertEqual(m.text, txt)
+        self.assertFalse(m.has_receiver)
+        self.assertTrue(m.has_sender)
+        self.assertIsNone(m.receiver)
+        self.assertEqual(m.sender, id.fingerprint)
+        self.assertTrue(m.signature, id.sign(txt))
+        
     def test_construction_with_receiver(self):
         """Testing message construction when specifying a receiver"""
-        # TODO
+
+        txt = "plain_text"
+        id = dandelion.identity.generate()
+        m = Message(id.encrypt(txt), receiver_fp=id.fingerprint)
+        self.assertNotEqual(m.text, txt)
+        self.assertTrue(m.has_receiver)
+        self.assertFalse(m.has_sender)
+        self.assertEqual(m.receiver, id.fingerprint)
+        self.assertIsNone(m.sender)
+        self.assertTrue(m.text, id.encrypt(txt)) 
     
     def test_construction_with_sender_and_receiver(self):
         """Testing message construction when specifying a sender and a receiver"""
-        # TODO
         
+        txt = "plain_text"
+        id_sender = dandelion.identity.generate()
+        id_receiver = dandelion.identity.generate()
+        m = Message(id_receiver.encrypt(txt), receiver_fp=id_receiver.fingerprint, 
+                    sender_fp=id_sender.fingerprint, signature=id_receiver.sign(txt))
+        self.assertNotEqual(m.text, txt)
+        self.assertTrue(m.has_receiver)
+        self.assertTrue(m.has_sender)
+        self.assertEqual(m.receiver, id_receiver.fingerprint)
+        self.assertEqual(m.sender, id_sender.fingerprint)
+        self.assertTrue(m.signature, id_sender.sign(id_sender.encrypt(txt)))
+        
+    def test_construction_with_factory(self):
+        txt = "plain_text"
+        id = dandelion.identity.generate()
+        m = dandelion.message.create(txt, id)
+        self.assertEqual(m.text, txt)
+        self.assertFalse(m.has_receiver)
+        self.assertTrue(m.has_sender)
+        self.assertIsNone(m.receiver)
+        self.assertEqual(m.sender, id.fingerprint)
+        self.assertTrue(m.signature, id.sign(txt))
+
     def test_id_generation(self):
         """Testing the correctness of message id generation"""
         
@@ -108,7 +149,7 @@ class MessageTest(unittest.TestCase):
         """Testing the message to string conversion"""
         
         msg = Message(self._sample_message)
-        self.assertEqual(str(msg), dandelion.util.encode_bytes(binascii.a2b_hex(self._sample_message_sha256)[- Message._ID_LENGTH_BYTES:]).decode())         
+        self.assertEqual(str(msg), dandelion.util.encode_b64_bytes(binascii.a2b_hex(self._sample_message_sha256)[- Message._ID_LENGTH_BYTES:]).decode())         
 
 
 if __name__ == '__main__':

@@ -1,5 +1,16 @@
+
+                   DANDELION MESSAGE SERVICE 
+                           LICENSING
+
+All software in the Dandelion Message Service project is free and open 
+source, licensed under the GPLv3 license (license text below).  All 
+documentation in the project is licensed Creative Commons Attribution-
+ShareAlike 3.0 (CC BY-SA 3.0) license.
+
+=====================================================================							
+							
                     GNU GENERAL PUBLIC LICENSE
-                       Version 3, 29 June 2007
+                      Version 3, 29 June 2007
 
  Copyright (C) 2007 Free Software Foundation, Inc. <http://fsf.org/>
  Everyone is permitted to copy and distribute verbatim copies

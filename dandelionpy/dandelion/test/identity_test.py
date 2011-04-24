@@ -17,27 +17,15 @@ You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import dandelion.identity
+import unittest
 
-class Service:
-    """Abstract Base"""
+class UtilTest(unittest.TestCase):
     
-    def start(self):
-        """Start the service. Block until the service is running."""
-    
-    def stop(self):
-        """Stop the service. Block until the service is running."""
-    
-    def restart(self):
-        """Stop then start the service. Blocking call"""
-        self.stop()
-        self.start()
-    
-    @property
-    def status(self):
-        """A string with information about the service"""
-    
-    @property 
-    def running(self):
-        """Returns True if the service is running, False otherwise"""
+    def test_creation(self):
+        id = dandelion.identity.generate()
+        self.assertIsNotNone(id.fingerprint)
         
     
+if __name__ == '__main__':
+    unittest.main()

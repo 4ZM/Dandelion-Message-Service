@@ -1,25 +1,27 @@
 """
 Copyright (c) 2011 Anders Sundman <anders@4zm.org>
 
-This file is part of dandelionpy
+This file is part of Dandelion Messaging System.
 
-dandelionpy is free software: you can redistribute it and/or modify
+Dandelion is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-dandelionpy is distributed in the hope that it will be useful,
+Dandelion is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
+along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import socket
+from dandelion.database import SQLiteContentDB
 import configparser
-from dandelion.database import ContentDB
+import dandelion.identity
+import tempfile
 
 class ConfigException(Exception):
     pass
@@ -144,7 +146,9 @@ class ConfigManager:
         
         self.read_file()
         
-        self._content_db = ContentDB()
+        self._content_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        self._identity = dandelion.identity.generate()
+        self._content_db.add_identities([self._identity])
 
     @property
     def config_file(self):
@@ -170,6 +174,10 @@ class ConfigManager:
     def content_db(self):
         return self._content_db
     
+    @property 
+    def identity(self):
+        return self._identity
+
     def write_file(self):
 
         confparser = configparser.ConfigParser()

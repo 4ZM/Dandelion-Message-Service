@@ -1,30 +1,33 @@
 """
 Copyright (c) 2011 Anders Sundman <anders@4zm.org>
 
-This file is part of dandelionpy
+This file is part of Dandelion Messaging System.
 
-dandelionpy is free software: you can redistribute it and/or modify
+Dandelion is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-dandelionpy is distributed in the hope that it will be useful,
+Dandelion is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
+along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import unittest
-import socket
-import threading
-
-from dandelion.network import SocketTransaction, ServerTransaction, ClientTransaction
-from dandelion.database import ContentDB
+from dandelion.database import SQLiteContentDB
 from dandelion.message import Message
-from dandelion.protocol import Protocol
+from dandelion.network import SocketTransaction, ServerTransaction, \
+    ClientTransaction
+import dandelion.protocol
+import socket
+import tempfile
+import threading
+import unittest
+from dandelion.identity import PrivateIdentity
+
 
 HOST = '127.0.0.1'
 PORT = 1337
@@ -212,7 +215,8 @@ class MessageTest(unittest.TestCase):
     def test_basic_server_transaction(self):
         """Tests the server transaction protocol and logic""" 
     
-        db = ContentDB()
+        db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        db.add_identities([dandelion.identity.generate(), dandelion.identity.generate()])
         tc = db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
     
         with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
@@ -225,30 +229,45 @@ class MessageTest(unittest.TestCase):
 
             """Check greeting from server"""
             rcv = test_client._read()
-            self.assertEqual(rcv, Protocol.create_greeting_message(db.id).encode())
+            self.assertEqual(rcv, dandelion.protocol.create_greeting_message(db.id).encode())
             
             """Check response to mdgid list req"""
-            test_client._write(Protocol.create_message_id_list_request(tc).encode())
+            test_client._write(dandelion.protocol.create_message_id_list_request(tc).encode())
             rcv = test_client._read()
-            self.assertEqual(rcv, Protocol.create_message_id_list(tc, None).encode())
+            self.assertEqual(rcv, dandelion.protocol.create_message_id_list(tc, None).encode())
+
+            """Check response to identityid list req"""
+            test_client._write(dandelion.protocol.create_identity_id_list_request(tc).encode())
+            rcv = test_client._read()
+            self.assertEqual(rcv, dandelion.protocol.create_identity_id_list(tc, None).encode())
 
             """Check response to mdg req"""
-            test_client._write(Protocol.create_message_list_request([msg.id for msg in db.get_messages()]).encode())
+            test_client._write(dandelion.protocol.create_message_list_request([msg.id for msg in db.get_messages()]).encode())
             rcv = test_client._read()
-            self.assertEqual(rcv, Protocol.create_message_list(db.get_messages()).encode())
+            self.assertEqual(rcv, dandelion.protocol.create_message_list(db.get_messages()).encode())
+
+            """Check response to identity req"""
+            test_client._write(dandelion.protocol.create_identity_list_request([id.fingerprint for id in db.get_identities()]).encode())
+            rcv = test_client._read()
+            self.assertEqual(rcv, dandelion.protocol.create_identity_list(db.get_identities()).encode())
 
             """Wait for server (will time out if no requests)"""
             thread.join(2*TIMEOUT)
 
     def test_basic_client_transaction(self):
         """Tests the client transaction protocol and logic""" 
-        
-        client_db = ContentDB()
-        srv_db = ContentDB()
-        tc = srv_db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
-    
+
+        client_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        srv_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+
         self.assertEqual(client_db.message_count, 0)
+        srv_db.add_identities([dandelion.identity.generate(), dandelion.identity.generate()])
+        tc = srv_db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
+
+        self.assertEqual(client_db.message_count, 0)
+        self.assertEqual(client_db.identity_count, 0)
         self.assertEqual(srv_db.message_count, 3)
+        self.assertEqual(srv_db.identity_count, 2)
     
         with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
             
@@ -260,22 +279,37 @@ class MessageTest(unittest.TestCase):
             thread.start()
             
             """Send a greeting (should be req. by client)"""
-            srv_sock._write(Protocol.create_greeting_message(srv_db.id).encode())
+            srv_sock._write(dandelion.protocol.create_greeting_message(srv_db.id).encode())
             
             """Reading msg id list request"""
             rcv = srv_sock._read()
-            self.assertEqual(rcv, Protocol.create_message_id_list_request().encode())
+            self.assertEqual(rcv, dandelion.protocol.create_message_id_list_request().encode())
 
             """Sending the msg id list"""
-            srv_sock._write(Protocol.create_message_id_list(tc, srv_db.get_messages()).encode())
+            srv_sock._write(dandelion.protocol.create_message_id_list(tc, srv_db.get_messages()).encode())
 
             """Reading msg list request"""
             rcv = srv_sock._read()
-            self.assertEqual(rcv, Protocol.create_message_list_request([msg.id for msg in srv_db.get_messages()]).encode())
+            self.assertEqual(rcv, dandelion.protocol.create_message_list_request([msg.id for msg in srv_db.get_messages()]).encode())
 
             """Sending the msg id list"""
-            srv_sock._write(Protocol.create_message_list(srv_db.get_messages()).encode())
+            srv_sock._write(dandelion.protocol.create_message_list(srv_db.get_messages()).encode())
 
+
+            """Reading identity id list request"""
+            rcv = srv_sock._read()
+            self.assertEqual(rcv, dandelion.protocol.create_identity_id_list_request().encode())
+
+            """Sending the identity id list"""
+            srv_sock._write(dandelion.protocol.create_identity_id_list(tc, srv_db.get_identities()).encode())
+
+            """Reading identity list request"""
+            rcv = srv_sock._read()
+            self.assertEqual(rcv, dandelion.protocol.create_identity_list_request([id.fingerprint for id in srv_db.get_identities()]).encode())
+
+            """Sending the msg id list"""
+            srv_sock._write(dandelion.protocol.create_identity_list(srv_db.get_identities()).encode())
+            
             """Wait for client to hang up"""
             thread.join(2*TIMEOUT)
                 
@@ -287,7 +321,7 @@ class MessageTest(unittest.TestCase):
     def test_server_transaction_protocol_violation(self):
         """Tests the servers response to an invalid request""" 
     
-        db = ContentDB()
+        db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
 
         with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
             srv_transaction = ServerTransaction(server_helper.sock, db)
@@ -299,7 +333,7 @@ class MessageTest(unittest.TestCase):
 
             """Check greeting from server"""
             rcv = test_client._read()
-            self.assertEqual(rcv, Protocol.create_greeting_message(db.id).encode())
+            self.assertEqual(rcv, dandelion.protocol.create_greeting_message(db.id).encode())
             
             """Check response to mdgid list req"""
             test_client._write(b'NON PROTOCOL MESSAGE\n')
@@ -313,7 +347,7 @@ class MessageTest(unittest.TestCase):
     def test_client_transaction_protocol_violation(self):
         """Tests the client transaction protocol and logic""" 
         
-        client_db = ContentDB()
+        client_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
    
         with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
             
@@ -334,13 +368,19 @@ class MessageTest(unittest.TestCase):
     def test_client_server_transaction(self):
         """Tests the whole, client driven transaction protocol and logic""" 
         
-        client_db = ContentDB()
-        server_db = ContentDB()
-        server_db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
+        client_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        server_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        
+        id1 = dandelion.identity.generate()
+        id2 = dandelion.identity.generate()
+        server_db.add_identities([id1, id2])
+        server_db.add_messages([Message('fubar'), dandelion.message.create('foo', id1, id2), Message('bar')])
     
         self.assertEqual(client_db.message_count, 0)
+        self.assertEqual(client_db.identity_count, 0)
         self.assertEqual(server_db.message_count, 3)
-    
+        self.assertEqual(server_db.identity_count, 2)
+
         with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
                 
             client_transaction = ClientTransaction(client_helper.sock, client_db)
@@ -359,16 +399,22 @@ class MessageTest(unittest.TestCase):
         """Make sure the client has updated the db"""
         self.assertEqual(client_db.message_count, 3)
         self.assertEqual(server_db.message_count, 3)
+        self.assertEqual(client_db.identity_count, 2)
+        self.assertEqual(server_db.identity_count, 2)
+
         self.assertEqual(len([srvmsg for srvmsg in server_db.get_messages() if srvmsg not in client_db.get_messages()]), 0) 
+        self.assertEqual(len([srvid for srvid in server_db.get_identities() if srvid not in client_db.get_identities()]), 0)
 
     def test_client_server_transaction_empty_db(self):
         """Tests the whole, client driven transaction protocol and logic with an empty db""" 
         
-        client_db = ContentDB()
-        server_db = ContentDB()
+        client_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        server_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
     
         self.assertEqual(client_db.message_count, 0)
         self.assertEqual(server_db.message_count, 0)
+        self.assertEqual(client_db.identity_count, 0)
+        self.assertEqual(server_db.identity_count, 0)
     
         with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
                 
@@ -388,15 +434,25 @@ class MessageTest(unittest.TestCase):
         """Make sure the db hasn't changed"""
         self.assertEqual(client_db.message_count, 0)
         self.assertEqual(server_db.message_count, 0)
+        self.assertEqual(client_db.identity_count, 0)
+        self.assertEqual(server_db.identity_count, 0)
         
     def test_client_server_transaction_partial_sync(self):
         """Tests the whole, client driven transaction protocol and logic""" 
         
-        client_db = ContentDB()
-        server_db = ContentDB()
+        client_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        server_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        
+        id1 = dandelion.identity.generate()
+        id2 = dandelion.identity.generate()
+        
+        client_db.add_identities([id1])
+        server_db.add_identities([id1, id2])
         client_db.add_messages([Message('fubar')])
         server_db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
     
+        self.assertEqual(client_db.identity_count, 1)
+        self.assertEqual(server_db.identity_count, 2)
         self.assertEqual(client_db.message_count, 1)
         self.assertEqual(server_db.message_count, 3)
     
@@ -416,9 +472,12 @@ class MessageTest(unittest.TestCase):
             server_thread.join(2*TIMEOUT)
             
         """Make sure the client has updated the db"""
+        self.assertEqual(client_db.identity_count, 2)
+        self.assertEqual(server_db.identity_count, 2)
         self.assertEqual(client_db.message_count, 3)
         self.assertEqual(server_db.message_count, 3)
         self.assertEqual(len([srvmsg for srvmsg in server_db.get_messages() if srvmsg not in client_db.get_messages()]), 0) 
+        self.assertEqual(len([srvids for srvids in server_db.get_identities() if srvids not in client_db.get_identities()]), 0)
 
 
 if __name__ == '__main__':
