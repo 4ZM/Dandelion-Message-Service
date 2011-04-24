@@ -187,6 +187,17 @@ class ContentDB:
         """Text to binary decoding of id's"""
         return decode_b64_bytes(id.encode())
 
+    @classmethod
+    def _encode_int(self, x):
+        """Binary to text encoding of int's"""
+        return encode_b64_int(x).decode()
+
+    @classmethod
+    def _decode_int(self, x):
+        """Text to binary decoding of int's"""
+        return decode_b64_int(x.encode())
+
+
 class SQLiteContentDB(ContentDB):
     """A content database with a sqlite backend."""
      
@@ -202,26 +213,27 @@ class SQLiteContentDB(ContentDB):
 
     _CREATE_TABLE_IDENTITIES = """CREATE TABLE IF NOT EXISTS identities
         (fingerprint TEXT PRIMARY KEY,
-        dsa_y INTEGER NOT NULL,
-        dsa_g INTEGER NOT NULL,
-        dsa_p INTEGER NOT NULL,
-        dsa_q INTEGER NOT NULL,
-        rsa_n INTEGER NOT NULL,
-        rsa_e INTEGER NOT NULL,
+        dsa_y TEXT NOT NULL,
+        dsa_g TEXT NOT NULL,
+        dsa_p TEXT NOT NULL,
+        dsa_q TEXT NOT NULL,
+        rsa_n TEXT NOT NULL,
+        rsa_e TEXT NOT NULL,
         cookieid INTEGER NOT NULL REFERENCES time_cookies (id))"""
 
     _CREATE_TABLE_PRIVATE_IDENTITIES = """CREATE TABLE IF NOT EXISTS
         private_identities
         (fingerprint TEXT PRIMARY KEY REFERENCES identities (fingerprint),
-        dsa_x INTEGER NOT NULL,
-        rsa_d INTEGER NOT NULL)"""
+        dsa_x TEXT NOT NULL,
+        rsa_d TEXT NOT NULL)"""
 
     _CREATE_TABLE_MESSAGES = """CREATE TABLE IF NOT EXISTS messages
         (msgid TEXT PRIMARY KEY,
         msg TEXT NOT NULL,
         receiver TEXT REFERENCES identities (fingerprint),
         sender TEXT REFERENCES identities (fingerprint),
-        signature TEXT,
+        signature_r TEXT,
+        signature_s TEXT,
         cookieid INTEGER NOT NULL REFERENCES time_cookies (id))"""
 
     _CREATE_VIEW_TCDB = """CREATE VIEW IF NOT EXISTS time_cookies_db AS 
@@ -316,13 +328,13 @@ class SQLiteContentDB(ContentDB):
             
             try:
                 for m in msgs:
-                    # Add sender/receiver
-                    c.execute("""INSERT OR IGNORE INTO messages (msgid, msg, receiver, sender, signature, cookieid) VALUES (?,?,?,?,?,?)""", 
+                    c.execute("""INSERT OR IGNORE INTO messages (msgid, msg, receiver, sender, signature_r, signature_s, cookieid) VALUES (?,?,?,?,?,?,?)""", 
                               (self._encode_id(m.id), 
                                m.text, 
                                None if not m.has_receiver else self._encode_id(m.receiver), 
                                None if not m.has_sender else self._encode_id(m.sender),
-                               None if not m.has_sender else self._encode_id(m.signature),
+                               None if not m.has_sender else self._encode_int(m.signature[0]),
+                               None if not m.has_sender else self._encode_int(m.signature[1]),
                                tcid))
             except AttributeError: # Typically caused by types other than Message in list
                 raise TypeError
@@ -383,7 +395,7 @@ class SQLiteContentDB(ContentDB):
             c = conn.cursor()
             
             if msgids is None:
-                c.execute("""SELECT msg, receiver, sender, signature 
+                c.execute("""SELECT msg, receiver, sender, signature_r, signature_s 
                              FROM messages JOIN time_cookies_db ON messages.cookieid = time_cookies_db.id 
                              WHERE time_cookies_db.dbfp = ?""", (self._encoded_id,))
                 msg_rows = c.fetchall()
@@ -391,7 +403,7 @@ class SQLiteContentDB(ContentDB):
                 msg_rows = []
                 try:
                     for m in msgids:
-                        c.execute("""SELECT msg, receiver, sender, signature 
+                        c.execute("""SELECT msg, receiver, sender, signature_r, signature_s
                                      FROM messages JOIN time_cookies_db ON messages.cookieid = time_cookies_db.id 
                                      WHERE msgid = ? AND dbfp = ?""", (self._encode_id(m), self._encoded_id))
                         msg_rows.extend([c.fetchone()])
@@ -401,7 +413,7 @@ class SQLiteContentDB(ContentDB):
             return [Message(m[0], 
                             None if m[1] is None else self._decode_id(m[1]), 
                             None if m[2] is None else self._decode_id(m[2]), 
-                            None if m[3] is None else self._decode_id(m[3])) for m in msg_rows if m is not None] 
+                            None if m[3] is None else (self._decode_int(m[3]), self._decode_int(m[4]))) for m in msg_rows if m is not None] 
 
     def get_messages_since(self, time_cookie=None):
         """Get messages from the data base.
@@ -416,7 +428,7 @@ class SQLiteContentDB(ContentDB):
             c = conn.cursor()
             
             if time_cookie is None:
-                c.execute("""SELECT msg, receiver, sender, signature 
+                c.execute("""SELECT msg, receiver, sender, signature_r, signature_s 
                              FROM messages JOIN time_cookies_db ON messages.cookieid = time_cookies_db.id 
                              WHERE time_cookies_db.dbfp = ?""", (self._encoded_id,))
             else:
@@ -431,7 +443,7 @@ class SQLiteContentDB(ContentDB):
                            self._encoded_id)).fetchone()[0] == 0:
                     raise ValueError 
                 
-                c.execute("""SELECT msg, receiver, sender, signature 
+                c.execute("""SELECT msg, receiver, sender, signature_r, signature_s 
                              FROM messages JOIN new_cookies ON messages.cookieid = new_cookies.tcid
                              WHERE new_cookies.old_cookie=? AND new_cookies.dbfp=?""", 
                              (self._encode_id(time_cookie), self._encoded_id)) 
@@ -439,7 +451,7 @@ class SQLiteContentDB(ContentDB):
             msgs = [Message(row[0], 
                             None if row[1] is None else self._decode_id(row[1]), 
                             None if row[2] is None else self._decode_id(row[2]), 
-                            None if row[3] is None else self._decode_id(row[3])) for row in c.fetchall()]
+                            None if row[3] is None else (self._decode_int(row[3]), self._decode_int(row[4]))) for row in c.fetchall()]
             current_tc = self._get_last_time_cookie(c)
             return (current_tc, msgs)
 
@@ -468,12 +480,12 @@ class SQLiteContentDB(ContentDB):
                 for id in identities:
                     c.execute("""INSERT OR IGNORE INTO identities (fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e, cookieid) VALUES (?,?,?,?,?,?,?,?)""", 
                               (self._encode_id(id.fingerprint), 
-                               encode_b64_int(id.dsa_key.y),
-                               encode_b64_int(id.dsa_key.g),
-                               encode_b64_int(id.dsa_key.p),
-                               encode_b64_int(id.dsa_key.q),
-                               encode_b64_int(id.rsa_key.n),
-                               encode_b64_int(id.rsa_key.e),
+                               self._encode_int(id.dsa_key.y),
+                               self._encode_int(id.dsa_key.g),
+                               self._encode_int(id.dsa_key.p),
+                               self._encode_int(id.dsa_key.q),
+                               self._encode_int(id.rsa_key.n),
+                               self._encode_int(id.rsa_key.e),
                                tcid))
             except AttributeError: # Typically caused by types other than Identity in list
                 raise TypeError
@@ -557,12 +569,12 @@ class SQLiteContentDB(ContentDB):
                 except AttributeError:
                     raise TypeError
                 
-            return [Identity(DSA_key(decode_b64_int(id[1]), 
-                                    decode_b64_int(id[2]), 
-                                    decode_b64_int(id[3]), 
-                                    decode_b64_int(id[4])), 
-                             RSA_key(decode_b64_int(id[5]), 
-                                    decode_b64_int(id[6]))) for id in id_rows] 
+            return [Identity(DSA_key(self._decode_int(id[1]), 
+                                    self._decode_int(id[2]), 
+                                    self._decode_int(id[3]), 
+                                    self._decode_int(id[4])), 
+                             RSA_key(self._decode_int(id[5]), 
+                                    self._decode_int(id[6]))) for id in id_rows] 
 
     def get_identities_since(self, time_cookie=None):
         """Get identities from the data base.
@@ -596,12 +608,12 @@ class SQLiteContentDB(ContentDB):
                              WHERE new_cookies.old_cookie=? AND new_cookies.dbfp=?""", 
                              (self._encode_id(time_cookie), self._encoded_id)) 
 
-            ids = [Identity(DSA_key(decode_b64_int(id[1]), 
-                                    decode_b64_int(id[2]), 
-                                    decode_b64_int(id[3]), 
-                                    decode_b64_int(id[4])), 
-                             RSA_key(decode_b64_int(id[5]), 
-                                    decode_b64_int(id[6]))) for id in c.fetchall()] 
+            ids = [Identity(DSA_key(self._decode_int(id[1]), 
+                                    self._decode_int(id[2]), 
+                                    self._decode_int(id[3]), 
+                                    self._decode_int(id[4])), 
+                             RSA_key(self._decode_int(id[5]), 
+                                    self._decode_int(id[6]))) for id in c.fetchall()] 
 
             current_tc = self._get_last_time_cookie(c) 
 

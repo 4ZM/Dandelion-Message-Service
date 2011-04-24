@@ -22,6 +22,8 @@ import binascii
 import dandelion.identity
 import unittest
 
+_id1 = dandelion.identity.generate()
+_id2 = dandelion.identity.generate()
 
 class MessageTest(unittest.TestCase):
     """Unit test suite for the DMS Message class"""
@@ -54,53 +56,56 @@ class MessageTest(unittest.TestCase):
         """Testing message construction when specifying a sender"""
         
         txt = "text"
-        id = dandelion.identity.generate()
-        m = Message(txt, sender_fp=id.fingerprint, signature=id.sign(txt))
+        m = Message(txt, sender_fp=_id1.fingerprint, signature=_id1.sign(txt))
         self.assertEqual(m.text, txt)
         self.assertFalse(m.has_receiver)
         self.assertTrue(m.has_sender)
         self.assertIsNone(m.receiver)
-        self.assertEqual(m.sender, id.fingerprint)
-        self.assertTrue(m.signature, id.sign(txt))
+        self.assertEqual(m.sender, _id1.fingerprint)
+        self.assertTrue(m.signature, _id1.sign(txt))
         
     def test_construction_with_receiver(self):
         """Testing message construction when specifying a receiver"""
 
-        txt = "plain_text"
-        id = dandelion.identity.generate()
-        m = Message(id.encrypt(txt), receiver_fp=id.fingerprint)
+        txt = b"plain_text"
+        m = Message(_id1.encrypt(txt), receiver_fp=_id1.fingerprint)
         self.assertNotEqual(m.text, txt)
         self.assertTrue(m.has_receiver)
         self.assertFalse(m.has_sender)
-        self.assertEqual(m.receiver, id.fingerprint)
+        self.assertEqual(m.receiver, _id1.fingerprint)
         self.assertIsNone(m.sender)
-        self.assertTrue(m.text, id.encrypt(txt)) 
+        self.assertTrue(m.text, _id1.encrypt(txt)) 
     
     def test_construction_with_sender_and_receiver(self):
-        """Testing message construction when specifying a sender and a receiver"""
+        """Testing message construction when speci"fying a sender and a receiver"""
         
-        txt = "plain_text"
-        id_sender = dandelion.identity.generate()
-        id_receiver = dandelion.identity.generate()
-        m = Message(id_receiver.encrypt(txt), receiver_fp=id_receiver.fingerprint, 
-                    sender_fp=id_sender.fingerprint, signature=id_receiver.sign(txt))
+        txt = b"plain_text"
+        m = Message(_id2.encrypt(txt), receiver_fp=_id2.fingerprint, 
+                    sender_fp=_id1.fingerprint, signature=_id2.sign(txt))
         self.assertNotEqual(m.text, txt)
         self.assertTrue(m.has_receiver)
         self.assertTrue(m.has_sender)
-        self.assertEqual(m.receiver, id_receiver.fingerprint)
-        self.assertEqual(m.sender, id_sender.fingerprint)
-        self.assertTrue(m.signature, id_sender.sign(id_sender.encrypt(txt)))
+        self.assertEqual(m.receiver, _id2.fingerprint)
+        self.assertEqual(m.sender, _id1.fingerprint)
+        self.assertTrue(m.signature, _id1.sign(_id1.encrypt(txt)))
         
     def test_construction_with_factory(self):
         txt = "plain_text"
-        id = dandelion.identity.generate()
-        m = dandelion.message.create(txt, id)
+        m = dandelion.message.create(txt, _id1)
         self.assertEqual(m.text, txt)
         self.assertFalse(m.has_receiver)
         self.assertTrue(m.has_sender)
         self.assertIsNone(m.receiver)
-        self.assertEqual(m.sender, id.fingerprint)
-        self.assertTrue(m.signature, id.sign(txt))
+        self.assertEqual(m.sender, _id1.fingerprint)
+        self.assertTrue(m.signature, _id1.sign(txt))
+
+        m = dandelion.message.create(txt, _id1, _id2)
+        self.assertNotEqual(m.text, txt)
+        self.assertTrue(m.has_receiver)
+        self.assertTrue(m.has_sender)
+        self.assertEqual(m.sender, _id1.fingerprint)
+        self.assertEqual(m.receiver, _id2.fingerprint)
+        self.assertTrue(m.signature, _id1.sign(txt))
 
     def test_id_generation(self):
         """Testing the correctness of message id generation"""

@@ -73,7 +73,8 @@ class Message:
             
             if self._sender_fp is not None:
                 h.update(self._sender_fp)
-                h.update(self._signature)
+                h.update(dandelion.util.encode_int(self._signature[0]))
+                h.update(dandelion.util.encode_int(self._signature[1]))
             
             self._id = h.digest()[- Message._ID_LENGTH_BYTES:] # Least significant bytes
 
@@ -102,7 +103,7 @@ class Message:
 
     @property 
     def signature(self):
-        """Message signature"""
+        """DSA signature of message. Pair of ints. """
         return self._signature 
         
     @property
@@ -131,12 +132,12 @@ def create(text, sender=None, receiver=None):
     if sender is None and receiver is None:
         return Message(text)
     elif sender is None and receiver is not None:
-        return Message(receiver.encrypt(text), receiver_fp=receiver.fingerprint)
+        return Message(receiver.encrypt(text.encode()), receiver_fp=receiver.fingerprint)
     elif sender is not None and receiver is None:
         sig = sender.sign(text.encode())
         return Message(text, sender_fp=sender.fingerprint, signature=sig)
     else: # sender and receiver
-        text = receiver.encrypt(text)
+        text = receiver.encrypt(text.encode())
         sig = sender.sign(text)
         return Message(text, receiver_fp=receiver.fingerprint, sender_fp=sender.fingerprint, signature=sig)
         

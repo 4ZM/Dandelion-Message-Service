@@ -24,6 +24,10 @@ import dandelion.identity
 from dandelion.message import Message
 from dandelion.database import ContentDB, SQLiteContentDB, ContentDBException
 
+_id1 = dandelion.identity.generate()
+_id2 = dandelion.identity.generate()
+_id3 = dandelion.identity.generate()
+
 class DatabaseTest(unittest.TestCase):
     """Unit test suite for the InMemoryContentDB class"""
     
@@ -134,9 +138,7 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual(first_cookie, db.add_messages([first_msg]))
 
         # New message, new cookie
-        id1 = dandelion.identity.generate()
-        id2 = dandelion.identity.generate()
-        second_msg = dandelion.message.create('Another Single Message', id1, id2)
+        second_msg = dandelion.message.create('Another Single Message', _id1, _id2)
         second_cookie = db.add_messages([second_msg])
         self.assertNotEqual(second_cookie, None)
         self.assertNotEqual(second_cookie, first_cookie)
@@ -160,8 +162,8 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual(second_cookie, db.add_messages([first_msg]))
        
         # New identity, new cookie
-        identity = dandelion.identity.generate()
-        third_cookie = db.add_identities([identity])
+        _id3 = dandelion.identity.generate()
+        third_cookie = db.add_identities([_id3])
         self.assertNotEqual(third_cookie, None)
         self.assertNotEqual(third_cookie, second_cookie)
         self.assertTrue(db.get_last_time_cookie() == third_cookie)
@@ -178,12 +180,10 @@ class DatabaseTest(unittest.TestCase):
         
         db = ContentDB.db
         
-        id1 = dandelion.identity.generate()
-        id2 = dandelion.identity.generate()
         first_msg_list = [Message('A'), Message('B'), 
-                          dandelion.message.create("W Sender", sender=id1), 
-                          dandelion.message.create("W Receiver", receiver=id2), 
-                          dandelion.message.create("W Sender And Receiver", sender=id1, receiver=id2)]
+                          dandelion.message.create("W Sender", sender=_id1), 
+                          dandelion.message.create("W Receiver", receiver=_id2), 
+                          dandelion.message.create("W Sender And Receiver", sender=_id1, receiver=_id2)]
 
         # Try to add junk
         self.assertRaises(ValueError, db.add_messages, None)
@@ -235,13 +235,11 @@ class DatabaseTest(unittest.TestCase):
         _, mlist = db.get_messages_since()
         self.assertEqual(mlist, [])
 
-        id1 = dandelion.identity.generate()
-        id2 = dandelion.identity.generate()
         m1 = Message('M1')
         m2 = Message('M2')
-        m3 = dandelion.message.create('M3', id1, id2)
+        m3 = dandelion.message.create('M3', _id1, _id2)
         
-        db.add_identities([id1])
+        db.add_identities([_id1])
         db.add_messages([m1, m2, m3])
         
         _, mlist = db.get_messages_since()
@@ -269,10 +267,7 @@ class DatabaseTest(unittest.TestCase):
         _, idlist = db.get_identities_since()
         self.assertEqual(idlist, [])
 
-        
-        id_a = dandelion.identity.generate()
-        id_b = dandelion.identity.generate()
-        first_id_list = [id_a, id_b]
+        first_id_list = [_id1, _id2]
 
         # Try to add junk
         self.assertRaises(ValueError, db.add_identities, None)
@@ -287,7 +282,7 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual([db.contains_identity(id.fingerprint) for id in first_id_list], [True, True])
 
         # And for another message list? 
-        second_id_list = [dandelion.identity.generate(), id_a]
+        second_id_list = [dandelion.identity.generate(), _id1]
         self.assertEqual([db.contains_identity(id.fingerprint) for id in second_id_list], [False, True])
         
         # Adding the second message list
@@ -318,29 +313,25 @@ class DatabaseTest(unittest.TestCase):
         """Test identity retrieval."""
         
         db = ContentDB.db
-
-        id1 = dandelion.identity.generate()
-        id2 = dandelion.identity.generate()
-        id3 = dandelion.identity.generate()
         
-        db.add_identities([id1, id2, id3])
+        db.add_identities([_id1, _id2, _id3])
         db.add_messages([Message("fu")])
         
         _, idlist = db.get_identities_since()
         
-        self.assertTrue(id1 in idlist)
-        self.assertTrue(id2 in idlist)
-        self.assertTrue(id3 in idlist)
+        self.assertTrue(_id1 in idlist)
+        self.assertTrue(_id2 in idlist)
+        self.assertTrue(_id3 in idlist)
         
         idlist = db.get_identities()
-        self.assertTrue(id1 in idlist)
-        self.assertTrue(id2 in idlist)
-        self.assertTrue(id3 in idlist)
+        self.assertTrue(_id1 in idlist)
+        self.assertTrue(_id2 in idlist)
+        self.assertTrue(_id3 in idlist)
         
-        idlist = db.get_identities([id1.fingerprint, id2.fingerprint])
-        self.assertTrue(id1 in idlist)
-        self.assertTrue(id2 in idlist)
-        self.assertFalse(id3 in idlist)
+        idlist = db.get_identities([_id1.fingerprint, _id2.fingerprint])
+        self.assertTrue(_id1 in idlist)
+        self.assertTrue(_id2 in idlist)
+        self.assertFalse(_id3 in idlist)
         
 if __name__ == '__main__':
     unittest.main()

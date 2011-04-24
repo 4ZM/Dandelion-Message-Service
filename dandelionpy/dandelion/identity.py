@@ -17,13 +17,24 @@ You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import Crypto.Hash
+import Crypto.PublicKey.DSA
+import Crypto.PublicKey.RSA
+import Crypto.Random
+import Crypto.Util
+
+
 from dandelion.util import encode_int, encode_b64_bytes
 import hashlib
 import random
+import dandelion
 
 class IdentityManager:
     def __init__(self, config):
         self._config = config
+
+DSA_KEY_SIZE = 1024
+RSA_KEY_SIZE = 2048
 
 
 class RSA_key:
@@ -117,9 +128,12 @@ class Identity:
     
     def __init__(self, dsa_key, rsa_key):
         """Create a new identity instance from the public or private keys."""
-        
-        self._dsa_key = dsa_key 
-        self._rsa_key = rsa_key
+
+        self._dsa_key = Crypto.PublicKey.DSA.construct((dsa_key.y, dsa_key.g, 
+                                                        dsa_key.p, dsa_key.q, 
+                                                        dsa_key.x))    
+ 
+        self._rsa_key = Crypto.PublicKey.RSA.construct((rsa_key.n, rsa_key.e, rsa_key.d))
         self._fp = None # Lazy evaluation
 
     @property 
@@ -142,28 +156,33 @@ class Identity:
     @property 
     def rsa_key(self):
         """The RSA key used for encryption"""
-        return self._rsa_key
+        return RSA_key(self._rsa_key.n, self._rsa_key.e, self._rsa_key.d if self._rsa_key.has_private() else None)
 
     @property 
     def dsa_key(self):
         """The DSA key used for signing"""
-        return self._dsa_key
+        return DSA_key(self._dsa_key.y,  self._dsa_key.g,  self._dsa_key.p,  self._dsa_key.q,  self._dsa_key.x if self._dsa_key.has_private() else None)
 
     def verify(self, msg, signature):
         """Verify a message signature.
         
-        The message and signature are bytes strings.
+        The message is a bytes strings. The signature is a pair of ints.
         
         Return true if the message with the specified signature is signed by this identity.
-        """         
-        return True # Dummy impl.
+        """     
+        return self._dsa_key.verify(self._hash(msg), signature)
+
+    def _hash(self, msg):
+
+        return Crypto.Hash.SHA256.new(msg).digest()
 
     def encrypt(self, plaintext):
         """Encrypt a message to this identity.
         
         The plaintext message is a bytes string and the returned encrypted message is a bytes string.
         """
-        return plaintext[::-1].encode() # Dummy impl
+        
+        return self._rsa_key.encrypt(plaintext, b'n/a')[0] # no k value for RSA
     
     def __str__(self):
         """String conversion is user Base64 encoded fingerprint"""
@@ -184,26 +203,35 @@ class PrivateIdentity(Identity):
         super().__init__(dsa_key, rsa_key)
         
         """Both keys have to have private components"""
-        if not self._dsa_key.is_private or not self._rsa_key.is_private:
+        if not self.dsa_key.is_private or not self.rsa_key.is_private:
             raise ValueError 
         
     def sign(self, msg):
         """Sign a message from this identity.
         
-        The message is a bytes string. Return a bytes signature.
+        The message is a bytes string. Return a pair of ints (DSA signature).
         """
-        return b'1337' # Dummy impl.
+        k = Crypto.Util.number.getPrime(128, _rnd)
+        signature = self._dsa_key.sign(self._hash(msg), k)
+
+        return signature
 
     def decrypt(self, ciphertext):
-        """Decrypt a message to this signature.
+        """Decrypt a message to this identity.
         
         The ciphertext and the returned plaintext are bytes strings.
         """
-        return ciphertext[::-1].decode() # Dummy impl.
+        return self._rsa_key.decrypt(ciphertext)
 
+_rnd = Crypto.Random.new().read
 
 def generate():
     """Factory method to create a new private identity"""
+
+    raw_dsa_key = Crypto.PublicKey.DSA.generate(DSA_KEY_SIZE, _rnd)   # This will take a while...
+    dsa_key = DSA_key(raw_dsa_key.y, raw_dsa_key.g, raw_dsa_key.p, raw_dsa_key.q, raw_dsa_key.x)
     
-    return PrivateIdentity(DSA_key(int(random.random() * 255),int(random.random() * 255),int(random.random() * 255),int(random.random() * 255),int(random.random() * 255)), 
-                           RSA_key(int(random.random() * 255),int(random.random() * 255),int(random.random() * 255))) # Dummy impl.
+    raw_rsa_key = Crypto.PublicKey.RSA.generate(RSA_KEY_SIZE, _rnd)
+    rsa_key = RSA_key(raw_rsa_key.n, raw_rsa_key.e, raw_rsa_key.d)
+
+    return PrivateIdentity(dsa_key, rsa_key)

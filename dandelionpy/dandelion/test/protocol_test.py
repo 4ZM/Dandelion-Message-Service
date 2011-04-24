@@ -25,6 +25,10 @@ from dandelion.util import encode_b64_bytes, encode_b64_int, decode_b64_bytes
 import re
 import unittest
 
+_id1 = dandelion.identity.generate()
+_id2 = dandelion.identity.generate()
+_id3 = dandelion.identity.generate()
+
 class ProtocolTest(unittest.TestCase):
     """Unit test suite for the DMS Protocol class"""
      
@@ -166,9 +170,7 @@ class ProtocolTest(unittest.TestCase):
     def test_create_message_id_list(self):
         """Test message ID list request creation"""
 
-        id1 = dandelion.identity.generate()
-        id2 = dandelion.identity.generate()
-        msg1 = dandelion.message.create('M1', id1, id2)
+        msg1 = dandelion.message.create('M1', _id1, _id2)
         msg2 = Message('M2')
         msg3 = Message('M3')
         
@@ -261,12 +263,10 @@ class ProtocolTest(unittest.TestCase):
     def test_roundtrip_message_id_list(self):
         """Test message ID list response creation / parsing by a round trip"""
         
-        id1 = dandelion.identity.generate()
-        id2 = dandelion.identity.generate()
         msg1 = Message('M1')
-        msg2 = dandelion.message.create('M2', id1, id2)
-        msg3 = dandelion.message.create('M3', id1)
-        msg4 = dandelion.message.create('M3', None, id2)
+        msg2 = dandelion.message.create('M2', _id1, _id2)
+        msg3 = dandelion.message.create('M3', _id1)
+        msg4 = dandelion.message.create('M3', None, _id2)
         
         tc, msgids = dandelion.protocol.parse_message_id_list(dandelion.protocol.create_message_id_list(b'24', [msg1, msg2, msg3, msg4]))
         self.assertEqual(tc, b'24')
@@ -376,13 +376,10 @@ class ProtocolTest(unittest.TestCase):
     def test_create_message_list(self):
         """Test message list creation"""
         
-        id1 = dandelion.identity.generate()
-        id2 = dandelion.identity.generate()
-        
         m1 = Message('FUBAR')
         m2 = Message('f00')
         m3 = Message('13;@|37')
-        m4 = dandelion.message.create('fu', id1, id2)
+        m4 = dandelion.message.create('fu', _id1, _id2)
         m1_txt_b64 = 'RlVCQVI='
         m2_txt_b64 = 'ZjAw'
         m3_txt_b64 = 'MTM7QHwzNw=='
@@ -417,12 +414,10 @@ class ProtocolTest(unittest.TestCase):
     def test_message_list_roundtrip(self):
         """Test message list creation / parsing by a round trip"""
 
-        id1 = dandelion.identity.generate()
-        id2 = dandelion.identity.generate()
         m1 = dandelion.message.create('M1')
-        m2 = dandelion.message.create('M2', sender=id1)
-        m3 = dandelion.message.create('M3', receiver=id1)
-        m4 = dandelion.message.create('M4', receiver=id1, sender=id2)
+        m2 = dandelion.message.create('M2', sender=_id1)
+        m3 = dandelion.message.create('M3', receiver=_id1)
+        m4 = dandelion.message.create('M4', receiver=_id1, sender=_id2)
                             
         msg = dandelion.protocol.create_message_list([m1, m2, m3, m4])
         mout = dandelion.protocol.parse_message_list(msg)
@@ -508,19 +503,15 @@ class ProtocolTest(unittest.TestCase):
     def test_create_identity_id_list(self):
         """Test identity ID list request creation"""
 
-        id1 = dandelion.identity.generate()
-        id2 = dandelion.identity.generate()
-        id3 = dandelion.identity.generate()
-        
         tc = b'\x01\x03\x03\x07'
         tc_str_ok = encode_b64_bytes(tc).decode()
         
-        str_ = dandelion.protocol.create_identity_id_list(tc, [id1, id2, id3])[:-1]
+        str_ = dandelion.protocol.create_identity_id_list(tc, [_id1, _id2, _id3])[:-1]
         tc_str, id1_str, id2_str, id3_str = str_.split(';')
         self.assertEqual(tc_str, tc_str_ok)
-        self.assertEqual(id1.fingerprint, decode_b64_bytes(id1_str.encode()))
-        self.assertEqual(id2.fingerprint, decode_b64_bytes(id2_str.encode()))
-        self.assertEqual(id3.fingerprint, decode_b64_bytes(id3_str.encode()))
+        self.assertEqual(_id1.fingerprint, decode_b64_bytes(id1_str.encode()))
+        self.assertEqual(_id2.fingerprint, decode_b64_bytes(id2_str.encode()))
+        self.assertEqual(_id3.fingerprint, decode_b64_bytes(id3_str.encode()))
 
         str_ = dandelion.protocol.create_identity_id_list(tc, None)[:-1]
         self.assertEqual(str_, tc_str)
@@ -530,8 +521,8 @@ class ProtocolTest(unittest.TestCase):
 
         """Testing bad input"""
         self.assertRaises(TypeError, dandelion.protocol.create_identity_id_list, 1337, None)
-        self.assertRaises(TypeError, dandelion.protocol.create_identity_id_list, tc, id1)
-        self.assertRaises(TypeError, dandelion.protocol.create_identity_id_list, [id1], tc)
+        self.assertRaises(TypeError, dandelion.protocol.create_identity_id_list, tc, _id1)
+        self.assertRaises(TypeError, dandelion.protocol.create_identity_id_list, [_id1], tc)
         self.assertRaises(AttributeError, dandelion.protocol.create_identity_id_list, tc, tc)
         self.assertRaises(ValueError, dandelion.protocol.create_identity_id_list, None, [])
         self.assertRaises(TypeError, dandelion.protocol.create_identity_id_list, 0, None)
@@ -602,16 +593,12 @@ class ProtocolTest(unittest.TestCase):
     def test_roundtrip_identity_id_list(self):
         """Test identity ID list response creation / parsing by a round trip"""
         
-        id1 = dandelion.identity.generate()
-        id2 = dandelion.identity.generate()
-        id3 = dandelion.identity.generate()
-        
-        tc, identityids = dandelion.protocol.parse_identity_id_list(dandelion.protocol.create_identity_id_list(b'24', [id1, id2, id3]))
+        tc, identityids = dandelion.protocol.parse_identity_id_list(dandelion.protocol.create_identity_id_list(b'24', [_id1, _id2, _id3]))
         self.assertEqual(tc, b'24')
         self.assertEqual(len(identityids), 3)
-        self.assertTrue(id1.fingerprint in identityids)
-        self.assertTrue(id2.fingerprint in identityids)
-        self.assertTrue(id3.fingerprint in identityids)
+        self.assertTrue(_id1.fingerprint in identityids)
+        self.assertTrue(_id2.fingerprint in identityids)
+        self.assertTrue(_id3.fingerprint in identityids)
 
     def test_create_identity_list_request(self):
         """Test identity list request creation"""
@@ -713,17 +700,13 @@ class ProtocolTest(unittest.TestCase):
     def test_create_identity_list(self):
         """Test identity list creation"""
         
-        id1 = dandelion.identity.generate()
-        id2 = dandelion.identity.generate()
-        id3 = dandelion.identity.generate()
-        
-        identities = dandelion.protocol.create_identity_list([id1, id2, id3])
+        identities = dandelion.protocol.create_identity_list([_id1, _id2, _id3])
         
         self.assertTrue(len(identities) > 0)
         self.assertEqual(identities.count(';'), 2)
-        self.assertTrue(encode_b64_int(id1.rsa_key.n).decode() in identities)
-        self.assertTrue(encode_b64_int(id2.rsa_key.e).decode() in identities)
-        self.assertTrue(encode_b64_int(id3.dsa_key.q).decode() in identities)
+        self.assertTrue(encode_b64_int(_id1.rsa_key.n).decode() in identities)
+        self.assertTrue(encode_b64_int(_id2.rsa_key.e).decode() in identities)
+        self.assertTrue(encode_b64_int(_id3.dsa_key.q).decode() in identities)
         
         identities = dandelion.protocol.create_identity_list([])
         self.assertEqual(identities, dandelion.protocol.TERMINATOR)
@@ -747,17 +730,14 @@ class ProtocolTest(unittest.TestCase):
     def test_identity_list_roundtrip(self):
         """Test identity list creation / parsing by a round trip"""
 
-        id1 = dandelion.identity.generate()
-        id2 = dandelion.identity.generate()
-        id3 = dandelion.identity.generate()
         
-        identitiestr = dandelion.protocol.create_identity_list([id1, id2, id3])
+        identitiestr = dandelion.protocol.create_identity_list([_id1, _id2, _id3])
         identities = dandelion.protocol.parse_identity_list(identitiestr)
         self.assertEqual(len(identities), 3)
 
-        self.assertTrue(id1 in identities)
-        self.assertTrue(id2 in identities)
-        self.assertTrue(id3 in identities)
+        self.assertTrue(_id1 in identities)
+        self.assertTrue(_id2 in identities)
+        self.assertTrue(_id3 in identities)
 
 
 if __name__ == '__main__':

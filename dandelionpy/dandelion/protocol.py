@@ -30,7 +30,7 @@ classmethods).
 from dandelion.identity import Identity, RSA_key, DSA_key
 from dandelion.message import Message
 from dandelion.util import encode_b64_bytes, decode_b64_bytes, encode_b64_int, \
-    decode_b64_int
+    decode_b64_int, encode_int
 import re
 
 class ProtocolParseError(Exception):
@@ -588,33 +588,35 @@ def _message2string(msg):
     
     text = msg.text.encode() if isinstance(msg.text, str) else msg.text # Convert to bytes string
     receiver = b'' if msg.receiver is None else msg.receiver
-    sender, signature = (b'',b'') if msg.sender is None else (msg.sender, msg.signature)
+    sender, signature = (b'',(b'',b'')) if msg.sender is None else (msg.sender, (encode_int(msg.signature[0]), encode_int(msg.signature[1])))
 
     return _SUB_FIELD_SEPARATOR.join([
               encode_b64_bytes(text).decode(),
               encode_b64_bytes(receiver).decode(),
               encode_b64_bytes(sender).decode(),
-              encode_b64_bytes(signature).decode()])
+              encode_b64_bytes(signature[0]).decode(),
+              encode_b64_bytes(signature[1]).decode()])
     
 
 def _string2message(mstr):
     """Parse the string and create a message"""
 
-    TEXT_INDEX, RECEIVER_INDEX, SENDER_INDEX, SIGNATURE_INDEX = (0,1,2,3)
+    TEXT_INDEX, RECEIVER_INDEX, SENDER_INDEX, SIGNATURE_INDEX = (0,1,2,(3,4))
 
     mparts = mstr.split(_SUB_FIELD_SEPARATOR)
     
-    if len(mparts) != 4:
+    if len(mparts) != 5:
         raise ProtocolParseError
     
-    if (mparts[SENDER_INDEX] != '' and mparts[SIGNATURE_INDEX] == '') or (mparts[SENDER_INDEX] == '' and mparts[SIGNATURE_INDEX] != ''):
+    if (mparts[SENDER_INDEX] != '' and mparts[SIGNATURE_INDEX[0]] == '' and mparts[SIGNATURE_INDEX[1]] == '') or \
+       (mparts[SENDER_INDEX] == '' and mparts[SIGNATURE_INDEX[0]] != '' and mparts[SIGNATURE_INDEX[1]] != ''):
         raise  ProtocolParseError
 
     receiver = None if mparts[RECEIVER_INDEX] == '' else decode_b64_bytes(mparts[RECEIVER_INDEX].encode()) 
     text = decode_b64_bytes(mparts[TEXT_INDEX].encode())
     textstr = text.decode() if receiver is None else text # Decode unless encrypted
     sender = None if mparts[SENDER_INDEX] == '' else decode_b64_bytes(mparts[SENDER_INDEX].encode())
-    signature = None if mparts[SIGNATURE_INDEX] == '' else decode_b64_bytes(mparts[SIGNATURE_INDEX].encode())
+    signature = None if mparts[SIGNATURE_INDEX[0]] == '' else (decode_b64_int(mparts[SIGNATURE_INDEX[0]].encode()), decode_b64_int(mparts[SIGNATURE_INDEX[1]].encode()))
 
     return Message(textstr, receiver, sender, signature)
 
