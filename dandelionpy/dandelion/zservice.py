@@ -24,17 +24,18 @@ class ZeroconfService():
             0, 
             self._info_dict['description']
         )
+        
 
     def register(self):
         # joins multicast group and registers service
-        #self._zeroconf.registerService(self._info, self._ttl)
+        self._zeroconf.registerService(self._info, self._ttl)
         print("RegisterZeroconf")
         
     
     def unregister(self):
         # unregisters service and leaves multicast group
-        #self._zeroconf.unregisterService(self._info)
-        #self.close()
+        self._zeroconf.unregisterService(self._info)
+        self.close()
         print("UnRegisterZeroconf")
         
     

@@ -350,7 +350,7 @@ class Zeroconf(object):
         
         self.checkService(info)
         self.services[info.name.lower()] = info
-        log.debug(">>",self.services[info.name.lower()])
+        log.debug("REGISTER SERVICE info.name.lower() %s " % self.services[info.name.lower()])
         
         now = dns.currentTimeMillis()
         nextTime = now
@@ -494,18 +494,26 @@ class Zeroconf(object):
         """Deal with incoming query packets.  Provides a response if
         possible."""
         out = None
-
+        log.debug("HANDLE QUERY msg %s - addr %s -  port %s" % (msg, addr, port))
         # Support unicast client responses
         #
         if port != dns._MDNS_PORT:
             out = dns.DNSOutgoing(dns._FLAGS_QR_RESPONSE | dns._FLAGS_AA, 0)
+            log.debug("msg.questions %s" % msg.questions)
             for question in msg.questions:
                 out.addQuestion(question)
+
+                
         log.debug( 'Questions...')
         for question in msg.questions:
             log.debug( 'Question: %s', question )
+            
+            log.debug("QUESTION %s TYPE %s" % (question, question.type))
+            
             if question.type == dns._TYPE_PTR:
-                for service in list(self.services.values()):
+                
+                for service in self.services.values():
+                    log.debug( ("QUESTION_NAME %s SERVICE_TYPE %s" ) % (question.name, service.type))
                     if question.name == service.type:
                         log.info( 'Service query found %s', service.name )
                         if out is None:
@@ -524,7 +532,7 @@ class Zeroconf(object):
 
                     # Answer A record queries for any service addresses we know
                     if question.type == dns._TYPE_A or question.type == dns._TYPE_ANY:
-                        for service in list(self.services.values()):
+                        for service in self.services.values():
                             if service.server == question.name.lower():
                                 out.addAnswer(msg, DNSAddress(question.name, dns._TYPE_A, dns._CLASS_IN | dns._CLASS_UNIQUE, dns._DNS_TTL, service.address))
 
