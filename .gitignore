@@ -1,0 +1,14 @@
+# python / django
+*.pyc
+*.project
+*.pydevproject
+__pycache__
+__zeroconf
+___zeroconf
+
+*.bak
+.gitignore
+# OS files
+*.DS_Store
+
+
