@@ -28,14 +28,13 @@ class DandelionApp:
 
     def __init__(self, config_file=None):
         self._config_manager = ConfigurationManager(config_file)
-    
-    def start_server(self): 
+
         self._server = Server(self._config_manager.local_address, 
                               self._config_manager.local_port, 
                               self._config_manager.server,  #info_dict
-                              self._config_manager.content_db) 
+                              self._config_manager.content_db,
+                              self._config_manager.identity) 
     
-    def start_content_synchronizer(self): 
         self._synchronizer = Synchronizer(self._config_manager.local_address,
                                           self._config_manager.local_port,
                                           self._config_manager.type,

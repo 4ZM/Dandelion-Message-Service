@@ -226,7 +226,6 @@ class Server(Service):
             self._server.shutdown()
 
         self._zeroconf_service.unregister()
-        self._server.shutdown()
         self._server = None
         self._running = False
         #print('SERVER: Stopped')

@@ -20,6 +20,7 @@ along with dandelionpy.  If not, see <http://www.gnu.org/licenses/>.
 import io
 import configparser
 from dandelion.database import ContentDB
+import dandelion
 
 class ConfigurationManager():
    
@@ -54,7 +55,9 @@ class ConfigurationManager():
             
         self.load_config() 
         
-        self._content_db = ContentDB()
+        self._content_db = dandelion.database.SQLiteContentDB("msgs.db")
+        
+        self._identity = dandelion.identity.generate()
         
         # store all dict values as attributes so we can access the like this
         # self.server_time (the same as self_cfg['synchronization']['server_time']
@@ -110,7 +113,9 @@ class ConfigurationManager():
         return self._content_db
     
 
-    
+    @property 
+    def identity(self):
+        return self._identity
     
     
 """
