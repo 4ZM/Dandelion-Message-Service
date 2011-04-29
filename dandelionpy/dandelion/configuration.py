@@ -37,6 +37,8 @@ class ConfigurationManager():
                        'synchronization' : {'server_time' : 0},
                        
                        'ui' : {},
+                       
+                       'database' : {'file' : 'dandelion.db'},
                        }
     
     DEFAULT_CONFIG_FILE = '../dandelion.cfg'
@@ -55,10 +57,6 @@ class ConfigurationManager():
             
         self.load_config() 
         
-        self._content_db = dandelion.database.SQLiteContentDB("msgs.db")
-        
-        self._identity = dandelion.identity.generate()
-        
         # store all dict values as attributes so we can access the like this
         # self.server_time (the same as self_cfg['synchronization']['server_time']
         # one downfall is that we cant have settings with the same name even though they are
@@ -67,6 +65,11 @@ class ConfigurationManager():
             setattr(self, key, self._cfg[key])
             for k, v in self._cfg[key].items():
                 setattr(self.__class__, k, v)
+
+        self._content_db = dandelion.database.SQLiteContentDB(self._cfg['database']['file'])
+        
+        self._identity = dandelion.identity.generate()
+        
 
         
 
