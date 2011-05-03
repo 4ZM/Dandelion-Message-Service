@@ -150,7 +150,7 @@ class UI:
             self._db.add_messages([m])
 
     def show_messages(self):
-        msgs = self._db.get_messages()
+        _, msgs = self._db.get_messages()
         print(' --- MESSAGES BEGIN --- ')
         
         for m in msgs:

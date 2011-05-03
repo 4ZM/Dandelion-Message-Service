@@ -162,12 +162,12 @@ class ServerTransaction(SocketTransaction):
             
             if dandelion.protocol.is_message_id_list_request(data):
                 tc = dandelion.protocol.parse_message_id_list_request(data)
-                tc, msgs = self._db.get_messages_since(tc)
+                tc, msgs = self._db.get_messages(time_cookie=tc)
                 response_str = dandelion.protocol.create_message_id_list(tc, msgs)
                 self._write(response_str.encode()) 
             elif dandelion.protocol.is_message_list_request(data):
                 msgids = dandelion.protocol.parse_message_list_request(data)
-                msgs = self._db.get_messages(msgids)
+                _, msgs = self._db.get_messages(msgids=msgids)
                 response_str = dandelion.protocol.create_message_list(msgs)
                 self._write(response_str.encode())
             elif dandelion.protocol.is_identity_id_list_request(data):
@@ -306,7 +306,7 @@ class ClientTransaction(SocketTransaction):
             dbid = dandelion.protocol.parse_greeting_message(self._read().decode())
 
             time_cookie = self._db.get_last_time_cookie(dbid)
-            
+
             """Request and read message id's"""
             self._write(dandelion.protocol.create_message_id_list_request(time_cookie).encode())
             _, msgids = dandelion.protocol.parse_message_id_list(self._read().decode())

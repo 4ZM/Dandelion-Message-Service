@@ -143,7 +143,7 @@ class DatabaseTest(unittest.TestCase):
         self.assertTrue((db.get_last_time_cookie(None) is None) or (db.get_last_time_cookie(None) == second_cookie))
 
         # Since first should only be second
-        tc, some_messages = db.get_messages_since(first_cookie)
+        tc, some_messages = db.get_messages(time_cookie=first_cookie)
         self.assertNotEqual(some_messages, None)
         self.assertEqual(tc, second_cookie)
 
@@ -151,7 +151,7 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual(some_messages[0], second_msg)
         
         # Nothing new since last message was added
-        tc, last_messages = db.get_messages_since(second_cookie)
+        tc, last_messages = db.get_messages(time_cookie=second_cookie)
         self.assertNotEqual(last_messages, None)
         self.assertEqual(len(last_messages), 0)
         self.assertEqual(tc, second_cookie)
@@ -167,11 +167,11 @@ class DatabaseTest(unittest.TestCase):
         self.assertTrue(db.get_last_time_cookie() == third_cookie)
         
         # Trying some bad input
-        self.assertRaises(TypeError, db.get_messages_since, 0)
-        self.assertRaises(TypeError, db.get_messages_since, '')
-        self.assertRaises(TypeError, db.get_messages_since, 'fubar')
-        self.assertRaises(ValueError, db.get_messages_since, b'')
-        self.assertRaises(ValueError, db.get_messages_since, b'1337')
+        self.assertRaises(TypeError, db.get_messages, [], 0)
+        self.assertRaises(TypeError, db.get_messages, [], '')
+        self.assertRaises(TypeError, db.get_messages, [], 'fubar')
+        self.assertRaises(ValueError, db.get_messages, [], b'')
+        self.assertRaises(ValueError, db.get_messages, [], b'1337')
         
     def _test_message_interface(self):
         """Test functions relating to storing and recovering messages."""
@@ -230,9 +230,7 @@ class DatabaseTest(unittest.TestCase):
         
         db = ContentDB.db
 
-        mlist = db.get_messages()
-        self.assertEqual(mlist, [])
-        _, mlist = db.get_messages_since()
+        _, mlist = db.get_messages()
         self.assertEqual(mlist, [])
 
         id1 = dandelion.identity.generate()
@@ -244,17 +242,12 @@ class DatabaseTest(unittest.TestCase):
         db.add_identities([id1])
         db.add_messages([m1, m2, m3])
         
-        _, mlist = db.get_messages_since()
+        _, mlist = db.get_messages()
         self.assertTrue(m1 in mlist)
         self.assertTrue(m2 in mlist)
         self.assertTrue(m3 in mlist)
         
-        mlist = db.get_messages()
-        self.assertTrue(m1 in mlist)
-        self.assertTrue(m2 in mlist)
-        self.assertTrue(m3 in mlist)
-        
-        mlist = db.get_messages([m1.id, m3.id])
+        _, mlist = db.get_messages([m1.id, m3.id])
         self.assertTrue(m1 in mlist)
         self.assertFalse(m2 in mlist)
         self.assertTrue(m3 in mlist)
@@ -320,27 +313,44 @@ class DatabaseTest(unittest.TestCase):
         db = ContentDB.db
 
         id1 = dandelion.identity.generate()
-        id2 = dandelion.identity.generate()
+        id2 = dandelion.identity.generate().public_identity()
         id3 = dandelion.identity.generate()
         
         db.add_identities([id1, id2, id3])
         db.add_messages([Message("fu")])
         
         _, idlist = db.get_identities_since()
-        
         self.assertTrue(id1 in idlist)
         self.assertTrue(id2 in idlist)
         self.assertTrue(id3 in idlist)
+        for id in idlist:
+            self.assertFalse(id.rsa_key.is_private)
+            self.assertFalse(id.dsa_key.is_private)
         
         idlist = db.get_identities()
         self.assertTrue(id1 in idlist)
         self.assertTrue(id2 in idlist)
         self.assertTrue(id3 in idlist)
+        for id in idlist:
+            self.assertFalse(id.rsa_key.is_private)
+            self.assertFalse(id.dsa_key.is_private)
         
         idlist = db.get_identities([id1.fingerprint, id2.fingerprint])
         self.assertTrue(id1 in idlist)
         self.assertTrue(id2 in idlist)
         self.assertFalse(id3 in idlist)
+        for id in idlist:
+            self.assertFalse(id.rsa_key.is_private)
+            self.assertFalse(id.dsa_key.is_private)
+        
+#        self.assertRaises(ValueError, db.add_private_identity, id2)
+#        self.assertIsNone(db.get_private_identitity(id2.fingerprint))
+#        
+#        db.add_private_identity(id1)
+#        id = db.get_private_identitity(id1.fingerprint)
+#        self.assertEqual(id1.fingerprint, id.fingerprint)
+#        self.assertTrue(id.is_private)
+#        self.assertTrue(id1.is_private)
         
 if __name__ == '__main__':
     unittest.main()

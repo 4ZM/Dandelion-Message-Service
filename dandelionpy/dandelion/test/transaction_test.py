@@ -242,9 +242,9 @@ class MessageTest(unittest.TestCase):
             self.assertEqual(rcv, dandelion.protocol.create_identity_id_list(tc, None).encode())
 
             """Check response to mdg req"""
-            test_client._write(dandelion.protocol.create_message_list_request([msg.id for msg in db.get_messages()]).encode())
+            test_client._write(dandelion.protocol.create_message_list_request([msg.id for msg in db.get_messages()[1]]).encode())
             rcv = test_client._read()
-            self.assertEqual(rcv, dandelion.protocol.create_message_list(db.get_messages()).encode())
+            self.assertEqual(rcv, dandelion.protocol.create_message_list(db.get_messages()[1]).encode())
 
             """Check response to identity req"""
             test_client._write(dandelion.protocol.create_identity_list_request([id.fingerprint for id in db.get_identities()]).encode())
@@ -286,14 +286,14 @@ class MessageTest(unittest.TestCase):
             self.assertEqual(rcv, dandelion.protocol.create_message_id_list_request().encode())
 
             """Sending the msg id list"""
-            srv_sock._write(dandelion.protocol.create_message_id_list(tc, srv_db.get_messages()).encode())
+            srv_sock._write(dandelion.protocol.create_message_id_list(tc, srv_db.get_messages()[1]).encode())
 
             """Reading msg list request"""
             rcv = srv_sock._read()
-            self.assertEqual(rcv, dandelion.protocol.create_message_list_request([msg.id for msg in srv_db.get_messages()]).encode())
+            self.assertEqual(rcv, dandelion.protocol.create_message_list_request([msg.id for msg in srv_db.get_messages()[1]]).encode())
 
             """Sending the msg id list"""
-            srv_sock._write(dandelion.protocol.create_message_list(srv_db.get_messages()).encode())
+            srv_sock._write(dandelion.protocol.create_message_list(srv_db.get_messages()[1]).encode())
 
 
             """Reading identity id list request"""
@@ -316,7 +316,7 @@ class MessageTest(unittest.TestCase):
         """Make sure the client has updated the db"""
         self.assertEqual(client_db.message_count, 3)
         self.assertEqual(srv_db.message_count, 3)
-        self.assertEqual(len([srvmsg for srvmsg in srv_db.get_messages() if srvmsg not in client_db.get_messages()]), 0) 
+        self.assertEqual(len([srvmsg for srvmsg in srv_db.get_messages()[1] if srvmsg not in client_db.get_messages()[1]]), 0) 
 
     def test_server_transaction_protocol_violation(self):
         """Tests the servers response to an invalid request""" 
@@ -402,7 +402,7 @@ class MessageTest(unittest.TestCase):
         self.assertEqual(client_db.identity_count, 2)
         self.assertEqual(server_db.identity_count, 2)
 
-        self.assertEqual(len([srvmsg for srvmsg in server_db.get_messages() if srvmsg not in client_db.get_messages()]), 0) 
+        self.assertEqual(len([srvmsg for srvmsg in server_db.get_messages()[1] if srvmsg not in client_db.get_messages()[1]]), 0) 
         self.assertEqual(len([srvid for srvid in server_db.get_identities() if srvid not in client_db.get_identities()]), 0)
 
     def test_client_server_transaction_empty_db(self):
@@ -476,7 +476,7 @@ class MessageTest(unittest.TestCase):
         self.assertEqual(server_db.identity_count, 2)
         self.assertEqual(client_db.message_count, 3)
         self.assertEqual(server_db.message_count, 3)
-        self.assertEqual(len([srvmsg for srvmsg in server_db.get_messages() if srvmsg not in client_db.get_messages()]), 0) 
+        self.assertEqual(len([srvmsg for srvmsg in server_db.get_messages()[1] if srvmsg not in client_db.get_messages()[1]]), 0) 
         self.assertEqual(len([srvids for srvids in server_db.get_identities() if srvids not in client_db.get_identities()]), 0)
 
 

@@ -103,18 +103,13 @@ class ContentDB:
     def contains_message(self, msgid):
         """Returns true if the database contains the msgid"""
 
-    def get_messages(self, msgids=None):
+    def get_messages(self, msgids=None, time_cookie=None):
         """Get a list of all messages with specified message id.
+    
         If the parameter is None, all messages are returned.
-        """
-
-    def get_messages_since(self, time_cookie=None):
-        """Get messages from the data base.
-        
+    
         If a time cookie is specified, all messages in the database after
         the time specified by the time cookie will be returned.  
-        If the time cookie parameter is omitted, all messages currently in the 
-        data base will be returned.
         """
 
     def add_identities(self, identities):
@@ -366,8 +361,12 @@ class SQLiteContentDB(ContentDB):
             c.execute('SELECT msgid FROM messages WHERE msgid=?', (self._encode_id(msgid),)) 
             return c.fetchone() is not None
 
-    def get_messages(self, msgids=None):
-        """Get a list of all msg_rows with specified message id"""
+    def get_messages(self, msgids=None, time_cookie=None):
+        """Get a list of all msg_rows with specified message id.
+        
+        If a time cookie is specified, all messages in the database from (and 
+        including) the time specified by the time cookie will be returned.
+        """
 
         if msgids is not None and not hasattr(msgids, '__iter__'):
             raise TypeError
@@ -375,39 +374,7 @@ class SQLiteContentDB(ContentDB):
         with sqlite3.connect(self._db_file) as conn:
             c = conn.cursor()
             
-            if msgids is None:
-                c.execute("""SELECT msg, receiver, sender, signature FROM messages""")
-                msg_rows = c.fetchall()
-            else:
-                msg_rows = []
-                try:
-                    for m in msgids:
-                        c.execute("""SELECT msg, receiver, sender, signature FROM messages WHERE msgid = ?""", 
-                                  (self._encode_id(m),))
-                        msg_rows.extend([c.fetchone()])
-                except AttributeError:
-                    raise TypeError
-                
-            return [Message(m[0], 
-                            None if m[1] is None else self._decode_id(m[1]), 
-                            None if m[2] is None else self._decode_id(m[2]), 
-                            None if m[3] is None else self._decode_id(m[3])) for m in msg_rows if m is not None] 
-
-    def get_messages_since(self, time_cookie=None):
-        """Get messages from the data base.
-        
-        If a time cookie is specified, all messages in the database from (and 
-        including) the time specified by the time cookie will be returned.  
-        If the time cookie parameter is omitted, all messages currently in the 
-        data base will be returned.
-        """
-
-        with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
-            
-            if time_cookie is None:
-                c.execute("""SELECT msg, receiver, sender, signature FROM messages""")
-            else:
+            if time_cookie is not None:
                 if not isinstance(time_cookie, bytes):
                     raise TypeError
                 if len(time_cookie) == 0:
@@ -422,12 +389,20 @@ class SQLiteContentDB(ContentDB):
                              FROM messages JOIN time_cookies ON messages.cookieid = time_cookies.id
                              WHERE time_cookies.id > (SELECT id FROM time_cookies WHERE cookie = ?)""", 
                              (self._encode_id(time_cookie),)) 
+            else: 
+                c.execute("""SELECT msg, receiver, sender, signature FROM messages""")
 
-            msgs = [Message(row[0], 
-                            None if row[1] is None else self._decode_id(row[1]), 
-                            None if row[2] is None else self._decode_id(row[2]), 
-                            None if row[3] is None else self._decode_id(row[3])) for row in c.fetchall()]
+            msgs = c.fetchall()
             current_tc = self._get_last_time_cookie(c)
+            msgs = [Message(m[0], 
+                    None if m[1] is None else self._decode_id(m[1]), 
+                    None if m[2] is None else self._decode_id(m[2]), 
+                    None if m[3] is None else self._decode_id(m[3])) for m in msgs 
+                    if m is not None]
+
+            if msgids is not None:
+                msgs = [m for m in msgs if m.id in msgids]
+            
             return (current_tc, msgs)
 
     def add_identities(self, identities):
