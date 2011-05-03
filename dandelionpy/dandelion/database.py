@@ -134,18 +134,13 @@ class ContentDB:
     def contains_identity(self, fingerprint):
         """Returns true if the database contains the identity fingerprint"""
 
-    def get_identities(self, fingerprints=None):
+    def get_identities(self, fingerprints=None, time_cookie=None):
         """Get a list of all identities with specified fingerprints.
-        If the parameter is None, all identities are returned.
-        """
 
-    def get_identities_since(self, time_cookie=None):
-        """Get identities from the data base.
-        
+        If the parameter is None, all identities are returned.
+    
         If a time cookie is specified, all identities in the database after
         the time specified by the time cookie will be returned.  
-        If the time cookie parameter is omitted, all identities currently in the 
-        data base will be returned.
         """
 
     def get_last_time_cookie(self, dbfp=None):
@@ -491,9 +486,13 @@ class SQLiteContentDB(ContentDB):
                 return True
         
 
-    def get_identities(self, fingerprints=None):
+    def get_identities(self, fingerprints=None, time_cookie=None):
         """Get a list of all identities with specified fingerprints.
+        
         If the parameter is None, all identities are returned.
+        
+        If a time cookie is specified, all identities in the database after
+        the time specified by the time cookie will be returned.  
         """
 
         if fingerprints is not None and not hasattr(fingerprints, '__iter__'):
@@ -502,68 +501,41 @@ class SQLiteContentDB(ContentDB):
         with sqlite3.connect(self._db_file) as conn:
             c = conn.cursor()
 
-            if fingerprints is None:
-                c.execute("""SELECT fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e FROM identities""")
-                id_rows = c.fetchall()
-            else:
-                id_rows = []
-                try:
-                    for fp in fingerprints: 
-                        c.execute("""SELECT fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e
-                                     FROM identities WHERE fingerprint = ?""", 
-                                     (self._encode_id(fp),))
-                        id_rows.extend([c.fetchone()])
-                except AttributeError:
-                    raise TypeError
-                
-            return [Identity(DSA_key(decode_b64_int(id[1]), 
-                                    decode_b64_int(id[2]), 
-                                    decode_b64_int(id[3]), 
-                                    decode_b64_int(id[4])), 
-                             RSA_key(decode_b64_int(id[5]), 
-                                    decode_b64_int(id[6]))) for id in id_rows] 
-
-    def get_identities_since(self, time_cookie=None):
-        """Get identities from the data base.
-        
-        If a time cookie is specified, all identities in the database after
-        the time specified by the time cookie will be returned.  
-        If the time cookie parameter is omitted, all identities currently in the 
-        data base will be returned.
-        """
-        
-        with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
-            
-            if time_cookie is None:
-                c.execute("""SELECT fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e FROM identities""")
-            else:
+            if time_cookie is not None:
                 if not isinstance(time_cookie, bytes):
                     raise TypeError
                 if len(time_cookie) == 0:
                     raise ValueError
 
-                """Assert that the cookie is valid"""
-                if c.execute("""SELECT count(*) FROM time_cookies WHERE cookie=?""", 
+                """Assert that time_cookie is a valid cookie"""
+                if c.execute("SELECT count(*) FROM time_cookies WHERE cookie = ?", 
                           (self._encode_id(time_cookie),)).fetchone()[0] == 0:
                     raise ValueError 
-                
+
                 c.execute("""SELECT fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e 
                              FROM identities JOIN time_cookies ON identities.cookieid = time_cookies.id
                              WHERE time_cookies.id > (SELECT id FROM time_cookies WHERE cookie=?)""", 
                              (self._encode_id(time_cookie),)) 
+            else:
+                c.execute("""SELECT fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e FROM identities""")
+            
+            id_rows = c.fetchall()
+            current_tc = self._get_last_time_cookie(c)
 
             ids = [Identity(DSA_key(decode_b64_int(id[1]), 
-                                    decode_b64_int(id[2]), 
-                                    decode_b64_int(id[3]), 
-                                    decode_b64_int(id[4])), 
-                             RSA_key(decode_b64_int(id[5]), 
-                                    decode_b64_int(id[6]))) for id in c.fetchall()] 
-
-            current_tc = self._get_last_time_cookie(c) 
-
+                                                  decode_b64_int(id[2]), 
+                                                  decode_b64_int(id[3]), 
+                                                  decode_b64_int(id[4])), 
+                                          RSA_key(decode_b64_int(id[5]), 
+                                                  decode_b64_int(id[6]))) for id in id_rows 
+                                                  if id is not None]
+            if fingerprints is not None:
+                ids = [id for id in ids if id.fingerprint in fingerprints]
+            
             return (current_tc, ids)
+            
 
+            
     def _create_tables(self, cursor):
         """Create the tables if they don't exist"""
 

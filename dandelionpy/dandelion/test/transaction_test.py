@@ -247,9 +247,9 @@ class MessageTest(unittest.TestCase):
             self.assertEqual(rcv, dandelion.protocol.create_message_list(db.get_messages()[1]).encode())
 
             """Check response to identity req"""
-            test_client._write(dandelion.protocol.create_identity_list_request([id.fingerprint for id in db.get_identities()]).encode())
+            test_client._write(dandelion.protocol.create_identity_list_request([id.fingerprint for id in db.get_identities()[1]]).encode())
             rcv = test_client._read()
-            self.assertEqual(rcv, dandelion.protocol.create_identity_list(db.get_identities()).encode())
+            self.assertEqual(rcv, dandelion.protocol.create_identity_list(db.get_identities()[1]).encode())
 
             """Wait for server (will time out if no requests)"""
             thread.join(2*TIMEOUT)
@@ -301,14 +301,14 @@ class MessageTest(unittest.TestCase):
             self.assertEqual(rcv, dandelion.protocol.create_identity_id_list_request().encode())
 
             """Sending the identity id list"""
-            srv_sock._write(dandelion.protocol.create_identity_id_list(tc, srv_db.get_identities()).encode())
+            srv_sock._write(dandelion.protocol.create_identity_id_list(tc, srv_db.get_identities()[1]).encode())
 
             """Reading identity list request"""
             rcv = srv_sock._read()
-            self.assertEqual(rcv, dandelion.protocol.create_identity_list_request([id.fingerprint for id in srv_db.get_identities()]).encode())
+            self.assertEqual(rcv, dandelion.protocol.create_identity_list_request([id.fingerprint for id in srv_db.get_identities()[1]]).encode())
 
             """Sending the msg id list"""
-            srv_sock._write(dandelion.protocol.create_identity_list(srv_db.get_identities()).encode())
+            srv_sock._write(dandelion.protocol.create_identity_list(srv_db.get_identities()[1]).encode())
             
             """Wait for client to hang up"""
             thread.join(2*TIMEOUT)
@@ -403,7 +403,7 @@ class MessageTest(unittest.TestCase):
         self.assertEqual(server_db.identity_count, 2)
 
         self.assertEqual(len([srvmsg for srvmsg in server_db.get_messages()[1] if srvmsg not in client_db.get_messages()[1]]), 0) 
-        self.assertEqual(len([srvid for srvid in server_db.get_identities() if srvid not in client_db.get_identities()]), 0)
+        self.assertEqual(len([srvid for srvid in server_db.get_identities()[1] if srvid not in client_db.get_identities()[1]]), 0)
 
     def test_client_server_transaction_empty_db(self):
         """Tests the whole, client driven transaction protocol and logic with an empty db""" 
@@ -477,7 +477,7 @@ class MessageTest(unittest.TestCase):
         self.assertEqual(client_db.message_count, 3)
         self.assertEqual(server_db.message_count, 3)
         self.assertEqual(len([srvmsg for srvmsg in server_db.get_messages()[1] if srvmsg not in client_db.get_messages()[1]]), 0) 
-        self.assertEqual(len([srvids for srvids in server_db.get_identities() if srvids not in client_db.get_identities()]), 0)
+        self.assertEqual(len([srvids for srvids in server_db.get_identities()[1] if srvids not in client_db.get_identities()[1]]), 0)
 
 
 if __name__ == '__main__':

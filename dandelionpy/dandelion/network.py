@@ -172,12 +172,12 @@ class ServerTransaction(SocketTransaction):
                 self._write(response_str.encode())
             elif dandelion.protocol.is_identity_id_list_request(data):
                 tc = dandelion.protocol.parse_identity_id_list_request(data)
-                tc, ids = self._db.get_identities_since(tc)
+                tc, ids = self._db.get_identities(time_cookie=tc)
                 response_str = dandelion.protocol.create_identity_id_list(tc, ids)
                 self._write(response_str.encode()) 
             elif dandelion.protocol.is_identity_list_request(data):
                 identities = dandelion.protocol.parse_identity_list_request(data)
-                ids = self._db.get_identities(identities)
+                _, ids = self._db.get_identities(fingerprints=identities)
                 response_str = dandelion.protocol.create_identity_list(ids)
                 self._write(response_str.encode())
             else:

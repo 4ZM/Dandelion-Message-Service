@@ -162,7 +162,7 @@ class UI:
         print(' --- MESSAGES END --- ')
 
     def show_identities(self):
-        identities = self._db.get_identities()
+        _, identities = self._db.get_identities()
         print(' --- IDENTITIES BEGIN --- ')
         
         for id in identities:

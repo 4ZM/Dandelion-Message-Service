@@ -257,9 +257,7 @@ class DatabaseTest(unittest.TestCase):
         
         db = ContentDB.db
         
-        idlist = db.get_identities()
-        self.assertEqual(idlist, [])
-        _, idlist = db.get_identities_since()
+        _, idlist = db.get_identities()
         self.assertEqual(idlist, [])
 
         
@@ -319,7 +317,7 @@ class DatabaseTest(unittest.TestCase):
         db.add_identities([id1, id2, id3])
         db.add_messages([Message("fu")])
         
-        _, idlist = db.get_identities_since()
+        _, idlist = db.get_identities()
         self.assertTrue(id1 in idlist)
         self.assertTrue(id2 in idlist)
         self.assertTrue(id3 in idlist)
@@ -327,15 +325,7 @@ class DatabaseTest(unittest.TestCase):
             self.assertFalse(id.rsa_key.is_private)
             self.assertFalse(id.dsa_key.is_private)
         
-        idlist = db.get_identities()
-        self.assertTrue(id1 in idlist)
-        self.assertTrue(id2 in idlist)
-        self.assertTrue(id3 in idlist)
-        for id in idlist:
-            self.assertFalse(id.rsa_key.is_private)
-            self.assertFalse(id.dsa_key.is_private)
-        
-        idlist = db.get_identities([id1.fingerprint, id2.fingerprint])
+        _, idlist = db.get_identities(fingerprints=[id1.fingerprint, id2.fingerprint])
         self.assertTrue(id1 in idlist)
         self.assertTrue(id2 in idlist)
         self.assertFalse(id3 in idlist)
