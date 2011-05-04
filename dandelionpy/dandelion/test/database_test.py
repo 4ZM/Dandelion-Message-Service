@@ -22,7 +22,7 @@ import tempfile
 import dandelion.message
 import dandelion.identity
 from dandelion.message import Message
-from dandelion.database import ContentDB, SQLiteContentDB, ContentDBException
+from dandelion.database import ContentDB, ContentDBException
 
 class DatabaseTest(unittest.TestCase):
     """Unit test suite for the InMemoryContentDB class"""
@@ -30,7 +30,7 @@ class DatabaseTest(unittest.TestCase):
     def test_sqlite(self):
         """Perform some SQLite specific tests."""
         tmp = tempfile.NamedTemporaryFile()
-        sqlitedb = SQLiteContentDB(tmp.name)
+        sqlitedb = ContentDB(tmp.name)
         
         self.assertTrue(len(sqlitedb.id), ContentDB._DBID_LENGTH_BYTES)
         self.assertTrue(ContentDB._TCID_LENGTH_BYTES > 1)
@@ -41,7 +41,7 @@ class DatabaseTest(unittest.TestCase):
         tc1 = sqlitedb.add_messages([m1, Message('b')])
         self.assertEqual(sqlitedb.message_count, 2)
 
-        sqlitedb2 = SQLiteContentDB(tmp.name, sqlitedb.id) # New db is the same as old
+        sqlitedb2 = ContentDB(tmp.name, sqlitedb.id) # New db is the same as old
         self.assertEqual(sqlitedb.id, sqlitedb2.id)
         self.assertEqual(sqlitedb.message_count, 2)
 
@@ -57,10 +57,10 @@ class DatabaseTest(unittest.TestCase):
         self.assertRaises(ContentDBException, ContentDB.register, 23)
         self.assertRaises(ContentDBException, ContentDB.unregister)
         
-        db = SQLiteContentDB(":memory:")
+        db = ContentDB(":memory:")
         ContentDB.register(db)
         self.assertRaises(ContentDBException, ContentDB.register, db)
-        self.assertRaises(ContentDBException, ContentDB.register, SQLiteContentDB(":memory:"))
+        self.assertRaises(ContentDBException, ContentDB.register, ContentDB(":memory:"))
         
         db_back = ContentDB.db
         self.assertNotEqual(db_back, None)
@@ -69,46 +69,9 @@ class DatabaseTest(unittest.TestCase):
         ContentDB.unregister()
         self.assertEqual(ContentDB.db, None)
 
-
-    def test_sqlitedb_id(self):
-        tmp = tempfile.NamedTemporaryFile()
-        ContentDB.register(SQLiteContentDB(tmp.name))
-        self._test_id(ContentDB.db)
-        ContentDB.unregister()
-
-    def test_sqlitedb_test_time_cookies(self):
-        tmp = tempfile.NamedTemporaryFile()
-        ContentDB.register(SQLiteContentDB(tmp.name))
-        self._test_time_cookies()
-        ContentDB.unregister()
-
-    def test_sqlitedb_message_interface(self):
-        tmp = tempfile.NamedTemporaryFile()
-        ContentDB.register(SQLiteContentDB(tmp.name))
-        self._test_message_interface()
-        ContentDB.unregister()
-        
-    def test_sqlitedb_get_messages(self):
-        tmp = tempfile.NamedTemporaryFile()
-        ContentDB.register(SQLiteContentDB(tmp.name))
-        self._test_get_messages()
-        ContentDB.unregister()
-
-    def test_sqlitedb_identity_interface(self):
-        tmp = tempfile.NamedTemporaryFile()
-        ContentDB.register(SQLiteContentDB(tmp.name))
-        self._test_identity_interface()
-        ContentDB.unregister()
-        
-    def test_sqlitedb_get_identities(self):
-        tmp = tempfile.NamedTemporaryFile()
-        ContentDB.register(SQLiteContentDB(tmp.name))
-        self._test_get_identities()
-        ContentDB.unregister()
-
-    def _test_id(self, db):
+    def test_id(self):
         """Test data base id format"""
-        db = ContentDB.db
+        db = ContentDB(tempfile.NamedTemporaryFile().name)
         
         id = db.id
         self.assertNotEqual(id, None)
@@ -116,12 +79,12 @@ class DatabaseTest(unittest.TestCase):
         self.assertTrue(isinstance(db.id, bytes))
         
         # Another data base gets another id
-        self.assertNotEqual(id, SQLiteContentDB(":memory:").id)
+        self.assertNotEqual(id, ContentDB(":memory:").id)
 
-    def _test_time_cookies(self):
+    def test_time_cookies(self):
         """Test the data base time cookies (revision) functionality.""" 
         
-        db = ContentDB.db
+        db = ContentDB(tempfile.NamedTemporaryFile().name)
 
         # Adding a message        
         first_msg = Message('A Single Message')
@@ -173,10 +136,10 @@ class DatabaseTest(unittest.TestCase):
         self.assertRaises(ValueError, db.get_messages, [], b'')
         self.assertRaises(ValueError, db.get_messages, [], b'1337')
         
-    def _test_message_interface(self):
+    def test_message_interface(self):
         """Test functions relating to storing and recovering messages."""
         
-        db = ContentDB.db
+        db = ContentDB(tempfile.NamedTemporaryFile().name)
         
         id1 = dandelion.identity.generate()
         id2 = dandelion.identity.generate()
@@ -225,10 +188,10 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual([db.contains_message(m.id) for m in first_msg_list], [False, False, False, False, False])
         self.assertEqual([db.contains_message(m.id) for m in second_msg_list], [False, False])
         
-    def _test_get_messages(self):
+    def test_get_messages(self):
         """Test message retrieval."""
         
-        db = ContentDB.db
+        db = ContentDB(tempfile.NamedTemporaryFile().name)
 
         _, mlist = db.get_messages()
         self.assertEqual(mlist, [])
@@ -252,10 +215,10 @@ class DatabaseTest(unittest.TestCase):
         self.assertFalse(m2 in mlist)
         self.assertTrue(m3 in mlist)
         
-    def _test_identity_interface(self):
+    def test_identity_interface(self):
         """Test functions relating to storing and recovering identities."""
         
-        db = ContentDB.db
+        db = ContentDB(tempfile.NamedTemporaryFile().name)
         
         _, idlist = db.get_identities()
         self.assertEqual(idlist, [])
@@ -305,10 +268,10 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual([db.contains_identity(id.fingerprint) for id in first_id_list], [False, False])
         self.assertEqual([db.contains_identity(id.fingerprint) for id in second_id_list], [False, False])
 
-    def _test_get_identities(self):
+    def test_get_identities(self):
         """Test identity retrieval."""
         
-        db = ContentDB.db
+        db = ContentDB(tempfile.NamedTemporaryFile().name)
 
         id1 = dandelion.identity.generate()
         id2 = dandelion.identity.generate().public_identity()

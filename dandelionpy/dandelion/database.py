@@ -25,13 +25,10 @@ import sqlite3
 
 
 class ContentDBException(Exception):
-    pass
+    '''Exception from the operations on the ContentDB'''
 
-class ContentDB: 
-    """Message data base for the Dandelion Message Service.
-    
-    Abstract base class and static singleton.
-    """
+class ContentDB:
+    """A content database with a sqlite backend."""
     
     class _classproperty(property):
         """Class property (mix of classmethod and property)"""
@@ -73,85 +70,6 @@ class ContentDB:
         """Access the registered database."""
         return cls.__instance
     
-    @property
-    def id(self):
-        """The data base id (bytes)"""
-
-    @property
-    def name(self):
-        """The data base name (can be None)"""
-
-    def add_messages(self, msgs):
-        """Add a a list of messages to the data base.
-        
-        Will add all messages, not already in the data base to the data base and return a 
-        time cookie (bytes) that represents the point in time after the messages have been added.
-        If no messages were added, it just returns the current time cookie. 
-        """
-
-    def remove_messages(self, msgs=None):
-        """Removes messages from the data base.
-        
-        The specified list of messages will be removed from the data base. 
-        If the message parameter is omitted, all messages in the data base will be removed.
-        """
-        
-    @property
-    def message_count(self):
-        """Returns the number of messages currently in the data base (int)"""
-
-    def contains_message(self, msgid):
-        """Returns true if the database contains the msgid"""
-
-    def get_messages(self, msgids=None, time_cookie=None):
-        """Get a list of all messages with specified message id.
-    
-        If the parameter is None, all messages are returned.
-    
-        If a time cookie is specified, all messages in the database after
-        the time specified by the time cookie will be returned.  
-        """
-
-    def add_identities(self, identities):
-        """Add a a list of identities to the data base.
-        
-        Will add all identities, not already in the data base to the data base and return a 
-        time cookie (bytes) that represents the point in time after the identities have been added.
-        If no identities were added, it just returns the current time cookie. 
-        """
-
-    def remove_identities(self, identities=None):
-        """Removes identities from the data base.
-        
-        The specified list of identities will be removed from the data base. 
-        If the identities parameter is omitted, all identities in the data base will be removed.
-        """
-        
-    @property
-    def identity_count(self):
-        """Returns the number of identities currently in the data base (int)"""
-
-    def contains_identity(self, fingerprint):
-        """Returns true if the database contains the identity fingerprint"""
-
-    def get_identities(self, fingerprints=None, time_cookie=None):
-        """Get a list of all identities with specified fingerprints.
-
-        If the parameter is None, all identities are returned.
-    
-        If a time cookie is specified, all identities in the database after
-        the time specified by the time cookie will be returned.  
-        """
-
-    def get_last_time_cookie(self, dbfp=None):
-        """Get the latest time cookie known in the data base for the remote 
-        data base with fingerprint dbfp. 
-        
-        If there is no record of the remote data base, return None.
-        
-        If dbfp is None, get the latest time cookie for the own database.
-        """
-
     @classmethod
     def _generate_random_db_id(self):
         """Create a new db id"""
@@ -176,9 +94,6 @@ class ContentDB:
     def _decode_id(self, id):
         """Text to binary decoding of id's"""
         return decode_b64_bytes(id.encode())
-
-class SQLiteContentDB(ContentDB):
-    """A content database with a sqlite backend."""
      
     _CREATE_TABLE_DATABASES = """CREATE TABLE IF NOT EXISTS databases
         (id INTEGER PRIMARY KEY AUTOINCREMENT,

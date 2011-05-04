@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from dandelion.database import SQLiteContentDB
+from dandelion.database import ContentDB
 from dandelion.message import Message
 from dandelion.network import SocketTransaction, ServerTransaction, \
     ClientTransaction
@@ -215,7 +215,7 @@ class MessageTest(unittest.TestCase):
     def test_basic_server_transaction(self):
         """Tests the server transaction protocol and logic""" 
     
-        db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        db = ContentDB(tempfile.NamedTemporaryFile().name)
         db.add_identities([dandelion.identity.generate(), dandelion.identity.generate()])
         tc = db.add_messages([Message('fubar'), Message('foo'), Message('bar')])
     
@@ -257,8 +257,8 @@ class MessageTest(unittest.TestCase):
     def test_basic_client_transaction(self):
         """Tests the client transaction protocol and logic""" 
 
-        client_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
-        srv_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        client_db = ContentDB(tempfile.NamedTemporaryFile().name)
+        srv_db = ContentDB(tempfile.NamedTemporaryFile().name)
 
         self.assertEqual(client_db.message_count, 0)
         srv_db.add_identities([dandelion.identity.generate(), dandelion.identity.generate()])
@@ -321,7 +321,7 @@ class MessageTest(unittest.TestCase):
     def test_server_transaction_protocol_violation(self):
         """Tests the servers response to an invalid request""" 
     
-        db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        db = ContentDB(tempfile.NamedTemporaryFile().name)
 
         with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
             srv_transaction = ServerTransaction(server_helper.sock, db)
@@ -347,7 +347,7 @@ class MessageTest(unittest.TestCase):
     def test_client_transaction_protocol_violation(self):
         """Tests the client transaction protocol and logic""" 
         
-        client_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        client_db = ContentDB(tempfile.NamedTemporaryFile().name)
    
         with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
             
@@ -368,8 +368,8 @@ class MessageTest(unittest.TestCase):
     def test_client_server_transaction(self):
         """Tests the whole, client driven transaction protocol and logic""" 
         
-        client_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
-        server_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        client_db = ContentDB(tempfile.NamedTemporaryFile().name)
+        server_db = ContentDB(tempfile.NamedTemporaryFile().name)
         
         id1 = dandelion.identity.generate()
         id2 = dandelion.identity.generate()
@@ -408,8 +408,8 @@ class MessageTest(unittest.TestCase):
     def test_client_server_transaction_empty_db(self):
         """Tests the whole, client driven transaction protocol and logic with an empty db""" 
         
-        client_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
-        server_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        client_db = ContentDB(tempfile.NamedTemporaryFile().name)
+        server_db = ContentDB(tempfile.NamedTemporaryFile().name)
     
         self.assertEqual(client_db.message_count, 0)
         self.assertEqual(server_db.message_count, 0)
@@ -440,8 +440,8 @@ class MessageTest(unittest.TestCase):
     def test_client_server_transaction_partial_sync(self):
         """Tests the whole, client driven transaction protocol and logic""" 
         
-        client_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
-        server_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        client_db = ContentDB(tempfile.NamedTemporaryFile().name)
+        server_db = ContentDB(tempfile.NamedTemporaryFile().name)
         
         id1 = dandelion.identity.generate()
         id2 = dandelion.identity.generate()
