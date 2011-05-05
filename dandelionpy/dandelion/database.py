@@ -137,7 +137,14 @@ class ContentDB:
     _QUERY_GET_MESSAGE_COUNT = """SELECT count(*) FROM messages"""
     _QUERY_GET_IDENTITY_COUNT = """SELECT count(*) FROM identities"""
 
+    _QUERY_REMOVE_ALL_IDENTITIES="""DELETE FROM identities"""
+    _QUERY_REMOVE_SPECIFIC_IDENTITIES="""DELETE FROM identities WHERE fingerprint=?"""
+    _QUERY_REMOVE_ALL_MESSAGES="""DELETE FROM messages"""
+    _QUERY_REMOVE_SPECIFIC_MESSAGES="""DELETE FROM messages WHERE msgid=?"""
     
+    _QUERY_ADD_MESSAGES="""INSERT OR IGNORE INTO messages (msgid, msg, receiver, sender, signature, cookieid) VALUES (?,?,?,?,?,?)"""
+    _QUERY_ADD_IDENTITIES="""INSERT OR IGNORE INTO identities (fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e, cookieid) VALUES (?,?,?,?,?,?,?,?)"""
+
     def __init__(self, db_file, id=None):
         """Create a SQLite backed data base."""
         super().__init__()
@@ -198,40 +205,16 @@ class ContentDB:
         time cookie (bytes) that represents the point in time after the messages have been added.
         If no messages were added, it just returns the current time cookie. 
         """
-    
-        if msgs is None:
-            raise ValueError
-        
-        if not hasattr(msgs, '__iter__'):
-            raise TypeError
-        
-        with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
 
-            tcid = self._insert_new_tc(c)
-            
-            pre_msgs = self._get_message_count(c) # Count before insert
-            
-            try:
-                for m in msgs:
-                    # Add sender/receiver
-                    c.execute("""INSERT OR IGNORE INTO messages (msgid, msg, receiver, sender, signature, cookieid) VALUES (?,?,?,?,?,?)""", 
-                              (self._encode_id(m.id), 
-                               m.text, 
-                               None if not m.has_receiver else self._encode_id(m.receiver), 
-                               None if not m.has_sender else self._encode_id(m.sender),
-                               None if not m.has_sender else self._encode_id(m.signature),
-                               tcid))
-            except AttributeError: # Typically caused by types other than Message in list
-                raise TypeError
-            
-            post_msgs = self._get_message_count(c) # Count after insert
-            
-            """No new messages? Rollback tc insert and use old value"""
-            if (post_msgs - pre_msgs) == 0: 
-                conn.rollback() 
-            
-            return self._get_last_time_cookie(c)
+        if msgs is None or not hasattr(msgs, '__iter__'):
+            raise TypeError
+
+        return self._add_content(self._QUERY_GET_MESSAGE_COUNT, self._QUERY_ADD_MESSAGES,
+                          [(self._encode_id(m.id), m.text,
+                            None if not m.has_receiver else self._encode_id(m.receiver),
+                            None if not m.has_sender else self._encode_id(m.sender),
+                            None if not m.has_sender else self._encode_id(m.signature)) for m in msgs])
+
 
     def remove_messages(self, msgs=None):
         """Removes messages from the data base.
@@ -240,25 +223,17 @@ class ContentDB:
         If the message parameter is omitted, all messages in the data base will be removed.
         """
 
-        if msgs is not None and not hasattr(msgs,'__iter__'):
-            raise TypeError
-
-        with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
-            
-            if msgs is None:
-                c.execute("""DELETE FROM messages""")
-            else:
-                c.executemany("""DELETE FROM messages WHERE msgid=?""", 
-                              [(self._encode_id(m.id),) for m in msgs])
+        if msgs is None:
+            self._remove_content(self._QUERY_REMOVE_ALL_MESSAGES)
+        else:
+            self._remove_content(self._QUERY_REMOVE_SPECIFIC_MESSAGES, [self._encode_id(m.id) for m in msgs])
 
     @property
     def message_count(self):
         """Returns the number of messages currently in the data base (int)"""
         
         with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
-            return self._get_message_count(c)
+            return conn.cursor().execute(self._QUERY_GET_MESSAGE_COUNT).fetchone()[0]
 
     def contains_message(self, msgid):
         """Returns true if the database contains the msgid"""
@@ -315,6 +290,7 @@ class ContentDB:
             
             return (current_tc, msgs)
 
+
     def add_identities(self, identities):
         """Add a a list of identities to the data base.
         
@@ -323,41 +299,18 @@ class ContentDB:
         If no identities were added, it just returns the current time cookie. 
         """
 
-        if identities is None:
-            raise ValueError
-        
-        if not hasattr(identities, '__iter__'):
+        if identities is None or not hasattr(identities, '__iter__'):
             raise TypeError
-        
-        with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
 
-            tcid = self._insert_new_tc(c)
-            
-            pre_msgs = self._get_identity_count(c) # Count before insert
-            
-            try:
-                for id in identities:
-                    c.execute("""INSERT OR IGNORE INTO identities (fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e, cookieid) VALUES (?,?,?,?,?,?,?,?)""", 
-                              (self._encode_id(id.fingerprint), 
-                               encode_b64_int(id.dsa_key.y),
-                               encode_b64_int(id.dsa_key.g),
-                               encode_b64_int(id.dsa_key.p),
-                               encode_b64_int(id.dsa_key.q),
-                               encode_b64_int(id.rsa_key.n),
-                               encode_b64_int(id.rsa_key.e),
-                               tcid))
-            except AttributeError: # Typically caused by types other than Identity in list
-                raise TypeError
-            
-            post_msgs = self._get_identity_count(c) # Count after insert
-            
-            """No new identities? Rollback tc insert and use old value"""
-            if (post_msgs - pre_msgs) == 0: 
-                conn.rollback() 
-                
-            return self._get_last_time_cookie(c)
-        
+        return self._add_content(self._QUERY_GET_IDENTITY_COUNT, self._QUERY_ADD_IDENTITIES,
+                          [(self._encode_id(id.fingerprint), 
+                            encode_b64_int(id.dsa_key.y),
+                            encode_b64_int(id.dsa_key.g),
+                            encode_b64_int(id.dsa_key.p),
+                            encode_b64_int(id.dsa_key.q),
+                            encode_b64_int(id.rsa_key.n),
+                            encode_b64_int(id.rsa_key.e)) for id in identities])
+
     def remove_identities(self, identities=None):
         """Removes identities from the data base.
         
@@ -365,25 +318,18 @@ class ContentDB:
         If the identities parameter is omitted, all identities in the data base will be removed.
         """
         
-        if identities is not None and not hasattr(identities,'__iter__'):
-            raise TypeError
+        if identities is None:
+            self._remove_content(self._QUERY_REMOVE_ALL_IDENTITIES)
+        else:
+            self._remove_content(self._QUERY_REMOVE_SPECIFIC_IDENTITIES, [self._encode_id(id.fingerprint) for id in identities])
 
-        with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
-            
-            if identities is None:
-                c.execute("""DELETE FROM identities""")
-            else:
-                c.executemany("""DELETE FROM identities WHERE fingerprint = ?""", 
-                              [(self._encode_id(id.fingerprint),) for id in identities])
 
     @property
     def identity_count(self):
         """Returns the number of identities currently in the data base (int)"""
         
         with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
-            return self._get_identity_count(c)
+            return conn.cursor().execute(self._QUERY_GET_IDENTITY_COUNT).fetchone()[0]
 
     def contains_identity(self, fingerprint):
         """Returns true if the database contains the identity fingerprint"""
@@ -495,10 +441,43 @@ class ContentDB:
             row = dbcursor.execute("SELECT cookie FROM remote_time_cookies JOIN databases ON remote_time_cookies.dbid = databases.id WHERE databases.fingerprint = ?",(self._encode_id(dbfp),)).fetchone()
             return None if row is None else self._decode_id(row[0])
 
-    def _get_message_count(self, dbcursor):
-        """Return the total number of messages in the data base"""
-        return dbcursor.execute(self._QUERY_GET_MESSAGE_COUNT).fetchone()[0]
+    def _add_content(self, sql_count_statement, sql_insert_statement, content_list):
+        """Add a a list of messages to the data base.
+        
+        Will add all messages, not already in the data base to the data base and return a 
+        time cookie (bytes) that represents the point in time after the messages have been added.
+        If no messages were added, it just returns the current time cookie. 
+        """
+            
+        with sqlite3.connect(self._db_file) as conn:
+            c = conn.cursor()
 
-    def _get_identity_count(self, dbcursor):
-        """Return the total number of identities (public and private) in the data base"""
-        return dbcursor.execute(self._QUERY_GET_IDENTITY_COUNT).fetchone()[0]
+            tcid = self._insert_new_tc(c)
+            
+            pre_msgs = c.execute(sql_count_statement).fetchone()[0] # Count before insert
+            
+            try:
+                for content in content_list:
+                    c.execute(sql_insert_statement, content + (tcid,))
+            except AttributeError: # Typically caused by types other than content in list
+                raise TypeError
+            
+            post_msgs = c.execute(sql_count_statement).fetchone()[0] # Count after insert
+            
+            """No new messages? Rollback tc insert and use old value"""
+            if (post_msgs - pre_msgs) == 0: 
+                conn.rollback() 
+            
+            return self._get_last_time_cookie(c)
+
+    def _remove_content(self, sql_statement, ids=None):
+        if ids is not None and not hasattr(ids,'__iter__'):
+            raise TypeError
+
+        with sqlite3.connect(self._db_file) as conn:
+            c = conn.cursor()
+            
+            if ids is None:
+                c.execute(sql_statement)
+            else:
+                c.executemany(sql_statement, [(id,) for id in ids])

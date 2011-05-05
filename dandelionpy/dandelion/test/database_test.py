@@ -149,9 +149,9 @@ class DatabaseTest(unittest.TestCase):
                           dandelion.message.create("W Sender And Receiver", sender=id1, receiver=id2)]
 
         # Try to add junk
-        self.assertRaises(ValueError, db.add_messages, None)
+        self.assertRaises(TypeError, db.add_messages, None)
         self.assertRaises(TypeError, db.add_messages, 23)
-        self.assertRaises(TypeError, db.add_messages, [None])
+        self.assertRaises(AttributeError, db.add_messages, [None])
         
         # Add a message list        
         self.assertEqual(db.message_count, 0)
@@ -229,9 +229,9 @@ class DatabaseTest(unittest.TestCase):
         first_id_list = [id_a, id_b]
 
         # Try to add junk
-        self.assertRaises(ValueError, db.add_identities, None)
+        self.assertRaises(TypeError, db.add_identities, None)
         self.assertRaises(TypeError, db.add_identities, 23)
-        self.assertRaises(TypeError, db.add_identities, [None])
+        self.assertRaises(AttributeError, db.add_identities, [None])
         
         # Add a message list
         self.assertEqual(db.identity_count, 0)        
