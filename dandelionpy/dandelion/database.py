@@ -241,10 +241,8 @@ class ContentDB:
         if not isinstance(msgid, bytes):
             raise TypeError
 
-        with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
-            c.execute('SELECT msgid FROM messages WHERE msgid=?', (self._encode_id(msgid),)) 
-            return c.fetchone() is not None
+        _, msgs = self.get_messages(msgids=[msgid])
+        return msgs is not None and len(msgs) == 1
 
     def get_messages(self, msgids=None, time_cookie=None):
         """Get a list of all msg_rows with specified message id.
@@ -333,19 +331,12 @@ class ContentDB:
 
     def contains_identity(self, fingerprint):
         """Returns true if the database contains the identity fingerprint"""
-        
+
         if not isinstance(fingerprint, bytes):
             raise TypeError
-
-        with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
-            c.execute('SELECT fingerprint FROM identities WHERE fingerprint = ?', 
-                      (self._encode_id(fingerprint),)) 
-            if c.fetchone() is None:
-                return False
-            else:
-                return True
         
+        _, id = self.get_identities(fingerprints=[fingerprint])
+        return id is not None and len(id) == 1
 
     def get_identities(self, fingerprints=None, time_cookie=None):
         """Get a list of all identities with specified fingerprints.
@@ -407,6 +398,7 @@ class ContentDB:
         cursor.execute(self._CREATE_TABLE_PRIVATE_IDENTITIES)
         cursor.execute(self._CREATE_TABLE_MESSAGES)
 
+        """Initialize DB (add current db fingerprint and first time cookie)"""
         if cursor.execute("""SELECT count(*) FROM databases WHERE fingerprint=(?)""", (self._encoded_id,)).fetchone()[0] == 0:
             cursor.execute("""INSERT INTO databases (fingerprint) VALUES (?)""", (self._encoded_id,))
 
