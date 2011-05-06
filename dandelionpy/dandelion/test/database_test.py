@@ -81,6 +81,36 @@ class DatabaseTest(unittest.TestCase):
         # Another data base gets another id
         self.assertNotEqual(id, ContentDB(":memory:").id)
 
+    def test_remote_cookies(self):
+        """Test the remote time cookie interface"""
+        db = ContentDB(tempfile.NamedTemporaryFile().name)
+        
+        remotefp_1 = b"1337"
+        remotefp_2 = b"2342"
+        remotetc_1 = b"1"
+        remotetc_2 = b"2"
+ 
+        # No time cookie for the db yet       
+        self.assertIsNone(db.get_last_time_cookie(remotefp_1))
+                
+        # Initial tc
+        db.update_last_time_cookie(remotefp_1, remotetc_1)
+        self.assertEqual(db.get_last_time_cookie(remotefp_1), remotetc_1)
+        
+        # Same tc again
+        db.update_last_time_cookie(remotefp_1, remotetc_1)
+        self.assertEqual(db.get_last_time_cookie(remotefp_1), remotetc_1)
+
+        # Second tc
+        db.update_last_time_cookie(remotefp_1, remotetc_2)
+        self.assertEqual(db.get_last_time_cookie(remotefp_1), remotetc_2)
+
+        # Second db
+        db.update_last_time_cookie(remotefp_2, remotetc_1)
+        self.assertEqual(db.get_last_time_cookie(remotefp_1), remotetc_2)
+        self.assertEqual(db.get_last_time_cookie(remotefp_2), remotetc_1)
+        
+
     def test_time_cookies(self):
         """Test the data base time cookies (revision) functionality.""" 
         

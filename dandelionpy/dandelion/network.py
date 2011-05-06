@@ -309,7 +309,7 @@ class ClientTransaction(SocketTransaction):
 
             """Request and read message id's"""
             self._write(dandelion.protocol.create_message_id_list_request(time_cookie).encode())
-            _, msgids = dandelion.protocol.parse_message_id_list(self._read().decode())
+            tc, msgids = dandelion.protocol.parse_message_id_list(self._read().decode())
             
             req_msgids = [mid for mid in msgids if not self._db.contains_message(mid)]
 
@@ -336,6 +336,8 @@ class ClientTransaction(SocketTransaction):
                 """Store the new identities"""
                 self._db.add_identities(ids)
 
+            """Record the synchronization time for the remote db"""
+            self._db.update_last_time_cookie(dbid, tc)
             
         except (socket.timeout, ProtocolParseError, ValueError, TypeError):
             """Do nothing on error, just hang up"""

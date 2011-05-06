@@ -198,6 +198,19 @@ class ContentDB:
             c = conn.cursor()
             return self._get_last_time_cookie(c, dbfp)
 
+    def update_last_time_cookie(self, dbfp, time_cookie):
+        """Create a time cookie entry (or update an existing one) for a remote data base"""
+        
+        with sqlite3.connect(self._db_file) as conn:
+            c = conn.cursor()
+        
+            if self._get_last_time_cookie(c, dbfp) is None: 
+                dbid = c.execute("""INSERT INTO databases (fingerprint) VALUES (?)""", (self._encode_id(dbfp),)).lastrowid
+                c.execute("""INSERT INTO remote_time_cookies (cookie, dbid) VALUES (?,?)""", (self._encode_id(time_cookie),dbid))
+            else:
+                dbid = c.execute("""SELECT id FROM databases WHERE fingerprint=?""", (self._encode_id(dbfp),)).fetchone()[0]
+                c.execute("""UPDATE remote_time_cookies SET cookie=? WHERE dbid=?""", (self._encode_id(time_cookie),dbid))
+        
     def add_messages(self, msgs):
         """Add a a list of messages to the data base.
         
