@@ -23,15 +23,15 @@ import os
 from dandelion.config import *
 from dandelion.database import ContentDB
 
-class MessageTest(unittest.TestCase):
+class ConfigTest(unittest.TestCase):
     """Unit test suite for the DMS configuration classes"""
 
     TEST_FILE = os.path.join(os.path.split(os.path.abspath(__file__))[0], 
                              'config_test_data.conf')
     
     def test_construction(self):
-        cm = ConfigManager(MessageTest.TEST_FILE)
-        self.assertEqual(MessageTest.TEST_FILE, cm.config_file)
+        cm = ConfigManager(ConfigTest.TEST_FILE)
+        self.assertEqual(ConfigTest.TEST_FILE, cm.config_file)
         self.assertTrue(isinstance(cm.server_config, ServerConfig))
         self.assertTrue(isinstance(cm.synchronizer_config, SynchronizerConfig))
         self.assertTrue(isinstance(cm.identity_manager_config, IdentityConfig))
@@ -43,7 +43,7 @@ class MessageTest(unittest.TestCase):
         self.assertEqual('dandelion.conf', cm.config_file)
 
     def test_server_config(self):
-        sc = ConfigManager(MessageTest.TEST_FILE).server_config
+        sc = ConfigManager(ConfigTest.TEST_FILE).server_config
         self.assertEqual(sc.ip, '169.255.1.2')
         self.assertEqual(sc.port, 1234)
         

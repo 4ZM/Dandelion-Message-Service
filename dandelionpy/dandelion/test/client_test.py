@@ -20,7 +20,7 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 import unittest
 import dandelion.network
 
-class MessageTest(unittest.TestCase):
+class ClientTest(unittest.TestCase):
     """Unit test suite for the DMS network client class"""
      
     def test_xxx(self):

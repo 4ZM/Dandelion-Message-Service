@@ -84,7 +84,7 @@ def recv_n(sock, nbytes):
     return b''.join([sock.recv(1) for _ in range(nbytes)])
 
 
-class MessageTest(unittest.TestCase):
+class TransactionTest(unittest.TestCase):
     """Unit test suite for the DMS network transactions"""
      
     def test_helper_classes(self):
