@@ -47,6 +47,10 @@ class RSA_key:
         """Returns true if the key has a private component"""
         return self._d is not None
     
+    def public_key(self):
+        """Make a copy of the key without private data"""
+        return RSA_key(self.n, self.e)
+    
     @property 
     def n(self):
         """n is used as the modulus for both the public and private keys."""
@@ -83,6 +87,10 @@ class DSA_key:
     def is_private(self):
         """Returns true if the key has a private component"""
         return self._x is not None
+    
+    def public_key(self):
+        """Make a copy of the key without private data"""
+        return DSA_key(self.y, self.g, self.p, self.q)
 
     @property 
     def y(self):
@@ -148,6 +156,10 @@ class Identity:
     def dsa_key(self):
         """The DSA key used for signing"""
         return self._dsa_key
+
+    def public_identity(self):
+        """Return a copy of this identity without private parts""" 
+        return Identity(self.dsa_key.public_key(), self.rsa_key.public_key())
 
     def verify(self, msg, signature):
         """Verify a message signature.

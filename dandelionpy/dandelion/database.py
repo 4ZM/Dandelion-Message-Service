@@ -25,13 +25,10 @@ import sqlite3
 
 
 class ContentDBException(Exception):
-    pass
+    '''Exception from the operations on the ContentDB'''
 
-class ContentDB: 
-    """Message data base for the Dandelion Message Service.
-    
-    Abstract base class and static singleton.
-    """
+class ContentDB:
+    """A content database with a sqlite backend."""
     
     class _classproperty(property):
         """Class property (mix of classmethod and property)"""
@@ -73,95 +70,6 @@ class ContentDB:
         """Access the registered database."""
         return cls.__instance
     
-    @property
-    def id(self):
-        """The data base id (bytes)"""
-
-    @property
-    def name(self):
-        """The data base name (can be None)"""
-
-    def add_messages(self, msgs):
-        """Add a a list of messages to the data base.
-        
-        Will add all messages, not already in the data base to the data base and return a 
-        time cookie (bytes) that represents the point in time after the messages have been added.
-        If no messages were added, it just returns the current time cookie. 
-        """
-
-    def remove_messages(self, msgs=None):
-        """Removes messages from the data base.
-        
-        The specified list of messages will be removed from the data base. 
-        If the message parameter is omitted, all messages in the data base will be removed.
-        """
-        
-    @property
-    def message_count(self):
-        """Returns the number of messages currently in the data base (int)"""
-
-    def contains_message(self, msgid):
-        """Returns true if the database contains the msgid"""
-
-    def get_messages(self, msgids=None):
-        """Get a list of all messages with specified message id.
-        If the parameter is None, all messages are returned.
-        """
-
-    def get_messages_since(self, time_cookie=None):
-        """Get messages from the data base.
-        
-        If a time cookie is specified, all messages in the database after
-        the time specified by the time cookie will be returned.  
-        If the time cookie parameter is omitted, all messages currently in the 
-        data base will be returned.
-        """
-
-    def add_identities(self, identities):
-        """Add a a list of identities to the data base.
-        
-        Will add all identities, not already in the data base to the data base and return a 
-        time cookie (bytes) that represents the point in time after the identities have been added.
-        If no identities were added, it just returns the current time cookie. 
-        """
-
-    def remove_identities(self, identities=None):
-        """Removes identities from the data base.
-        
-        The specified list of identities will be removed from the data base. 
-        If the identities parameter is omitted, all identities in the data base will be removed.
-        """
-        
-    @property
-    def identity_count(self):
-        """Returns the number of identities currently in the data base (int)"""
-
-    def contains_identity(self, fingerprint):
-        """Returns true if the database contains the identity fingerprint"""
-
-    def get_identities(self, fingerprints=None):
-        """Get a list of all identities with specified fingerprints.
-        If the parameter is None, all identities are returned.
-        """
-
-    def get_identities_since(self, time_cookie=None):
-        """Get identities from the data base.
-        
-        If a time cookie is specified, all identities in the database after
-        the time specified by the time cookie will be returned.  
-        If the time cookie parameter is omitted, all identities currently in the 
-        data base will be returned.
-        """
-
-    def get_last_time_cookie(self, dbfp=None):
-        """Get the latest time cookie known in the data base for the remote 
-        data base with fingerprint dbfp. 
-        
-        If there is no record of the remote data base, return None.
-        
-        If dbfp is None, get the latest time cookie for the own database.
-        """
-
     @classmethod
     def _generate_random_db_id(self):
         """Create a new db id"""
@@ -186,9 +94,6 @@ class ContentDB:
     def _decode_id(self, id):
         """Text to binary decoding of id's"""
         return decode_b64_bytes(id.encode())
-
-class SQLiteContentDB(ContentDB):
-    """A content database with a sqlite backend."""
      
     _CREATE_TABLE_DATABASES = """CREATE TABLE IF NOT EXISTS databases
         (id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -197,8 +102,11 @@ class SQLiteContentDB(ContentDB):
 
     _CREATE_TABLE_TIME_COOKIES = """CREATE TABLE IF NOT EXISTS time_cookies
         (id INTEGER PRIMARY KEY AUTOINCREMENT,
-        cookie TEXT NOT NULL,
-        dbid INTEGER NOT NULL REFERENCES databases (id))"""
+        cookie TEXT NOT NULL)"""
+
+    _CREATE_TABLE_REMOTE_TIME_COOKIES = """CREATE TABLE IF NOT EXISTS remote_time_cookies
+        (cookie TEXT,
+        dbid INTEGER REFERENCES databases (id), PRIMARY KEY (cookie, dbid))"""
 
     _CREATE_TABLE_IDENTITIES = """CREATE TABLE IF NOT EXISTS identities
         (fingerprint TEXT PRIMARY KEY,
@@ -224,22 +132,19 @@ class SQLiteContentDB(ContentDB):
         signature TEXT,
         cookieid INTEGER NOT NULL REFERENCES time_cookies (id))"""
 
-    _CREATE_VIEW_TCDB = """CREATE VIEW IF NOT EXISTS time_cookies_db AS 
-        SELECT time_cookies.id AS id, time_cookies.cookie AS cookie, databases.fingerprint AS dbfp 
-        FROM time_cookies JOIN databases ON time_cookies.dbid=databases.id"""
-
-    """Self join to pick out a range of cookies"""
-    _CREATE_VIEW_NEW_COOKIES = """CREATE VIEW IF NOT EXISTS new_cookies AS 
-        SELECT tc1.id AS tcid, tc1.cookie AS new_cookie, tc2.cookie AS old_cookie, tc1.dbfp AS dbfp 
-        FROM time_cookies_db AS tc1 JOIN time_cookies_db AS tc2 
-        WHERE tc1.id > tc2.id"""
-
-    _QUERY_GET_LAST_TIME_COOKIE = """SELECT max(id), cookie FROM time_cookies_db WHERE dbfp=?"""
-    _QUERY_CONTAINS_TIME_COOKIE = """SELECT count(*) FROM time_cookies_db WHERE cookie=? AND dbfp=?"""
+    _QUERY_GET_LAST_TIME_COOKIE = """SELECT max(id), cookie FROM time_cookies"""
+    _QUERY_REMOTE_GET_LAST_TIME_COOKIE = """SELECT cookie FROM remote_time_cookies WHERE dbfp=?"""
     _QUERY_GET_MESSAGE_COUNT = """SELECT count(*) FROM messages"""
     _QUERY_GET_IDENTITY_COUNT = """SELECT count(*) FROM identities"""
 
+    _QUERY_REMOVE_ALL_IDENTITIES="""DELETE FROM identities"""
+    _QUERY_REMOVE_SPECIFIC_IDENTITIES="""DELETE FROM identities WHERE fingerprint=?"""
+    _QUERY_REMOVE_ALL_MESSAGES="""DELETE FROM messages"""
+    _QUERY_REMOVE_SPECIFIC_MESSAGES="""DELETE FROM messages WHERE msgid=?"""
     
+    _QUERY_ADD_MESSAGES="""INSERT OR IGNORE INTO messages (msgid, msg, receiver, sender, signature, cookieid) VALUES (?,?,?,?,?,?)"""
+    _QUERY_ADD_IDENTITIES="""INSERT OR IGNORE INTO identities (fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e, cookieid) VALUES (?,?,?,?,?,?,?,?)"""
+
     def __init__(self, db_file, id=None):
         """Create a SQLite backed data base."""
         super().__init__()
@@ -293,6 +198,19 @@ class SQLiteContentDB(ContentDB):
             c = conn.cursor()
             return self._get_last_time_cookie(c, dbfp)
 
+    def update_last_time_cookie(self, dbfp, time_cookie):
+        """Create a time cookie entry (or update an existing one) for a remote data base"""
+        
+        with sqlite3.connect(self._db_file) as conn:
+            c = conn.cursor()
+        
+            if self._get_last_time_cookie(c, dbfp) is None: 
+                dbid = c.execute("""INSERT INTO databases (fingerprint) VALUES (?)""", (self._encode_id(dbfp),)).lastrowid
+                c.execute("""INSERT INTO remote_time_cookies (cookie, dbid) VALUES (?,?)""", (self._encode_id(time_cookie),dbid))
+            else:
+                dbid = c.execute("""SELECT id FROM databases WHERE fingerprint=?""", (self._encode_id(dbfp),)).fetchone()[0]
+                c.execute("""UPDATE remote_time_cookies SET cookie=? WHERE dbid=?""", (self._encode_id(time_cookie),dbid))
+        
     def add_messages(self, msgs):
         """Add a a list of messages to the data base.
         
@@ -300,40 +218,16 @@ class SQLiteContentDB(ContentDB):
         time cookie (bytes) that represents the point in time after the messages have been added.
         If no messages were added, it just returns the current time cookie. 
         """
-    
-        if msgs is None:
-            raise ValueError
-        
-        if not hasattr(msgs, '__iter__'):
-            raise TypeError
-        
-        with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
 
-            tcid = self._insert_new_tc(c)
-            
-            pre_msgs = self._get_message_count(c) # Count before insert
-            
-            try:
-                for m in msgs:
-                    # Add sender/receiver
-                    c.execute("""INSERT OR IGNORE INTO messages (msgid, msg, receiver, sender, signature, cookieid) VALUES (?,?,?,?,?,?)""", 
-                              (self._encode_id(m.id), 
-                               m.text, 
-                               None if not m.has_receiver else self._encode_id(m.receiver), 
-                               None if not m.has_sender else self._encode_id(m.sender),
-                               None if not m.has_sender else self._encode_id(m.signature),
-                               tcid))
-            except AttributeError: # Typically caused by types other than Message in list
-                raise TypeError
-            
-            post_msgs = self._get_message_count(c) # Count after insert
-            
-            """No new messages? Rollback tc insert and use old value"""
-            if (post_msgs - pre_msgs) == 0: 
-                conn.rollback() 
-            
-            return self._get_last_time_cookie(c)
+        if msgs is None or not hasattr(msgs, '__iter__'):
+            raise TypeError
+
+        return self._add_content(self._QUERY_GET_MESSAGE_COUNT, self._QUERY_ADD_MESSAGES,
+                          [(self._encode_id(m.id), m.text,
+                            None if not m.has_receiver else self._encode_id(m.receiver),
+                            None if not m.has_sender else self._encode_id(m.sender),
+                            None if not m.has_sender else self._encode_id(m.signature)) for m in msgs])
+
 
     def remove_messages(self, msgs=None):
         """Removes messages from the data base.
@@ -342,25 +236,17 @@ class SQLiteContentDB(ContentDB):
         If the message parameter is omitted, all messages in the data base will be removed.
         """
 
-        if msgs is not None and not hasattr(msgs,'__iter__'):
-            raise TypeError
-
-        with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
-            
-            if msgs is None:
-                c.execute("""DELETE FROM messages""")
-            else:
-                c.executemany("""DELETE FROM messages WHERE msgid=?""", 
-                              [(self._encode_id(m.id),) for m in msgs])
+        if msgs is None:
+            self._remove_content(self._QUERY_REMOVE_ALL_MESSAGES)
+        else:
+            self._remove_content(self._QUERY_REMOVE_SPECIFIC_MESSAGES, [self._encode_id(m.id) for m in msgs])
 
     @property
     def message_count(self):
         """Returns the number of messages currently in the data base (int)"""
         
         with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
-            return self._get_message_count(c)
+            return conn.cursor().execute(self._QUERY_GET_MESSAGE_COUNT).fetchone()[0]
 
     def contains_message(self, msgid):
         """Returns true if the database contains the msgid"""
@@ -368,13 +254,15 @@ class SQLiteContentDB(ContentDB):
         if not isinstance(msgid, bytes):
             raise TypeError
 
-        with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
-            c.execute('SELECT msgid FROM messages WHERE msgid=?', (self._encode_id(msgid),)) 
-            return c.fetchone() is not None
+        _, msgs = self.get_messages(msgids=[msgid])
+        return msgs is not None and len(msgs) == 1
 
-    def get_messages(self, msgids=None):
-        """Get a list of all msg_rows with specified message id"""
+    def get_messages(self, msgids=None, time_cookie=None):
+        """Get a list of all msg_rows with specified message id.
+        
+        If a time cookie is specified, all messages in the database from (and 
+        including) the time specified by the time cookie will be returned.
+        """
 
         if msgids is not None and not hasattr(msgids, '__iter__'):
             raise TypeError
@@ -382,66 +270,37 @@ class SQLiteContentDB(ContentDB):
         with sqlite3.connect(self._db_file) as conn:
             c = conn.cursor()
             
-            if msgids is None:
-                c.execute("""SELECT msg, receiver, sender, signature 
-                             FROM messages JOIN time_cookies_db ON messages.cookieid = time_cookies_db.id 
-                             WHERE time_cookies_db.dbfp = ?""", (self._encoded_id,))
-                msg_rows = c.fetchall()
-            else:
-                msg_rows = []
-                try:
-                    for m in msgids:
-                        c.execute("""SELECT msg, receiver, sender, signature 
-                                     FROM messages JOIN time_cookies_db ON messages.cookieid = time_cookies_db.id 
-                                     WHERE msgid = ? AND dbfp = ?""", (self._encode_id(m), self._encoded_id))
-                        msg_rows.extend([c.fetchone()])
-                except AttributeError:
-                    raise TypeError
-                
-            return [Message(m[0], 
-                            None if m[1] is None else self._decode_id(m[1]), 
-                            None if m[2] is None else self._decode_id(m[2]), 
-                            None if m[3] is None else self._decode_id(m[3])) for m in msg_rows if m is not None] 
-
-    def get_messages_since(self, time_cookie=None):
-        """Get messages from the data base.
-        
-        If a time cookie is specified, all messages in the database from (and 
-        including) the time specified by the time cookie will be returned.  
-        If the time cookie parameter is omitted, all messages currently in the 
-        data base will be returned.
-        """
-
-        with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
-            
-            if time_cookie is None:
-                c.execute("""SELECT msg, receiver, sender, signature 
-                             FROM messages JOIN time_cookies_db ON messages.cookieid = time_cookies_db.id 
-                             WHERE time_cookies_db.dbfp = ?""", (self._encoded_id,))
-            else:
+            if time_cookie is not None:
                 if not isinstance(time_cookie, bytes):
                     raise TypeError
                 if len(time_cookie) == 0:
                     raise ValueError
 
                 """Assert that time_cookie is a valid cookie"""
-                if c.execute(self._QUERY_CONTAINS_TIME_COOKIE, 
-                          (self._encode_id(time_cookie), 
-                           self._encoded_id)).fetchone()[0] == 0:
+                if c.execute("SELECT count(*) FROM time_cookies WHERE cookie = ?", 
+                          (self._encode_id(time_cookie),)).fetchone()[0] == 0:
                     raise ValueError 
                 
                 c.execute("""SELECT msg, receiver, sender, signature 
-                             FROM messages JOIN new_cookies ON messages.cookieid = new_cookies.tcid
-                             WHERE new_cookies.old_cookie=? AND new_cookies.dbfp=?""", 
-                             (self._encode_id(time_cookie), self._encoded_id)) 
+                             FROM messages JOIN time_cookies ON messages.cookieid = time_cookies.id
+                             WHERE time_cookies.id > (SELECT id FROM time_cookies WHERE cookie = ?)""", 
+                             (self._encode_id(time_cookie),)) 
+            else: 
+                c.execute("""SELECT msg, receiver, sender, signature FROM messages""")
 
-            msgs = [Message(row[0], 
-                            None if row[1] is None else self._decode_id(row[1]), 
-                            None if row[2] is None else self._decode_id(row[2]), 
-                            None if row[3] is None else self._decode_id(row[3])) for row in c.fetchall()]
+            msgs = c.fetchall()
             current_tc = self._get_last_time_cookie(c)
+            msgs = [Message(m[0], 
+                    None if m[1] is None else self._decode_id(m[1]), 
+                    None if m[2] is None else self._decode_id(m[2]), 
+                    None if m[3] is None else self._decode_id(m[3])) for m in msgs 
+                    if m is not None]
+
+            if msgids is not None:
+                msgs = [m for m in msgs if m.id in msgids]
+            
             return (current_tc, msgs)
+
 
     def add_identities(self, identities):
         """Add a a list of identities to the data base.
@@ -451,40 +310,17 @@ class SQLiteContentDB(ContentDB):
         If no identities were added, it just returns the current time cookie. 
         """
 
-        if identities is None:
-            raise ValueError
-        
-        if not hasattr(identities, '__iter__'):
+        if identities is None or not hasattr(identities, '__iter__'):
             raise TypeError
-        
-        with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
 
-            tcid = self._insert_new_tc(c)
-            
-            pre_msgs = self._get_identity_count(c) # Count before insert
-            
-            try:
-                for id in identities:
-                    c.execute("""INSERT OR IGNORE INTO identities (fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e, cookieid) VALUES (?,?,?,?,?,?,?,?)""", 
-                              (self._encode_id(id.fingerprint), 
-                               encode_b64_int(id.dsa_key.y),
-                               encode_b64_int(id.dsa_key.g),
-                               encode_b64_int(id.dsa_key.p),
-                               encode_b64_int(id.dsa_key.q),
-                               encode_b64_int(id.rsa_key.n),
-                               encode_b64_int(id.rsa_key.e),
-                               tcid))
-            except AttributeError: # Typically caused by types other than Identity in list
-                raise TypeError
-            
-            post_msgs = self._get_identity_count(c) # Count after insert
-            
-            """No new identities? Rollback tc insert and use old value"""
-            if (post_msgs - pre_msgs) == 0: 
-                conn.rollback() 
-                
-            return self._get_last_time_cookie(c)
+        return self._add_content(self._QUERY_GET_IDENTITY_COUNT, self._QUERY_ADD_IDENTITIES,
+                          [(self._encode_id(id.fingerprint), 
+                            encode_b64_int(id.dsa_key.y),
+                            encode_b64_int(id.dsa_key.g),
+                            encode_b64_int(id.dsa_key.p),
+                            encode_b64_int(id.dsa_key.q),
+                            encode_b64_int(id.rsa_key.n),
+                            encode_b64_int(id.rsa_key.e)) for id in identities])
 
     def remove_identities(self, identities=None):
         """Removes identities from the data base.
@@ -493,45 +329,35 @@ class SQLiteContentDB(ContentDB):
         If the identities parameter is omitted, all identities in the data base will be removed.
         """
         
-        if identities is not None and not hasattr(identities,'__iter__'):
-            raise TypeError
+        if identities is None:
+            self._remove_content(self._QUERY_REMOVE_ALL_IDENTITIES)
+        else:
+            self._remove_content(self._QUERY_REMOVE_SPECIFIC_IDENTITIES, [self._encode_id(id.fingerprint) for id in identities])
 
-        with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
-            
-            if identities is None:
-                c.execute("""DELETE FROM identities""")
-            else:
-                c.executemany("""DELETE FROM identities WHERE fingerprint=?""", 
-                              [(self._encode_id(id.fingerprint),) for id in identities])
 
     @property
     def identity_count(self):
         """Returns the number of identities currently in the data base (int)"""
         
         with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
-            return self._get_identity_count(c)
+            return conn.cursor().execute(self._QUERY_GET_IDENTITY_COUNT).fetchone()[0]
 
     def contains_identity(self, fingerprint):
         """Returns true if the database contains the identity fingerprint"""
-        
+
         if not isinstance(fingerprint, bytes):
             raise TypeError
-
-        with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
-            c.execute('SELECT fingerprint FROM identities WHERE fingerprint=?', 
-                      (self._encode_id(fingerprint),)) 
-            if c.fetchone() is None:
-                return False
-            else:
-                return True
         
+        _, id = self.get_identities(fingerprints=[fingerprint])
+        return id is not None and len(id) == 1
 
-    def get_identities(self, fingerprints=None):
+    def get_identities(self, fingerprints=None, time_cookie=None):
         """Get a list of all identities with specified fingerprints.
+        
         If the parameter is None, all identities are returned.
+        
+        If a time cookie is specified, all identities in the database after
+        the time specified by the time cookie will be returned.  
         """
 
         if fingerprints is not None and not hasattr(fingerprints, '__iter__'):
@@ -540,90 +366,58 @@ class SQLiteContentDB(ContentDB):
         with sqlite3.connect(self._db_file) as conn:
             c = conn.cursor()
 
-            if fingerprints is None:
-                c.execute("""SELECT fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e, cookieid
-                             FROM identities JOIN time_cookies_db ON identities.cookieid = time_cookies_db.id 
-                             WHERE time_cookies_db.dbfp = ?""", (self._encoded_id,))
-                id_rows = c.fetchall()
-            else:
-                id_rows = []
-                try:
-                    for fp in fingerprints: 
-                        c.execute("""SELECT fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e, cookieid
-                                     FROM identities JOIN time_cookies_db ON identities.cookieid = time_cookies_db.id 
-                                     WHERE fingerprint = ? AND dbfp = ?""", 
-                                     (self._encode_id(fp), self._encoded_id))
-                        id_rows.extend([c.fetchone()])
-                except AttributeError:
-                    raise TypeError
-                
-            return [Identity(DSA_key(decode_b64_int(id[1]), 
-                                    decode_b64_int(id[2]), 
-                                    decode_b64_int(id[3]), 
-                                    decode_b64_int(id[4])), 
-                             RSA_key(decode_b64_int(id[5]), 
-                                    decode_b64_int(id[6]))) for id in id_rows] 
-
-    def get_identities_since(self, time_cookie=None):
-        """Get identities from the data base.
-        
-        If a time cookie is specified, all identities in the database after
-        the time specified by the time cookie will be returned.  
-        If the time cookie parameter is omitted, all identities currently in the 
-        data base will be returned.
-        """
-        
-        with sqlite3.connect(self._db_file) as conn:
-            c = conn.cursor()
-            
-            if time_cookie is None:
-                c.execute("""SELECT fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e
-                             FROM identities JOIN time_cookies_db ON identities.cookieid = time_cookies_db.id 
-                             WHERE time_cookies_db.dbfp = ?""", (self._encoded_id,))
-            else:
+            if time_cookie is not None:
                 if not isinstance(time_cookie, bytes):
                     raise TypeError
                 if len(time_cookie) == 0:
                     raise ValueError
 
-                """Assert that the cookie is valid"""
-                if c.execute("""SELECT count(*) FROM time_cookies_db WHERE cookie=? AND dbfp=?""", 
-                          (self._encode_id(time_cookie), self._encoded_id)).fetchone()[0] == 0:
+                """Assert that time_cookie is a valid cookie"""
+                if c.execute("SELECT count(*) FROM time_cookies WHERE cookie = ?", 
+                          (self._encode_id(time_cookie),)).fetchone()[0] == 0:
                     raise ValueError 
-                
+
                 c.execute("""SELECT fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e 
-                             FROM identities JOIN new_cookies ON identities.cookieid = new_cookies.tcid
-                             WHERE new_cookies.old_cookie=? AND new_cookies.dbfp=?""", 
-                             (self._encode_id(time_cookie), self._encoded_id)) 
+                             FROM identities JOIN time_cookies ON identities.cookieid = time_cookies.id
+                             WHERE time_cookies.id > (SELECT id FROM time_cookies WHERE cookie=?)""", 
+                             (self._encode_id(time_cookie),)) 
+            else:
+                c.execute("""SELECT fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e FROM identities""")
+            
+            id_rows = c.fetchall()
+            current_tc = self._get_last_time_cookie(c)
 
             ids = [Identity(DSA_key(decode_b64_int(id[1]), 
-                                    decode_b64_int(id[2]), 
-                                    decode_b64_int(id[3]), 
-                                    decode_b64_int(id[4])), 
-                             RSA_key(decode_b64_int(id[5]), 
-                                    decode_b64_int(id[6]))) for id in c.fetchall()] 
-
-            current_tc = self._get_last_time_cookie(c) 
-
+                                                  decode_b64_int(id[2]), 
+                                                  decode_b64_int(id[3]), 
+                                                  decode_b64_int(id[4])), 
+                                          RSA_key(decode_b64_int(id[5]), 
+                                                  decode_b64_int(id[6]))) for id in id_rows 
+                                                  if id is not None]
+            if fingerprints is not None:
+                ids = [id for id in ids if id.fingerprint in fingerprints]
+            
             return (current_tc, ids)
+            
 
+            
     def _create_tables(self, cursor):
         """Create the tables if they don't exist"""
 
         cursor.execute(self._CREATE_TABLE_DATABASES)
         cursor.execute(self._CREATE_TABLE_TIME_COOKIES)
+        cursor.execute(self._CREATE_TABLE_REMOTE_TIME_COOKIES)
         cursor.execute(self._CREATE_TABLE_IDENTITIES)
         cursor.execute(self._CREATE_TABLE_PRIVATE_IDENTITIES)
         cursor.execute(self._CREATE_TABLE_MESSAGES)
-        cursor.execute(self._CREATE_VIEW_TCDB)
-        cursor.execute(self._CREATE_VIEW_NEW_COOKIES)
 
+        """Initialize DB (add current db fingerprint and first time cookie)"""
         if cursor.execute("""SELECT count(*) FROM databases WHERE fingerprint=(?)""", (self._encoded_id,)).fetchone()[0] == 0:
             cursor.execute("""INSERT INTO databases (fingerprint) VALUES (?)""", (self._encoded_id,))
 
-        if cursor.execute("""SELECT count(*) FROM time_cookies_db WHERE dbfp=(?)""", (self._encoded_id,)).fetchone()[0] == 0:
-            cursor.execute("""INSERT INTO time_cookies (cookie, dbid) VALUES (?, (SELECT id FROM databases WHERE fingerprint=(?)))""", 
-                           (self._encode_id(self._generate_random_tc_id()), self._encoded_id))
+        if cursor.execute("""SELECT count(*) FROM time_cookies""").fetchone()[0] == 0:
+            cursor.execute("""INSERT INTO time_cookies (cookie) VALUES (?)""", 
+                           (self._encode_id(self._generate_random_tc_id()),))
 
     def _insert_new_tc(self, c):
         """Create a new time cookie and insert it in the database. Return the time cookie."""
@@ -631,11 +425,11 @@ class SQLiteContentDB(ContentDB):
         """Create a new, unused id"""
         while True:
             tc = self._encode_id(self._generate_random_tc_id())
-            if c.execute("""SELECT count(*) FROM time_cookies_db WHERE cookie=? and dbfp=?""", (tc, self._encoded_id)).fetchone()[0] == 0:
+            if c.execute("""SELECT count(*) FROM time_cookies WHERE cookie=?""", (tc,)).fetchone()[0] == 0:
                 break
             
         """Insert the new time cookie"""
-        tcid = c.execute("""INSERT INTO time_cookies (cookie, dbid) VALUES (?, (SELECT id FROM databases WHERE fingerprint=?))""", (tc, self._encoded_id)).lastrowid
+        tcid = c.execute("""INSERT INTO time_cookies (cookie) VALUES (?)""", (tc,)).lastrowid
 
         return tcid
 
@@ -644,20 +438,51 @@ class SQLiteContentDB(ContentDB):
         the current time cookie for this data base is returned. If the data base is unknown, 
         None is returned.
         """
-        
+
         if dbfp is None:
-            fingerprint = self._encoded_id
+            row = dbcursor.execute(self._QUERY_GET_LAST_TIME_COOKIE).fetchone()
+            return self._decode_id(row[1])
         else:
-            fingerprint = self._encode_id(dbfp)
+            row = dbcursor.execute("SELECT cookie FROM remote_time_cookies JOIN databases ON remote_time_cookies.dbid = databases.id WHERE databases.fingerprint = ?",(self._encode_id(dbfp),)).fetchone()
+            return None if row is None else self._decode_id(row[0])
+
+    def _add_content(self, sql_count_statement, sql_insert_statement, content_list):
+        """Add a a list of messages to the data base.
+        
+        Will add all messages, not already in the data base to the data base and return a 
+        time cookie (bytes) that represents the point in time after the messages have been added.
+        If no messages were added, it just returns the current time cookie. 
+        """
             
-        row = dbcursor.execute(self._QUERY_GET_LAST_TIME_COOKIE, (fingerprint,)).fetchone()
+        with sqlite3.connect(self._db_file) as conn:
+            c = conn.cursor()
 
-        return None if row[1] is None else self._decode_id(row[1])
+            tcid = self._insert_new_tc(c)
+            
+            pre_msgs = c.execute(sql_count_statement).fetchone()[0] # Count before insert
+            
+            try:
+                for content in content_list:
+                    c.execute(sql_insert_statement, content + (tcid,))
+            except AttributeError: # Typically caused by types other than content in list
+                raise TypeError
+            
+            post_msgs = c.execute(sql_count_statement).fetchone()[0] # Count after insert
+            
+            """No new messages? Rollback tc insert and use old value"""
+            if (post_msgs - pre_msgs) == 0: 
+                conn.rollback() 
+            
+            return self._get_last_time_cookie(c)
 
-    def _get_message_count(self, dbcursor):
-        """Return the total number of messages in the data base"""
-        return dbcursor.execute(self._QUERY_GET_MESSAGE_COUNT).fetchone()[0]
+    def _remove_content(self, sql_statement, ids=None):
+        if ids is not None and not hasattr(ids,'__iter__'):
+            raise TypeError
 
-    def _get_identity_count(self, dbcursor):
-        """Return the total number of identities (public and private) in the data base"""
-        return dbcursor.execute(self._QUERY_GET_IDENTITY_COUNT).fetchone()[0]
+        with sqlite3.connect(self._db_file) as conn:
+            c = conn.cursor()
+            
+            if ids is None:
+                c.execute(sql_statement)
+            else:
+                c.executemany(sql_statement, [(id,) for id in ids])
