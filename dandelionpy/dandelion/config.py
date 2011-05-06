@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from dandelion.database import SQLiteContentDB
+from dandelion.database import ContentDB
 import configparser
 import dandelion.identity
 import tempfile
@@ -137,7 +137,7 @@ class ConfigManager:
         
         self.read_file()
         
-        self._content_db = SQLiteContentDB(tempfile.NamedTemporaryFile().name)
+        self._content_db = ContentDB(tempfile.NamedTemporaryFile().name)
         self._identity = dandelion.identity.generate()
         self._content_db.add_identities([self._identity])
 

@@ -22,7 +22,7 @@ import tempfile
 import dandelion.message
 import dandelion.identity
 from dandelion.message import Message
-from dandelion.database import ContentDB, SQLiteContentDB, ContentDBException
+from dandelion.database import ContentDB, ContentDBException
 
 _id1 = dandelion.identity.generate()
 _id2 = dandelion.identity.generate()
@@ -34,7 +34,7 @@ class DatabaseTest(unittest.TestCase):
     def test_sqlite(self):
         """Perform some SQLite specific tests."""
         tmp = tempfile.NamedTemporaryFile()
-        sqlitedb = SQLiteContentDB(tmp.name)
+        sqlitedb = ContentDB(tmp.name)
         
         self.assertTrue(len(sqlitedb.id), ContentDB._DBID_LENGTH_BYTES)
         self.assertTrue(ContentDB._TCID_LENGTH_BYTES > 1)
@@ -45,7 +45,7 @@ class DatabaseTest(unittest.TestCase):
         tc1 = sqlitedb.add_messages([m1, Message('b')])
         self.assertEqual(sqlitedb.message_count, 2)
 
-        sqlitedb2 = SQLiteContentDB(tmp.name, sqlitedb.id) # New db is the same as old
+        sqlitedb2 = ContentDB(tmp.name, sqlitedb.id) # New db is the same as old
         self.assertEqual(sqlitedb.id, sqlitedb2.id)
         self.assertEqual(sqlitedb.message_count, 2)
 
@@ -61,10 +61,10 @@ class DatabaseTest(unittest.TestCase):
         self.assertRaises(ContentDBException, ContentDB.register, 23)
         self.assertRaises(ContentDBException, ContentDB.unregister)
         
-        db = SQLiteContentDB(":memory:")
+        db = ContentDB(":memory:")
         ContentDB.register(db)
         self.assertRaises(ContentDBException, ContentDB.register, db)
-        self.assertRaises(ContentDBException, ContentDB.register, SQLiteContentDB(":memory:"))
+        self.assertRaises(ContentDBException, ContentDB.register, ContentDB(":memory:"))
         
         db_back = ContentDB.db
         self.assertNotEqual(db_back, None)
@@ -73,46 +73,9 @@ class DatabaseTest(unittest.TestCase):
         ContentDB.unregister()
         self.assertEqual(ContentDB.db, None)
 
-
-    def test_sqlitedb_id(self):
-        tmp = tempfile.NamedTemporaryFile()
-        ContentDB.register(SQLiteContentDB(tmp.name))
-        self._test_id(ContentDB.db)
-        ContentDB.unregister()
-
-    def test_sqlitedb_test_time_cookies(self):
-        tmp = tempfile.NamedTemporaryFile()
-        ContentDB.register(SQLiteContentDB(tmp.name))
-        self._test_time_cookies()
-        ContentDB.unregister()
-
-    def test_sqlitedb_message_interface(self):
-        tmp = tempfile.NamedTemporaryFile()
-        ContentDB.register(SQLiteContentDB(tmp.name))
-        self._test_message_interface()
-        ContentDB.unregister()
-        
-    def test_sqlitedb_get_messages(self):
-        tmp = tempfile.NamedTemporaryFile()
-        ContentDB.register(SQLiteContentDB(tmp.name))
-        self._test_get_messages()
-        ContentDB.unregister()
-
-    def test_sqlitedb_identity_interface(self):
-        tmp = tempfile.NamedTemporaryFile()
-        ContentDB.register(SQLiteContentDB(tmp.name))
-        self._test_identity_interface()
-        ContentDB.unregister()
-        
-    def test_sqlitedb_get_identities(self):
-        tmp = tempfile.NamedTemporaryFile()
-        ContentDB.register(SQLiteContentDB(tmp.name))
-        self._test_get_identities()
-        ContentDB.unregister()
-
-    def _test_id(self, db):
+    def test_id(self):
         """Test data base id format"""
-        db = ContentDB.db
+        db = ContentDB(tempfile.NamedTemporaryFile().name)
         
         id = db.id
         self.assertNotEqual(id, None)
@@ -120,12 +83,42 @@ class DatabaseTest(unittest.TestCase):
         self.assertTrue(isinstance(db.id, bytes))
         
         # Another data base gets another id
-        self.assertNotEqual(id, SQLiteContentDB(":memory:").id)
+        self.assertNotEqual(id, ContentDB(":memory:").id)
 
-    def _test_time_cookies(self):
+    def test_remote_cookies(self):
+        """Test the remote time cookie interface"""
+        db = ContentDB(tempfile.NamedTemporaryFile().name)
+        
+        remotefp_1 = b"1337"
+        remotefp_2 = b"2342"
+        remotetc_1 = b"1"
+        remotetc_2 = b"2"
+ 
+        # No time cookie for the db yet       
+        self.assertIsNone(db.get_last_time_cookie(remotefp_1))
+                
+        # Initial tc
+        db.update_last_time_cookie(remotefp_1, remotetc_1)
+        self.assertEqual(db.get_last_time_cookie(remotefp_1), remotetc_1)
+        
+        # Same tc again
+        db.update_last_time_cookie(remotefp_1, remotetc_1)
+        self.assertEqual(db.get_last_time_cookie(remotefp_1), remotetc_1)
+
+        # Second tc
+        db.update_last_time_cookie(remotefp_1, remotetc_2)
+        self.assertEqual(db.get_last_time_cookie(remotefp_1), remotetc_2)
+
+        # Second db
+        db.update_last_time_cookie(remotefp_2, remotetc_1)
+        self.assertEqual(db.get_last_time_cookie(remotefp_1), remotetc_2)
+        self.assertEqual(db.get_last_time_cookie(remotefp_2), remotetc_1)
+        
+
+    def test_time_cookies(self):
         """Test the data base time cookies (revision) functionality.""" 
         
-        db = ContentDB.db
+        db = ContentDB(tempfile.NamedTemporaryFile().name)
 
         # Adding a message        
         first_msg = Message('A Single Message')
@@ -145,7 +138,7 @@ class DatabaseTest(unittest.TestCase):
         self.assertTrue((db.get_last_time_cookie(None) is None) or (db.get_last_time_cookie(None) == second_cookie))
 
         # Since first should only be second
-        tc, some_messages = db.get_messages_since(first_cookie)
+        tc, some_messages = db.get_messages(time_cookie=first_cookie)
         self.assertNotEqual(some_messages, None)
         self.assertEqual(tc, second_cookie)
 
@@ -153,7 +146,7 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual(some_messages[0], second_msg)
         
         # Nothing new since last message was added
-        tc, last_messages = db.get_messages_since(second_cookie)
+        tc, last_messages = db.get_messages(time_cookie=second_cookie)
         self.assertNotEqual(last_messages, None)
         self.assertEqual(len(last_messages), 0)
         self.assertEqual(tc, second_cookie)
@@ -169,16 +162,16 @@ class DatabaseTest(unittest.TestCase):
         self.assertTrue(db.get_last_time_cookie() == third_cookie)
         
         # Trying some bad input
-        self.assertRaises(TypeError, db.get_messages_since, 0)
-        self.assertRaises(TypeError, db.get_messages_since, '')
-        self.assertRaises(TypeError, db.get_messages_since, 'fubar')
-        self.assertRaises(ValueError, db.get_messages_since, b'')
-        self.assertRaises(ValueError, db.get_messages_since, b'1337')
+        self.assertRaises(TypeError, db.get_messages, [], 0)
+        self.assertRaises(TypeError, db.get_messages, [], '')
+        self.assertRaises(TypeError, db.get_messages, [], 'fubar')
+        self.assertRaises(ValueError, db.get_messages, [], b'')
+        self.assertRaises(ValueError, db.get_messages, [], b'1337')
         
-    def _test_message_interface(self):
+    def test_message_interface(self):
         """Test functions relating to storing and recovering messages."""
         
-        db = ContentDB.db
+        db = ContentDB(tempfile.NamedTemporaryFile().name)
         
         first_msg_list = [Message('A'), Message('B'), 
                           dandelion.message.create("W Sender", sender=_id1), 
@@ -186,9 +179,9 @@ class DatabaseTest(unittest.TestCase):
                           dandelion.message.create("W Sender And Receiver", sender=_id1, receiver=_id2)]
 
         # Try to add junk
-        self.assertRaises(ValueError, db.add_messages, None)
+        self.assertRaises(TypeError, db.add_messages, None)
         self.assertRaises(TypeError, db.add_messages, 23)
-        self.assertRaises(TypeError, db.add_messages, [None])
+        self.assertRaises(AttributeError, db.add_messages, [None])
         
         # Add a message list        
         self.assertEqual(db.message_count, 0)
@@ -225,14 +218,12 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual([db.contains_message(m.id) for m in first_msg_list], [False, False, False, False, False])
         self.assertEqual([db.contains_message(m.id) for m in second_msg_list], [False, False])
         
-    def _test_get_messages(self):
+    def test_get_messages(self):
         """Test message retrieval."""
         
-        db = ContentDB.db
+        db = ContentDB(tempfile.NamedTemporaryFile().name)
 
-        mlist = db.get_messages()
-        self.assertEqual(mlist, [])
-        _, mlist = db.get_messages_since()
+        _, mlist = db.get_messages()
         self.assertEqual(mlist, [])
 
         m1 = Message('M1')
@@ -242,37 +233,30 @@ class DatabaseTest(unittest.TestCase):
         db.add_identities([_id1])
         db.add_messages([m1, m2, m3])
         
-        _, mlist = db.get_messages_since()
+        _, mlist = db.get_messages()
         self.assertTrue(m1 in mlist)
         self.assertTrue(m2 in mlist)
         self.assertTrue(m3 in mlist)
         
-        mlist = db.get_messages()
-        self.assertTrue(m1 in mlist)
-        self.assertTrue(m2 in mlist)
-        self.assertTrue(m3 in mlist)
-        
-        mlist = db.get_messages([m1.id, m3.id])
+        _, mlist = db.get_messages([m1.id, m3.id])
         self.assertTrue(m1 in mlist)
         self.assertFalse(m2 in mlist)
         self.assertTrue(m3 in mlist)
         
-    def _test_identity_interface(self):
+    def test_identity_interface(self):
         """Test functions relating to storing and recovering identities."""
         
-        db = ContentDB.db
+        db = ContentDB(tempfile.NamedTemporaryFile().name)
         
-        idlist = db.get_identities()
-        self.assertEqual(idlist, [])
-        _, idlist = db.get_identities_since()
+        _, idlist = db.get_identities()
         self.assertEqual(idlist, [])
 
         first_id_list = [_id1, _id2]
 
         # Try to add junk
-        self.assertRaises(ValueError, db.add_identities, None)
+        self.assertRaises(TypeError, db.add_identities, None)
         self.assertRaises(TypeError, db.add_identities, 23)
-        self.assertRaises(TypeError, db.add_identities, [None])
+        self.assertRaises(AttributeError, db.add_identities, [None])
         
         # Add a message list
         self.assertEqual(db.identity_count, 0)        
@@ -309,29 +293,38 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual([db.contains_identity(id.fingerprint) for id in first_id_list], [False, False])
         self.assertEqual([db.contains_identity(id.fingerprint) for id in second_id_list], [False, False])
 
-    def _test_get_identities(self):
+    def test_get_identities(self):
         """Test identity retrieval."""
         
-        db = ContentDB.db
-        
+        db = ContentDB(tempfile.NamedTemporaryFile().name)
+
         db.add_identities([_id1, _id2, _id3])
         db.add_messages([Message("fu")])
         
-        _, idlist = db.get_identities_since()
-        
+        _, idlist = db.get_identities()
         self.assertTrue(_id1 in idlist)
         self.assertTrue(_id2 in idlist)
         self.assertTrue(_id3 in idlist)
+        for id in idlist:
+            self.assertFalse(id.rsa_key.is_private)
+            self.assertFalse(id.dsa_key.is_private)
         
-        idlist = db.get_identities()
-        self.assertTrue(_id1 in idlist)
-        self.assertTrue(_id2 in idlist)
-        self.assertTrue(_id3 in idlist)
-        
-        idlist = db.get_identities([_id1.fingerprint, _id2.fingerprint])
+        _, idlist = db.get_identities(fingerprints=[_id1.fingerprint, _id2.fingerprint])
         self.assertTrue(_id1 in idlist)
         self.assertTrue(_id2 in idlist)
         self.assertFalse(_id3 in idlist)
+        for id in idlist:
+            self.assertFalse(id.rsa_key.is_private)
+            self.assertFalse(id.dsa_key.is_private)
+        
+#        self.assertRaises(ValueError, db.add_private_identity, _id2)
+#        self.assertIsNone(db.get_private_identitity(_id2.fingerprint))
+#        
+#        db.add_private_identity(_id1)
+#        id = db.get_private_identitity(_id1.fingerprint)
+#        self.assertEqual(_id1.fingerprint, id.fingerprint)
+#        self.assertTrue(id.is_private)
+#        self.assertTrue(_id1.is_private)
         
 if __name__ == '__main__':
     unittest.main()

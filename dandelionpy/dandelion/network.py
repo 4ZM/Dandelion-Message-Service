@@ -162,22 +162,22 @@ class ServerTransaction(SocketTransaction):
             
             if dandelion.protocol.is_message_id_list_request(data):
                 tc = dandelion.protocol.parse_message_id_list_request(data)
-                tc, msgs = self._db.get_messages_since(tc)
+                tc, msgs = self._db.get_messages(time_cookie=tc)
                 response_str = dandelion.protocol.create_message_id_list(tc, msgs)
                 self._write(response_str.encode()) 
             elif dandelion.protocol.is_message_list_request(data):
                 msgids = dandelion.protocol.parse_message_list_request(data)
-                msgs = self._db.get_messages(msgids)
+                _, msgs = self._db.get_messages(msgids=msgids)
                 response_str = dandelion.protocol.create_message_list(msgs)
                 self._write(response_str.encode())
             elif dandelion.protocol.is_identity_id_list_request(data):
                 tc = dandelion.protocol.parse_identity_id_list_request(data)
-                tc, ids = self._db.get_identities_since(tc)
+                tc, ids = self._db.get_identities(time_cookie=tc)
                 response_str = dandelion.protocol.create_identity_id_list(tc, ids)
                 self._write(response_str.encode()) 
             elif dandelion.protocol.is_identity_list_request(data):
                 identities = dandelion.protocol.parse_identity_list_request(data)
-                ids = self._db.get_identities(identities)
+                _, ids = self._db.get_identities(fingerprints=identities)
                 response_str = dandelion.protocol.create_identity_list(ids)
                 self._write(response_str.encode())
             else:
@@ -306,10 +306,10 @@ class ClientTransaction(SocketTransaction):
             dbid = dandelion.protocol.parse_greeting_message(self._read().decode())
 
             time_cookie = self._db.get_last_time_cookie(dbid)
-            
+
             """Request and read message id's"""
             self._write(dandelion.protocol.create_message_id_list_request(time_cookie).encode())
-            _, msgids = dandelion.protocol.parse_message_id_list(self._read().decode())
+            tc, msgids = dandelion.protocol.parse_message_id_list(self._read().decode())
             
             req_msgids = [mid for mid in msgids if not self._db.contains_message(mid)]
 
@@ -336,6 +336,8 @@ class ClientTransaction(SocketTransaction):
                 """Store the new identities"""
                 self._db.add_identities(ids)
 
+            """Record the synchronization time for the remote db"""
+            self._db.update_last_time_cookie(dbid, tc)
             
         except (socket.timeout, ProtocolParseError, ValueError, TypeError):
             """Do nothing on error, just hang up"""
