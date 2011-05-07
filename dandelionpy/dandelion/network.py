@@ -20,6 +20,7 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 import threading
 import socket
 import socketserver
+import random
 
 import dandelion.protocol
 from dandelion.protocol import ProtocolParseError
@@ -163,6 +164,7 @@ class ServerTransaction(SocketTransaction):
             if dandelion.protocol.is_message_id_list_request(data):
                 tc = dandelion.protocol.parse_message_id_list_request(data)
                 tc, msgs = self._db.get_messages(time_cookie=tc)
+                random.shuffle(msgs) # To avoid last piece problem
                 response_str = dandelion.protocol.create_message_id_list(tc, msgs)
                 self._write(response_str.encode()) 
             elif dandelion.protocol.is_message_list_request(data):
@@ -173,6 +175,7 @@ class ServerTransaction(SocketTransaction):
             elif dandelion.protocol.is_identity_id_list_request(data):
                 tc = dandelion.protocol.parse_identity_id_list_request(data)
                 tc, ids = self._db.get_identities(time_cookie=tc)
+                random.shuffle(ids) # To avoid last piece problem
                 response_str = dandelion.protocol.create_identity_id_list(tc, ids)
                 self._write(response_str.encode()) 
             elif dandelion.protocol.is_identity_list_request(data):
@@ -314,6 +317,8 @@ class ClientTransaction(SocketTransaction):
             req_msgids = [mid for mid in msgids if not self._db.contains_message(mid)]
 
             if len(req_msgids) > 0: # Anything to fetch?
+                random.shuffle(req_msgids) # To avoid last piece problem
+
                 """Request and read messages"""        
                 self._write(dandelion.protocol.create_message_list_request(req_msgids).encode())
                 msgs = dandelion.protocol.parse_message_list(self._read().decode())
@@ -328,6 +333,7 @@ class ClientTransaction(SocketTransaction):
             req_ids = [id for id in identityids if not self._db.contains_identity(id)]
             
             if len(req_ids) > 0: # Anything to fetch?
+                random.shuffle(req_ids) # To avoid last piece problem
 
                 """Request and read identities"""        
                 self._write(dandelion.protocol.create_identity_list_request(req_ids).encode())

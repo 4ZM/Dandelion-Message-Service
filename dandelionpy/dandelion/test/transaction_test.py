@@ -294,7 +294,9 @@ class TransactionTest(unittest.TestCase):
 
             """Reading msg list request"""
             rcv = srv_sock._read()
-            self.assertEqual(rcv, dandelion.protocol.create_message_list_request([msg.id for msg in srv_db.get_messages()[1]]).encode())
+            expected_msgs =  dandelion.protocol.create_message_list_request([msg.id for msg in srv_db.get_messages()[1]]).split(" ")[1][:-1].split(";")
+            for msg in expected_msgs:
+                self.assertNotEqual(rcv.find(msg.encode()), -1) 
 
             """Sending the msg id list"""
             srv_sock._write(dandelion.protocol.create_message_list(srv_db.get_messages()[1]).encode())
@@ -309,7 +311,9 @@ class TransactionTest(unittest.TestCase):
 
             """Reading identity list request"""
             rcv = srv_sock._read()
-            self.assertEqual(rcv, dandelion.protocol.create_identity_list_request([id.fingerprint for id in srv_db.get_identities()[1]]).encode())
+            expected_ids = dandelion.protocol.create_identity_list_request([id.fingerprint for id in srv_db.get_identities()[1]]).split(" ")[1][:-1].split(";")
+            for id in expected_ids:
+                self.assertNotEqual(rcv.find(id.encode()), -1) 
 
             """Sending the msg id list"""
             srv_sock._write(dandelion.protocol.create_identity_list(srv_db.get_identities()[1]).encode())
