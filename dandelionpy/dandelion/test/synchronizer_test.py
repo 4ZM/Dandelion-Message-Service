@@ -20,7 +20,7 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 import unittest
 import dandelion.synchronizer
 
-class MessageTest(unittest.TestCase):
+class SynchronizerTest(unittest.TestCase):
     """Unit test suite for the DMS synchronizer classes"""
      
     def test_xxx(self):
