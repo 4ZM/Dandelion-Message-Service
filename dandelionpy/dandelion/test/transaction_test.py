@@ -29,6 +29,7 @@ import unittest
 from dandelion.identity import PrivateIdentity
 
 
+
 HOST = '127.0.0.1'
 PORT = 1337
 TIMEOUT = 0.1
@@ -60,7 +61,7 @@ class TestServerHelper:
             pass
         return self._client_sock
     
-    def __enter__(self):    
+    def __enter__(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.bind((HOST, PORT))
         self._sock.listen(1)
@@ -72,7 +73,10 @@ class TestServerHelper:
     
     def __exit__(self, type, value, traceback):
         self._thread.join()
-        self._sock.shutdown(socket.SHUT_RDWR)
+        try:
+            self._sock.shutdown(socket.SHUT_RDWR)
+        except socket.error:
+            pass
         self._sock.close()
         
     def _wait_for_connection(self):
@@ -268,7 +272,8 @@ class TransactionTest(unittest.TestCase):
         self.assertEqual(client_db.identity_count, 0)
         self.assertEqual(srv_db.message_count, 3)
         self.assertEqual(srv_db.identity_count, 2)
-    
+        
+        
         with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
             
             client_transaction = ClientTransaction(client_helper.sock, client_db)
@@ -277,7 +282,6 @@ class TransactionTest(unittest.TestCase):
             """Run the client transaction in a separate thread"""
             thread = threading.Thread(target=client_transaction.process)
             thread.start()
-            
             """Send a greeting (should be req. by client)"""
             srv_sock._write(dandelion.protocol.create_greeting_message(srv_db.id).encode())
             
@@ -312,7 +316,7 @@ class TransactionTest(unittest.TestCase):
             
             """Wait for client to hang up"""
             thread.join(2*TIMEOUT)
-                
+        
         """Make sure the client has updated the db"""
         self.assertEqual(client_db.message_count, 3)
         self.assertEqual(srv_db.message_count, 3)

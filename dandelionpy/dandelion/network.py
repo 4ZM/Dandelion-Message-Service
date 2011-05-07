@@ -361,7 +361,10 @@ class Client:
     
     def __exit__(self, type, value, traceback):
         #print("CLIENT: disconnecting")
-        self._sock.shutdown(socket.SHUT_RDWR)
+        try:
+            self._sock.shutdown(socket.SHUT_RDWR)
+        except socket.error: 
+            pass
         self._sock.close()
 
     def execute_transaction(self):
