@@ -66,7 +66,7 @@ class ConfigurationManager():
             for k, v in self._cfg[key].items():
                 setattr(self.__class__, k, v)
 
-        self._content_db = dandelion.database.SQLiteContentDB(self._cfg['database']['file'])
+        self._content_db = dandelion.database.ContentDB(self._cfg['database']['file'])
         
         self._identity = dandelion.identity.generate()
         
