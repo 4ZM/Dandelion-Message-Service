@@ -29,6 +29,7 @@ import unittest
 from dandelion.identity import PrivateIdentity
 
 
+
 HOST = '127.0.0.1'
 PORT = 1337
 TIMEOUT = 0.1
@@ -60,7 +61,7 @@ class TestServerHelper:
             pass
         return self._client_sock
     
-    def __enter__(self):    
+    def __enter__(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.bind((HOST, PORT))
         self._sock.listen(1)
@@ -72,7 +73,10 @@ class TestServerHelper:
     
     def __exit__(self, type, value, traceback):
         self._thread.join()
-        self._sock.shutdown(socket.SHUT_RDWR)
+        try:
+            self._sock.shutdown(socket.SHUT_RDWR)
+        except socket.error:
+            pass
         self._sock.close()
         
     def _wait_for_connection(self):
@@ -84,7 +88,7 @@ def recv_n(sock, nbytes):
     return b''.join([sock.recv(1) for _ in range(nbytes)])
 
 
-class MessageTest(unittest.TestCase):
+class TransactionTest(unittest.TestCase):
     """Unit test suite for the DMS network transactions"""
      
     def test_helper_classes(self):
@@ -268,7 +272,8 @@ class MessageTest(unittest.TestCase):
         self.assertEqual(client_db.identity_count, 0)
         self.assertEqual(srv_db.message_count, 3)
         self.assertEqual(srv_db.identity_count, 2)
-    
+        
+        
         with TestServerHelper() as server_helper, TestClientHelper() as client_helper:
             
             client_transaction = ClientTransaction(client_helper.sock, client_db)
@@ -277,7 +282,6 @@ class MessageTest(unittest.TestCase):
             """Run the client transaction in a separate thread"""
             thread = threading.Thread(target=client_transaction.process)
             thread.start()
-            
             """Send a greeting (should be req. by client)"""
             srv_sock._write(dandelion.protocol.create_greeting_message(srv_db.id).encode())
             
@@ -290,7 +294,9 @@ class MessageTest(unittest.TestCase):
 
             """Reading msg list request"""
             rcv = srv_sock._read()
-            self.assertEqual(rcv, dandelion.protocol.create_message_list_request([msg.id for msg in srv_db.get_messages()[1]]).encode())
+            expected_msgs =  dandelion.protocol.create_message_list_request([msg.id for msg in srv_db.get_messages()[1]]).split(" ")[1][:-1].split(";")
+            for msg in expected_msgs:
+                self.assertNotEqual(rcv.find(msg.encode()), -1) 
 
             """Sending the msg id list"""
             srv_sock._write(dandelion.protocol.create_message_list(srv_db.get_messages()[1]).encode())
@@ -305,14 +311,16 @@ class MessageTest(unittest.TestCase):
 
             """Reading identity list request"""
             rcv = srv_sock._read()
-            self.assertEqual(rcv, dandelion.protocol.create_identity_list_request([id.fingerprint for id in srv_db.get_identities()[1]]).encode())
+            expected_ids = dandelion.protocol.create_identity_list_request([id.fingerprint for id in srv_db.get_identities()[1]]).split(" ")[1][:-1].split(";")
+            for id in expected_ids:
+                self.assertNotEqual(rcv.find(id.encode()), -1) 
 
             """Sending the msg id list"""
             srv_sock._write(dandelion.protocol.create_identity_list(srv_db.get_identities()[1]).encode())
             
             """Wait for client to hang up"""
             thread.join(2*TIMEOUT)
-                
+        
         """Make sure the client has updated the db"""
         self.assertEqual(client_db.message_count, 3)
         self.assertEqual(srv_db.message_count, 3)

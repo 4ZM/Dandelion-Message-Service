@@ -20,7 +20,7 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 import dandelion.identity
 import unittest
 
-class UtilTest(unittest.TestCase):
+class IdentityTest(unittest.TestCase):
     
     def test_creation(self):
         id = dandelion.identity.generate()
