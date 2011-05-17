@@ -21,6 +21,7 @@ from dandelion.config import ConfigManager
 from dandelion.network import Server
 from dandelion.synchronizer import Synchronizer
 from dandelion.ui import UI
+from dandelion.gui.gui import GUI
 
 class DandelionApp:
 
@@ -44,6 +45,14 @@ class DandelionApp:
         
         self._ui.run()
     
+    def run_gui(self):
+
+        self._gui = GUI(self._config_manager.ui_config, 
+                        self._config_manager.content_db,
+                        self._config_manager.identity,
+                        self._server, 
+                        self._synchronizer)
+        
     def exit(self):
         self._synchronizer.stop()
         self._server.stop()
@@ -55,8 +64,13 @@ def run():
     #app.start_server()
     #print('APP: Starting Synchronizer')
     #app.start_content_synchronizer()
+   
     #print('APP: Starting UI')
-    app.run_ui()
+    #app.run_ui()
+    
+    app.run_gui()
+    
+    
     #print('APP: Exiting')
     app.exit()
 
