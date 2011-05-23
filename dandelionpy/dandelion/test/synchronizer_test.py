@@ -18,12 +18,12 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import unittest
-import dandelion.synchronizer
+import dandelion.discoverer
 
-class SynchronizerTest(unittest.TestCase):
-    """Unit test suite for the DMS synchronizer classes"""
+class DiscovererTest(unittest.TestCase):
+    """Unit test suite for the DMS Discoverer classes"""
      
-    def test_xxx(self):
+    def test_construction(self):
         pass
 
 if __name__ == '__main__':

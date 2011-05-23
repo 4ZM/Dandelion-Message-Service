@@ -16,10 +16,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
-
+import threading
+import time
 
 class Service:
-    """Abstract Base"""
+    """Interface for an asynchronous background daemon."""
     
     def start(self):
         """Start the service. Block until the service is running."""
@@ -31,13 +32,62 @@ class Service:
         """Stop then start the service. Blocking call"""
         self.stop()
         self.start()
-    
-    @property
-    def status(self):
-        """A string with information about the service"""
-    
+
     @property 
     def running(self):
         """Returns True if the service is running, False otherwise"""
+
+
+class RepetitiveWorker(Service):
+    """Helper for a service implementation of a service that 
+    repeatedly runs one and the same function."""
+    
+    def __init__(self, work_func, min_wait_time_sec=10):
+        self._running = False
+        self._stop_requested = True
+        self._thread = None
         
+        self._work_func = work_func
+        self._min_wait_time_sec = min_wait_time_sec
+        
+    def start(self):
+        """Start the service. Block until the service is running."""
+        self._stop_requested = False
+        self._thread = threading.Thread(target=self._work_loop)
+        self._thread.start()
+        self._running = True
+    
+    def stop(self):
+        """Stop the service. Block until the service is stopped."""
+        self._stop_requested = True
+        if self._thread is not None:
+            self._thread.join(0.1)
+            if self._thread.is_alive():
+                raise Exception # Timeout
+                
+        self._running = False
+        
+    @property 
+    def running(self):
+        """Returns True if the service is running, False otherwise"""
+        return self._running
+        
+    def _work_loop(self):
+        """The sisyphosian work loop. Repeat the work function until it is stopped.
+        
+        No matter how fast the work function returns, wait at least min_wait_time_sec before running again.
+        """ 
+
+        t1 = time.time()
+        while not self._stop_requested:
+            t2 = time.time()
+
+            """Should we run discovery yet or just keep checking the stop condition?"""
+            if t2 - t1 < self._min_wait_time_sec:
+                time.sleep(0.01) # Don't busy wait
+                continue
+
+            self._work_func() 
+            
+            t1 = time.time()
     
