@@ -18,16 +18,22 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from dandelion.service import RepetitiveWorker
+from dandelion.network import Client
 
 class Synchronizer(RepetitiveWorker):
     """The synchronizer dispatches requests to nodes found by the discoverer."""
     
     def __init__(self, discoverer, config, db):
-        super().__init__(self._do_sync, 5) # TODO: get time from cfg-file
+        super().__init__(self._do_sync, 1) # TODO: get time from cfg-file
         self._config = config
         self._db = db
         self._discoverer = discoverer
-        
+
+    def sync(self, host, port):
+        """Perform a synchronization with a specific node"""
+        with Client(host, port, self._db) as client:
+            client.execute_transaction()
+
     def _do_sync(self):
         """Use the discoverer to get a node (or several) to synchronize with 
         and then perform the synchronization.

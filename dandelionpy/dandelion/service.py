@@ -43,6 +43,13 @@ class RepetitiveWorker(Service):
     repeatedly runs one and the same function."""
     
     def __init__(self, work_func, min_wait_time_sec=10):
+
+        if not hasattr(work_func, '__call__'):
+            raise TypeError
+        
+        if float(min_wait_time_sec) < 0:
+            raise ValueError
+        
         self._running = False
         self._stop_requested = True
         self._thread = None
@@ -52,6 +59,10 @@ class RepetitiveWorker(Service):
         
     def start(self):
         """Start the service. Block until the service is running."""
+
+        if self._running: 
+            return # Starting twice is a nop
+       
         self._stop_requested = False
         self._thread = threading.Thread(target=self._work_loop)
         self._thread.start()
@@ -59,6 +70,10 @@ class RepetitiveWorker(Service):
     
     def stop(self):
         """Stop the service. Block until the service is stopped."""
+        
+        if not self._running: 
+            return # Stopping twice is a nop
+
         self._stop_requested = True
         if self._thread is not None:
             self._thread.join(0.1)
