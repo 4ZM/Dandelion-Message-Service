@@ -19,6 +19,7 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 
 from dandelion.service import RepetitiveWorker
 from dandelion.network import Client
+from dandelion.discoverer import DiscovererException
 
 class Synchronizer(RepetitiveWorker):
     """The synchronizer dispatches requests to nodes found by the discoverer."""
@@ -31,6 +32,7 @@ class Synchronizer(RepetitiveWorker):
 
     def sync(self, host, port):
         """Perform a synchronization with a specific node"""
+
         with Client(host, port, self._db) as client:
             client.execute_transaction()
 
@@ -41,7 +43,7 @@ class Synchronizer(RepetitiveWorker):
 
         try: 
             host, port = self._discoverer.acquire_node()
-        except:
+        except DiscovererException:
             return
         
         try: 

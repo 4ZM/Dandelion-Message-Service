@@ -131,4 +131,3 @@ class Discoverer(RepetitiveWorker):
         """Find and add new nodes to node list here."""
         
         # TODO: Implement!
-        

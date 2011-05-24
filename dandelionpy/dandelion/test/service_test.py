@@ -20,11 +20,16 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 import unittest
 import time
 import os
+import tempfile
 
 import dandelion.service
 import dandelion.synchronizer
 import dandelion.discoverer
 import dandelion.config
+from dandelion.database import ContentDB
+from dandelion.network import Client, Server
+from dandelion.message import Message
+from dandelion.config import ServerConfig
 
 def _wait_for_cnt(lst, limit=1, time_out=0.5):
     """Helper function for synchronization. Will return when the lists length 
@@ -112,7 +117,7 @@ class RepetitiveWorkerTest(unittest.TestCase):
 class DiscovererTest(unittest.TestCase):
     """Unit test suite for the Discoverer class."""
 
-    TEST_FILE = os.path.join(os.path.split(os.path.abspath(__file__))[0], 
+    TEST_FILE = os.path.join(os.path.split(os.path.abspath(__file__))[0],
                              'config_test_data.conf')
 
     def test_start_stop(self): 
@@ -252,9 +257,92 @@ class DiscovererTest(unittest.TestCase):
 
 class SynchronizerTest(unittest.TestCase):
     """Unit test suite for the Synchronizer class."""
-     
-    def test_xxx(self):
-        pass
 
+    TEST_FILE = os.path.join(os.path.split(os.path.abspath(__file__))[0],
+                             'config_test_data.conf')
+     
+    def test_start_stop(self): 
+        # Create synchronizer with already running discoverer
+        db = ContentDB(":memory:")
+        d = dandelion.discoverer.Discoverer(dandelion.config.ConfigManager(self.TEST_FILE))
+        d.start()
+        s = dandelion.synchronizer.Synchronizer(dandelion.config.ConfigManager(self.TEST_FILE), d, db)
+        self.assertFalse(s.running)
+        s.start()
+        self.assertTrue(s.running)        
+        s.stop()
+        self.assertFalse(s.running)    
+        d.stop()
+        
+        # Create synchronizer with discoverer started later
+        d = dandelion.discoverer.Discoverer(dandelion.config.ConfigManager(self.TEST_FILE))
+        s = dandelion.synchronizer.Synchronizer(dandelion.config.ConfigManager(self.TEST_FILE), d, db)
+        d.start()
+        self.assertFalse(s.running)
+        s.start()
+        self.assertTrue(s.running)        
+        s.stop()
+        self.assertFalse(s.running)    
+        d.stop()
+        
+        # Start synchronizer before discoverer
+        d = dandelion.discoverer.Discoverer(dandelion.config.ConfigManager(self.TEST_FILE))
+        s = dandelion.synchronizer.Synchronizer(dandelion.config.ConfigManager(self.TEST_FILE), d, db)
+        self.assertFalse(s.running)
+        s.start()
+        self.assertTrue(s.running)
+        d.start()
+        s.stop()
+        self.assertFalse(s.running)    
+        d.stop()
+
+        # Stop discoverer while synchronizer is running
+        d = dandelion.discoverer.Discoverer(dandelion.config.ConfigManager(self.TEST_FILE))
+        d.start()
+        s = dandelion.synchronizer.Synchronizer(dandelion.config.ConfigManager(self.TEST_FILE), d, db)
+        s.start()
+        self.assertTrue(s.running)
+        d.stop()
+        self.assertTrue(s.running)
+        s.stop()
+        self.assertFalse(s.running)    
+
+    def test_do_sync(self): 
+        cm = dandelion.config.ConfigManager(self.TEST_FILE)
+        remote_db = ContentDB(tempfile.NamedTemporaryFile().name)
+        local_db = ContentDB(tempfile.NamedTemporaryFile().name)
+        d = dandelion.discoverer.Discoverer(cm)
+        d.start()
+        s = dandelion.synchronizer.Synchronizer(d, cm, local_db)
+        s.start()
+
+        # Start the "remote" server
+        sc = ServerConfig()
+        sc.ip = "127.0.0.1"
+        sc.port = 12345
+        server = Server(sc, remote_db, None)
+        server.start() 
+                
+        # Adding the node to the discoverer should prompt it to start synchronizing.
+        d.add_node("127.0.0.1", 12345, pin=True)
+        
+        msg = local_db.get_messages()
+        self.assertEqual(len(msg[1]), 0)
+        
+        remote_db.add_messages([Message("fubar")])
+        
+        # Need to wait for the sync to complete...
+        time.sleep(5)
+        
+        # Complete sync, so we have the message locally
+        msg = local_db.get_messages()
+        self.assertEqual(len(msg[1]), 1)
+        
+        # Cleanup
+        s.stop()
+        d.stop()
+        server.stop()
+        
 if __name__ == '__main__':
     unittest.main()
+

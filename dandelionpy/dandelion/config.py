@@ -48,10 +48,18 @@ class ServerConfig(Config):
     @property
     def port(self):
         return self._port
-        
+    
+    @port.setter
+    def port(self, value):
+        self._port = value
+          
     @property
     def ip(self):
         return self._ip
+
+    @ip.setter
+    def ip(self, value):
+        self._ip = value
         
     def load(self, confparser):
         if not confparser.has_section(ServerConfig._SECTION_NAME):
@@ -184,3 +192,4 @@ class ConfigManager:
         confparser.read(self._cfg_file_name)
         
         self._server_config.load(confparser)
+
