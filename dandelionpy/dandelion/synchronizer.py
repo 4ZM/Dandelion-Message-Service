@@ -17,86 +17,39 @@ You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from threading import Thread
-import time
-
-from dandelion.service import Service
-from dandelion.discoverer import Discoverer
+from dandelion.service import RepetitiveWorker
 from dandelion.network import Client
+from dandelion.discoverer import DiscovererException
 
-class Synchronizer(Service):
+class Synchronizer(RepetitiveWorker):
+    """The synchronizer dispatches requests to nodes found by the discoverer."""
     
-    def __init__(self, config, db):
+    def __init__(self, discoverer, config, db):
+        super().__init__(self._do_sync, 1) # TODO: get time from cfg-file
         self._config = config
         self._db = db
-        self._running = False
-        self._stop_requested = True
-        self._thread = None
-        self._discoverer = Discoverer()
-        
-    def start(self):
-        """Start the service. Block until the service is running."""
-        #print('SYNCHRONIZER: Starting')
-        self._stop_requested = False
-        self._thread = Thread(target=self._sync_loop)
-        self._thread.start()
-        self._running = True
-    
-    def stop(self):
-        """Stop the service. Block until the service is running."""
-        
-        self._stop_requested = True
-        #print('SYNCHRONIZER: Stopping')
-        if self._thread is not None:
-            self._thread.join(0.1)
-            if self._thread.is_alive():
-                raise Exception # Timeout
-                
-        self._running = False
-        
-    
-    def restart(self):
-        """Stop then start the service. Blocking call"""
-        self.stop()
-        self.start()
-    
-    @property
-    def status(self):
-        """A string with information about the service"""
-        print(''.join(['Synchronizer status: Running: ', str(self._running)]))
-    
-    @property 
-    def running(self):
-        """Returns True if the service is running, False otherwise"""
-        return self._running
-        
+        self._discoverer = discoverer
+
     def sync(self, host, port):
         """Perform a synchronization with a specific node"""
+
         with Client(host, port, self._db) as client:
             client.execute_transaction()
 
-    def _sync_loop(self):
-        #print('SYNCHRONIZER: Running')
+    def _do_sync(self):
+        """Use the discoverer to get a node (or several) to synchronize with 
+        and then perform the synchronization.
+        """    
 
-        t1 = time.time()
-        while not self._stop_requested:
-            t2 = time.time()
+        try: 
+            host, port = self._discoverer.acquire_node()
+        except DiscovererException:
+            return
+        
+        try: 
+            self.sync(host, port)
+        except:
+            self._discoverer.release_node(host, port, False) # Ack failure
+        else:
+            self._discoverer.release_node(host, port, True) # Ack success 
 
-            """Should we sync or just keep checking the stop condition?"""
-            if t2 - t1 < 10:
-                time.sleep(0.01) # Don't busy wait
-                continue
-            
-            #print("SYNCHRONIZER: Time for a sync")
-            
-            # Should use the discoverer here...
-            host = "localhost"
-            port = 1337
-            
-            try: 
-                self.sync(host, port)
-            except:
-                continue
-                
-            t1 = time.time()
-    
