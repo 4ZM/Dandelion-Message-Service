@@ -56,6 +56,7 @@ class DandelionApp:
         self._config_manager.write_file()
 
 def run():
+    print("Dandelion starting...")
     app = DandelionApp('dandelion.conf')
 
     app._server.start()
@@ -64,6 +65,7 @@ def run():
     app.run_ui()
 
     app.exit()
+    print("bye")
 
 if __name__ == '__main__':
     run()
