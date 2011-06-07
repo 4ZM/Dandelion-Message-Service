@@ -106,6 +106,9 @@ class CmdLine(cmd.Cmd):
             print("SYNTAX ERROR")
         
 
+    def do_EOF(self, args):
+        return True
+
     def do_exit(self, args):
         """exit : Exit the program"""
         return True
