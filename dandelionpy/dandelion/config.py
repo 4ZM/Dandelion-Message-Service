@@ -39,7 +39,7 @@ class ServerConfig(Config):
     _PORT_DEFAULT = 1337
     
     _IP_NAME = 'ip'
-    _IP_DEFAULT = '127.0.0.1'
+    _IP_DEFAULT = '0.0.0.0' # Bind to anything
     
     def __init__(self):
         self._port = ServerConfig._PORT_DEFAULT
@@ -48,10 +48,18 @@ class ServerConfig(Config):
     @property
     def port(self):
         return self._port
-        
+    
+    @port.setter
+    def port(self, value):
+        self._port = value
+          
     @property
     def ip(self):
         return self._ip
+
+    @ip.setter
+    def ip(self, value):
+        self._ip = value
         
     def load(self, confparser):
         if not confparser.has_section(ServerConfig._SECTION_NAME):
@@ -82,13 +90,27 @@ class SynchronizerConfig(Config):
         pass
         
     def load(self, confparser):
-        if not confparser.has_section(ServerConfig._SECTION_NAME):
+        if not confparser.has_section(SynchronizerConfig._SECTION_NAME):
             raise ConfigException
         
 
     def store(self, confparser):
-        confparser.add_section(ServerConfig._SECTION_NAME)
+        confparser.add_section(SynchronizerConfig._SECTION_NAME)
 
+class DiscovererConfig(Config):
+
+    _SECTION_NAME = 'discoverer'
+
+    def __init__(self):
+        pass
+
+    def load(self, confparser):
+        if not confparser.has_section(DiscovererConfig._SECTION_NAME):
+            raise ConfigException
+
+
+    def store(self, confparser):
+        confparser.add_section(DiscovererConfig._SECTION_NAME)
 
 class UiConfig(Config):
     
@@ -98,28 +120,27 @@ class UiConfig(Config):
         pass
         
     def load(self, confparser):
-        if not confparser.has_section(ServerConfig._SECTION_NAME):
+        if not confparser.has_section(UiConfig._SECTION_NAME):
             raise ConfigException
         
 
     def store(self, confparser):
-        confparser.add_section(ServerConfig._SECTION_NAME)
+        confparser.add_section(UiConfig._SECTION_NAME)
 
 class IdentityConfig(Config):
     
-    _SECTION_NAME = 'synchronizer'
+    _SECTION_NAME = 'identity'
         
     def __init__(self):
         pass
         
     def load(self, confparser):
-        if not confparser.has_section(ServerConfig._SECTION_NAME):
+        if not confparser.has_section(IdentityConfig._SECTION_NAME):
             raise ConfigException
         
 
     def store(self, confparser):
-        confparser.add_section(ServerConfig._SECTION_NAME)
-
+        confparser.add_section(IdentityConfig._SECTION_NAME)
 
 class ConfigManager:
 
@@ -132,13 +153,14 @@ class ConfigManager:
         
         self._server_config = ServerConfig()
         self._synchronizer_config = SynchronizerConfig()
+        self._discoverer_config = DiscovererConfig()
         self._id_manager_config = IdentityConfig()
         self._ui_config = UiConfig()
         
         self.read_file()
         
         self._content_db = ContentDB(tempfile.NamedTemporaryFile().name)
-        self._identity = dandelion.identity.generate()
+        self._identity = dandelion.identity.generate() # Should read from DB if available
         self._content_db.add_identities([self._identity])
 
     @property
@@ -153,6 +175,10 @@ class ConfigManager:
     def synchronizer_config(self):
         return self._synchronizer_config
     
+    @property
+    def discoverer_config(self):
+        return self._discoverer_config
+
     @property
     def identity_manager_config(self):
         return self._id_manager_config
@@ -184,3 +210,4 @@ class ConfigManager:
         confparser.read(self._cfg_file_name)
         
         self._server_config.load(confparser)
+

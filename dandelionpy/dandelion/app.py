@@ -20,6 +20,7 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 from dandelion.config import ConfigManager 
 from dandelion.network import Server
 from dandelion.synchronizer import Synchronizer
+from dandelion.discoverer import Discoverer
 from dandelion.ui import UI
 from dandelion.gui.gui import GUI
 
@@ -31,8 +32,11 @@ class DandelionApp:
         self._server = Server(self._config_manager.server_config, 
                               self._config_manager.content_db,
                               self._config_manager.identity) 
-
-        self._synchronizer = Synchronizer(self._config_manager.synchronizer_config,
+        
+        self._discoverer = Discoverer(self._config_manager.discoverer_config)
+        
+        self._synchronizer = Synchronizer(self._discoverer,
+                                          self._config_manager.synchronizer_config,
                                           self._config_manager.content_db)
 
     def run_ui(self): 
@@ -41,6 +45,7 @@ class DandelionApp:
                       self._config_manager.content_db,
                       self._config_manager.identity,
                       self._server, 
+                      self._discoverer,
                       self._synchronizer)
         
         self._ui.run()
@@ -55,23 +60,18 @@ class DandelionApp:
         
     def exit(self):
         self._synchronizer.stop()
+        self._discoverer.stop()
         self._server.stop()
-
+        self._config_manager.write_file()
 
 def run():
     app = DandelionApp('dandelion.conf')
-    #print('APP: Starting Server')
-    #app.start_server()
-    #print('APP: Starting Synchronizer')
-    #app.start_content_synchronizer()
-   
-    #print('APP: Starting UI')
-    #app.run_ui()
-    
+
+    app._server.start()
+    app._discoverer.start()
+    app._synchronizer.start()
     app.run_gui()
-    
-    
-    #print('APP: Exiting')
+
     app.exit()
 
 if __name__ == '__main__':

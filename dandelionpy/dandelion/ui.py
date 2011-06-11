@@ -17,8 +17,6 @@ You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from dandelion.identity import PrivateIdentity
-from dandelion.message import Message
 from dandelion.util import encode_b64_bytes
 import cmd
 import dandelion
@@ -66,7 +64,7 @@ class CmdLine(cmd.Cmd):
         self._ui.show_identities()
 
     def do_server(self, args):
-        """server [op] : Perform a server operation [start|stop|restart|stat]"""
+        """server [op] : Perform a server operation [start|stop|restart|stat|bind]"""
         args = args.split(' ')
         if args[0] == 'bind' and len(args) == 3:
             try:
@@ -83,17 +81,30 @@ class CmdLine(cmd.Cmd):
     def do_synchronizer(self, args):
         """synchronizer [op] : Perform a synchronizer operation [start|stop|restart|stat]"""
         args = args.split(' ')
-        if args[0] == 'sync' and len(args) == 3:
-            try:
-                self._ui.singel_sync(args[1], int(args[2]))
-            except:
-                print("Sync Error")
-            return
-        
         try:
             self._ui.synchronizer_ctrl(self._parse_service_op(args[0]))
         except:
             print("SYNTAX ERROR")
+            
+    def do_discoverer(self, args):
+        """discoverer [op] : Perform a discoverer operation [start|stop|restart|stat|add|remove]"""
+        args = args.split(' ')
+
+        try:
+            if args[0] == 'add' and len(args) == 3:
+                self._ui.discoverer_add(args[1], int(args[2]))
+                return
+            elif args[0] == 'remove' and len(args) == 3:
+                return
+                self._ui.discoverer_remove(args[1], int(args[2]))
+        except:
+            print("Sync Error")
+        
+        try:
+            self._ui.discoverer_ctrl(self._parse_service_op(args[0]))
+        except:
+            print("SYNTAX ERROR")
+        
 
     def do_exit(self, args):
         """exit : Exit the program"""
@@ -115,13 +126,13 @@ OP_START, OP_STOP, OP_RESTART, OP_STATUS = range(4)
         
 class UI:
     
-    def __init__(self, config_manager, db, id, server=None, content_synchronizer=None):
+    def __init__(self, config_manager, db, id, server, discoverer, content_synchronizer):
         self._server = server
         self._synchronizer = content_synchronizer
+        self._discoverer = discoverer
         self._config_manager = config_manager
         self._db = db
         self._identity = id
-        #self._id_manager = IdentityManager(self._config_manager.identity_manager_config)
 
         self._cmd_line = CmdLine(self)
 
@@ -177,11 +188,17 @@ class UI:
         self._server.ip = host
         self._server.port = port
     
-    def singel_sync(self, host, port):
-        self._synchronizer.sync(host, port)
-    
     def synchronizer_ctrl(self, op=OP_STATUS):
         self._service_ctrl(self._synchronizer, op)
+
+    def discoverer_ctrl(self, op=OP_STATUS):
+        self._service_ctrl(self._discoverer, op)
+        
+    def discoverer_add(self, host, port):
+        self._discoverer.add_node(host, port, pin=True)
+
+    def discoverer_remove(self, host, port):
+        self._discoverer.remove_node(host, port)
     
     def _service_ctrl(self, service, op):
         if op == OP_START:
@@ -191,7 +208,7 @@ class UI:
         elif op == OP_RESTART:
             service.restart()
         elif op == OP_STATUS:
-            print(service.status)
+            print("running " if service.running else "not running")
         else:
             pass # Error
 
