@@ -23,60 +23,111 @@ class GUI(tkinter.Frame):
         # TKinter 
         master = None
         tkinter.Frame.__init__(self, master)
+     
+
+        self.master.config(
+            borderwidth=0,
+            background="black",
+            )
+
+        self.master.focus_set()
+
         
-        row_pos = 2
+        self.processcheck = IntVar() #P
+        self.processCheck = 1 #P
+        
+        self.master.title("Dandelion Message System") #P
+        
         message_entry_area_height = message_area_height = 3
         
+        row_pos = 2
+    
+        self.show_messages = tkinter.Button(master, 
+                                            text="Get messages", bg="black", fg="green", 
+                                            activebackground="black", 
+                                            highlightbackground="black", 
+                                            command=self._show_messages)
+        self.show_messages.grid(row=row_pos, column=0, sticky=W, padx=8, pady=4)
+        
+        
+        self.labelQuit = StringVar()
+        self.labelQuit.set("x")
+               
+        self.QUIT = tkinter.Button(master, textvariable=self.labelQuit, 
+                                   bg="black", fg="red", 
+                                   activebackground="black", 
+                                   highlightbackground="black", 
+                                   command=self._quit)
+        self.QUIT.grid(row=row_pos, column=2, sticky=E, padx=8)
+          
+        row_pos+=1 # new line?     
+        self.labelMsgs = StringVar()
+        self.labelMsgs.set("...looking for messages")   
+       
         # Where messages are displayed
-        self.message_area = tkinter.Text(master, height=8)
-        #self.message_area.insert(END, 'pre pre')
+        self.message_area = tkinter.Text(master, bg="black", fg="green", height=12)
+        self.message_area.insert(END, "Welcome to the Dandelion Message System.")
         self.message_area.config(state=DISABLED)
         self.message_area.grid(row=message_area_height, column=0, 
-                          columnspan=2, 
+                          columnspan=3, 
                           rowspan=message_area_height, 
                           sticky=W, padx=8, pady=8)
 
         row_pos += message_area_height
-
+        
+        self.labelmsg = StringVar()
+        self.labelmsg.set("Tell it like it is:")
+         
+        self.tilte = tkinter.Label(master, textvariable=self.labelmsg, bg="black", fg="green")  
+        self.tilte.grid(row=row_pos, column=0, sticky=W, padx=8)
+          
+        row_pos+=1 # new line?
+          
         #  Where messages are entered
         
-        self.message_entry_area = tkinter.Text(master, height=4)
+        self.message_entry_area = tkinter.Text(master, bg="black", fg="green", height=1.5)
         #self.message_entry_area.insert(END, "hello there")
         self.message_entry_area.grid(row=row_pos, column=0, 
-                                columnspan=2, 
+                                columnspan=3, 
                                 rowspan=message_entry_area_height,
                                 sticky=W, padx=8, pady=8)
         
         row_pos += message_entry_area_height
         
         self.sign_var = tkinter.IntVar()
-        self.sign_checkbutton = tkinter.Checkbutton(master, text="Sign", variable=self.sign_var)
-        self.sign_checkbutton.grid(row=row_pos, column=1, sticky=W, padx=8, pady=8)
+        self.sign_checkbutton = tkinter.Checkbutton(master, 
+                                                    text="Sign", 
+                                                    bg="black", 
+                                                    fg="green",  
+                                                    activebackground="black", 
+                                                    highlightbackground="black", 
+                                                    borderwidth=0, 
+                                                    variable=self.sign_var)
         
-        self.send_button = tkinter.Button(master, text="Send", command=self._send_text)
-        self.send_button.grid(row=row_pos, column=1, sticky=E)
+        self.sign_checkbutton.grid(row=row_pos, column=0, sticky=W, padx=8)
         
-        row_pos+=1
-        
-        
-        self.START_RESTART = tkinter.Button(master, text="Start", command=self._start_restart)
-        self.START_RESTART.grid(row=row_pos, column=0, sticky=W)
-        
-        self.STOP = tkinter.Button(master, text="Stop", command=self._stop)
-        self.STOP.grid(row=row_pos, column=0, sticky=E)
-        
-        self.QUIT = tkinter.Button(master, text="Quit", command=self._quit)
-        self.QUIT.grid(row=row_pos, column=1, sticky=W)
+        self.send_button = tkinter.Button(master, text="Send", bg="black", fg="green", activebackground="black", highlightbackground="black", command=self._send_text)
+        self.send_button.grid(row=row_pos, column=2, sticky=E, padx=8)
         
         row_pos+=1
-        self.server_status = tkinter.Label(master, text="Running")
-        self.server_status.grid(row=row_pos, column=0, sticky=W)
         
-        self.show_messages = tkinter.Button(master, text="Show messages", command=self._show_messages)
-        self.show_messages.grid(row=row_pos, column=1, sticky=W)
+        self.START_RESTART = tkinter.Button(master, text="Start", bg="black", fg="green", activebackground="black", highlightbackground="black", command=self._start_restart) # ►
+        self.START_RESTART.grid(row=row_pos, column=0, sticky=W, padx=8, pady=8)
+
+        self.STOP = tkinter.Button(master, text="Stop", bg="black", fg="green", activebackground="black", highlightbackground="black", command=self._stop)
+        self.STOP.grid(row=row_pos, column=0)
+        
+        self.processText = StringVar()
+        self.processText.set("Active...")
+        self.processTextStart = tkinter.Label(master, bg="black", fg="green", textvariable=self.processText, height=4)       
+        self.processTextStart.grid(row=row_pos, column=1, sticky=W, padx=8)
+               
+        self.HELP = tkinter.Button(master, text="?", bg="black", fg="green", activebackground="black", highlightbackground="black", command=self._help)
+        self.HELP.grid(row=row_pos, column=2, sticky=E, padx=8, pady=8)
         
         self.mainloop()
-        
+     
+    
         
     
     """
@@ -107,24 +158,40 @@ class GUI(tkinter.Frame):
                                   command=self._say)
         self.SAY.pack({"side" : "left"})
         
-    """
+    """    
+    
     def _start_restart(self):
         print("starting things")
+        self.labelStarted = ("Active...")
+        self.processText.set(self.labelStarted)
+        self.processCheck = 1
         self._synchronizer.start()
         
     def _stop(self):
         print("stopping things")
+        self.labelStop = ("Peer Down..")
+        self.processText.set(self.labelStop)
+        self.processCheck = 0
         self._synchronizer.stop()
         
     def _quit(self):
         print("Quitting program")
+        self.labelQuit = ("Quitting..")
+        self.processText.set(self.labelQuit)
         self._stop()
         self.quit()
     
     def _send_text(self):
         msg = self.message_entry_area.get(1.0, END)
         print("checked: %s send_text: %s " % (self.sign_var.get(), msg))
-        self._say(msg)
+        
+        if self.processCheck == 0:
+            self.labelNotRunning = ("To message pls press Start.")
+            self.processText.set(self.labelNotRunning)
+            print("To message the client must be running")
+        else:    
+            self._say(msg)
+            self.message_entry_area.delete(1.0, END)
 
     #def _say(self, msg, sign=None, receiver_name=None):
     def _say(self, msg, sign=None, receiver_name=None):
@@ -148,17 +215,34 @@ class GUI(tkinter.Frame):
             self._db.add_messages([m])
             
     def _show_messages(self):
-        msgs = self._db.get_messages()
-        print(' --- MESSAGES BEGIN --- ')
-        
-        for m in msgs:
-            print(' : '.join([encode_b64_bytes(m.id).decode(), 
+        # om du först definierar en stringvar
+        self.all_msgs = StringVar()
+        # sedan hämtar vi meddelandena från db
+        (current_tc, self.all_msgs) = self._db.get_messages()
+        self.message_area.config(state=NORMAL) 
+        self.message_area.delete(1.0,END)  
+        for m in self.all_msgs:   
+                self.all_msgs = (' : '.join([encode_b64_bytes(m.id).decode(), 
                               m.text if not m.has_receiver else encode_b64_bytes(m.text).decode(), 
                               'N/A' if not m.has_receiver else encode_b64_bytes(m.receiver).decode(), 
-                              'N/A' if not m.has_sender else encode_b64_bytes(m.sender).decode()]))
-
-        print(' --- MESSAGES END --- ')
+                              'N/A' if not m.has_sender else encode_b64_bytes(m.sender).decode()]))           
+                self.message_area.insert(END, self.all_msgs)
         
+        self.message_area.config(state=DISABLED)
+                
+    def _help(self):
+        pass
+    
+    def show_identities(self):
+        _, identities = self._db.get_identities()
+        print(' --- IDENTITIES BEGIN --- ')
+        
+        for id in identities:
+            print(' : '.join([encode_b64_bytes(id.fingerprint).decode()]))
+
+        print(' --- IDENTITIES END --- ')
+
+    
     """
     def synchronizer_ctrl(self, op=""):
         self._service_ctrl(self._synchronizer, op)
