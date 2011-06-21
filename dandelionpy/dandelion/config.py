@@ -78,7 +78,7 @@ class ServerConfig(Config):
 
     def store(self, confparser):
         confparser.add_section(ServerConfig._SECTION_NAME)
-        confparser.set(ServerConfig._SECTION_NAME, ServerConfig._PORT_NAME, self._port)
+        confparser.set(ServerConfig._SECTION_NAME, ServerConfig._PORT_NAME, str(self._port))
         confparser.set(ServerConfig._SECTION_NAME, ServerConfig._IP_NAME, self._ip)
 
 
