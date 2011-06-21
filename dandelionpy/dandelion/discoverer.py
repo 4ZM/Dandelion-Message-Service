@@ -19,20 +19,26 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 
 import threading
 import datetime
+import pybonjour
+import select
 
-from dandelion.service import RepetitiveWorker
+from dandelion.service import Service
 
 class DiscovererException(Exception):
     '''Exception from operations on the Discoverer'''
 
 
-class Discoverer(RepetitiveWorker):
+class Discoverer(Service):
     """The discoverer finds and keeps track of the status of known nodes."""
     
-    def __init__(self, config):
-        super().__init__(self._do_discovery, 1) # TODO: Get time from cfg-file 
+    def __init__(self, config, server_config):
         self._config = config
+        self._server_config = server_config
         self._nodes = []        
+        self._running = False
+        self._stop_requested = True
+        self._register_fd = None
+        self._thread = None
         
     def add_node(self, ip, port=1337, pin=False, last_sync=None):
         """Explicitly add a new node to the list of known nodes.
@@ -126,8 +132,52 @@ class Discoverer(RepetitiveWorker):
         Should only be executed inside a lock.
         """
         return len([node for node in self._nodes if node['ip'] == ip and node['port'] == port]) > 0
-        
-    def _do_discovery(self):
-        """Find and add new nodes to node list here."""
-        
-        # TODO: Implement!
+
+
+    def _register_callback(self, sdRef, flags, errorCode, name, regtype, domain):
+        pass
+
+    def _register(self):
+        self._register_fd = pybonjour.DNSServiceRegister(name = "dandelionnode",
+                                             regtype = "_dandelion._tcp",
+                                             port = self._server_config.port,
+                                             callBack = self._register_callback)
+        pybonjour.DNSServiceProcessResult(self._register_fd)
+
+    def _unregister(self):
+        self._register_fd.close()
+
+    def _work_loop(self):
+        while not self._stop_requested:
+            select.select([], [], [], 0.1)
+
+    def start(self):
+        """Start the service. Block until the service is running."""
+
+        if self._running: 
+            return # Starting twice is a nop
+       
+        self._stop_requested = False
+        self._register()
+        self._thread = threading.Thread(target=self._work_loop)
+        self._thread.start()
+        self._running = True
+    
+    def stop(self):
+        """Stop the service. Block until the service is stopped."""
+
+        if not self._running: 
+            return # Stopping twice is a nop
+
+        self._stop_requested = True
+        if self._thread is not None:
+            self._thread.join(1)
+            if self._thread.is_alive():
+                raise Exception # Timeout
+        self._unregister()
+        self._running = False
+
+    @property 
+    def running(self):
+        """Returns True if the service is running, False otherwise"""
+        return self._running
