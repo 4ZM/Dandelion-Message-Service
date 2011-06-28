@@ -33,7 +33,7 @@ class DandelionApp:
                               self._config_manager.content_db,
                               self._config_manager.identity) 
         
-        self._discoverer = Discoverer(self._config_manager.discoverer_config)
+        self._discoverer = Discoverer(self._config_manager.discoverer_config, server_config=self._config_manager.server_config)
         
         self._synchronizer = Synchronizer(self._discoverer,
                                           self._config_manager.synchronizer_config,

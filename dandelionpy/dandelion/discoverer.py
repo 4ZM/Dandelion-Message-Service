@@ -19,20 +19,28 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 
 import threading
 import datetime
+import pybonjour
+import select, socket
 
-from dandelion.service import RepetitiveWorker
+from dandelion.service import Service
 
 class DiscovererException(Exception):
     '''Exception from operations on the Discoverer'''
 
 
-class Discoverer(RepetitiveWorker):
+class Discoverer(Service):
+    REGTYPE = "_dandelion._tcp"
     """The discoverer finds and keeps track of the status of known nodes."""
     
-    def __init__(self, config):
-        super().__init__(self._do_discovery, 1) # TODO: Get time from cfg-file 
+    def __init__(self, config, server_config):
         self._config = config
+        self._server_config = server_config
         self._nodes = []        
+        self._running = False
+        self._stop_requested = True
+        self._register_fd = None
+        self._thread = None
+        self._listen_fds = []
         
     def add_node(self, ip, port=1337, pin=False, last_sync=None):
         """Explicitly add a new node to the list of known nodes.
@@ -126,8 +134,103 @@ class Discoverer(RepetitiveWorker):
         Should only be executed inside a lock.
         """
         return len([node for node in self._nodes if node['ip'] == ip and node['port'] == port]) > 0
-        
-    def _do_discovery(self):
-        """Find and add new nodes to node list here."""
-        
-        # TODO: Implement!
+
+
+    def _register_callback(self, sdRef, flags, errorCode, name, regtype, domain):
+        pass
+
+    def _register(self):
+        self._register_fd = pybonjour.DNSServiceRegister(name = "dandelionnode",
+                                             regtype = Discoverer.REGTYPE,
+                                             port = self._server_config.port,
+                                             callBack = self._register_callback)
+        pybonjour.DNSServiceProcessResult(self._register_fd)
+
+    def _unregister(self):
+        self._register_fd.close()
+
+
+    def _resolve_callback(self, sdRef, flags, interfaceIndex, errorCode, fullname,
+                         hosttarget, port, txtRecord):
+        if errorCode != pybonjour.kDNSServiceErr_NoError:
+            return
+
+#        print('Resolved service:')
+#        print('  fullname   =', fullname)
+#        print('  hosttarget =', hosttarget)
+#        print('  port       =', port)
+
+        def query_record_callback(sdRef, flags, interfaceIndex, errorCode, fullname,
+                                   rrtype, rrclass, rdata, ttl):
+            if errorCode == pybonjour.kDNSServiceErr_NoError:
+                self.add_node(ip=socket.inet_ntoa(rdata), port=port)
+#                print('  IP,port         =', socket.inet_ntoa(rdata), port)
+
+        query_fd = pybonjour.DNSServiceQueryRecord(interfaceIndex = interfaceIndex,
+                                                   fullname = hosttarget,
+                                                   rrtype = pybonjour.kDNSServiceType_A,
+                                                   callBack = query_record_callback)
+        self._listen_fds.append(query_fd) # XXX LEAKS
+
+
+    def _browse_callback(self, sdRef, flags, interfaceIndex, errorCode, serviceName,
+                    regtype, replyDomain):
+        if errorCode != pybonjour.kDNSServiceErr_NoError:
+            return
+
+        if not (flags & pybonjour.kDNSServiceFlagsAdd):
+            print('Service removed')
+            return
+
+#        print('Service added; resolving')
+
+        resolve_fd = pybonjour.DNSServiceResolve(0,
+                                                 interfaceIndex,
+                                                 serviceName,
+                                                 regtype,
+                                                 replyDomain,
+                                                 self._resolve_callback)
+        self._listen_fds.append(resolve_fd) # XXX LEAKS
+
+
+    def _work_loop(self):
+        browse_fd = pybonjour.DNSServiceBrowse(regtype = Discoverer.REGTYPE,
+                                               callBack = self._browse_callback)
+
+        while not self._stop_requested:
+            ready = select.select([browse_fd]+self._listen_fds, [], [], 0.1)
+            for fd in ready[0]:
+                pybonjour.DNSServiceProcessResult(fd)
+            
+
+
+    def start(self):
+        """Start the service. Block until the service is running."""
+
+        if self._running: 
+            return # Starting twice is a nop
+       
+        self._stop_requested = False
+        self._register()
+        self._thread = threading.Thread(target=self._work_loop)
+        self._thread.start()
+        self._running = True
+    
+    def stop(self):
+        """Stop the service. Block until the service is stopped."""
+
+        if not self._running: 
+            return # Stopping twice is a nop
+
+        self._stop_requested = True
+        if self._thread is not None:
+            self._thread.join(1)
+            if self._thread.is_alive():
+                raise Exception # Timeout
+        self._unregister()
+        self._running = False
+
+    @property 
+    def running(self):
+        """Returns True if the service is running, False otherwise"""
+        return self._running
