@@ -19,7 +19,7 @@ class GUI(tkinter.Frame):
         self._db = db
         self._identity = id
 
-        # identity set
+        # identity set w
         self.has_been_run = False
         # welcome = self._db.add_search
         # print(welcome)
