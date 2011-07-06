@@ -129,7 +129,8 @@ class Identity:
         self._dsa_key = dsa_key 
         self._rsa_key = rsa_key
         self._fp = None # Lazy evaluation
-
+        self.nick = "" # nick added
+        
     @property 
     def fingerprint(self):
         """The identity fingerprint
