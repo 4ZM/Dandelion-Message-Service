@@ -18,7 +18,7 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 from dandelion.identity import Identity, DSA_key, RSA_key
 from dandelion.message import Message
-from dandelion.util import encode_b64_bytes, decode_b64_bytes, encode_b64_int, \
+from dandelion.util import encode_b64_bytes, decode_b64_bytes, encode_b64_int, encode_b64_str, \
     decode_b64_int
 import random
 import sqlite3
@@ -116,14 +116,23 @@ class ContentDB:
         dsa_q INTEGER NOT NULL,
         rsa_n INTEGER NOT NULL,
         rsa_e INTEGER NOT NULL,
+        nick TEXT,
         cookieid INTEGER NOT NULL REFERENCES time_cookies (id))"""
 
+  
     _CREATE_TABLE_PRIVATE_IDENTITIES = """CREATE TABLE IF NOT EXISTS
         private_identities
         (fingerprint TEXT PRIMARY KEY REFERENCES identities (fingerprint),
         dsa_x INTEGER NOT NULL,
         rsa_d INTEGER NOT NULL)"""
 
+    _CREATE_TABLE_NAMED_IDENTITIES = """CREATE TABLE IF NOT EXISTS
+        named_identities
+        (fingerprint TEXT PRIMARY KEY REFERENCES identities (fingerprint),
+        dsa_x INTEGER NOT NULL,
+        rsa_d INTEGER NOT NULL)"""
+
+    
     _CREATE_TABLE_MESSAGES = """CREATE TABLE IF NOT EXISTS messages
         (msgid TEXT PRIMARY KEY,
         msg TEXT NOT NULL,
@@ -136,6 +145,10 @@ class ContentDB:
     _QUERY_REMOTE_GET_LAST_TIME_COOKIE = """SELECT cookie FROM remote_time_cookies WHERE dbfp=?"""
     _QUERY_GET_MESSAGE_COUNT = """SELECT count(*) FROM messages"""
     _QUERY_GET_IDENTITY_COUNT = """SELECT count(*) FROM identities"""
+    thisfingerprint=""
+    _QUERY_GET_NICKS = """SELECT * FROM nicks""" #palle
+    _QUERY_UPDATE_NICK= """INSERT OR IGNORE INTO nicks (nick) VALUES (?)"""  # palle
+    _QUERY_SEARCH_MESSAGES="""SELECT message FROM messages WHERE message LIKE '%s', """ % ("hello") # Palle
 
     _QUERY_REMOVE_ALL_IDENTITIES="""DELETE FROM identities"""
     _QUERY_REMOVE_SPECIFIC_IDENTITIES="""DELETE FROM identities WHERE fingerprint=?"""
@@ -143,8 +156,8 @@ class ContentDB:
     _QUERY_REMOVE_SPECIFIC_MESSAGES="""DELETE FROM messages WHERE msgid=?"""
     
     _QUERY_ADD_MESSAGES="""INSERT OR IGNORE INTO messages (msgid, msg, receiver, sender, signature, cookieid) VALUES (?,?,?,?,?,?)"""
-    _QUERY_ADD_IDENTITIES="""INSERT OR IGNORE INTO identities (fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e, cookieid) VALUES (?,?,?,?,?,?,?,?)"""
-
+    _QUERY_ADD_IDENTITIES="""INSERT OR IGNORE INTO identities (fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e, nick, cookieid) VALUES (?,?,?,?,?,?,?,?,?)"""
+    
     def __init__(self, db_file, id=None):
         """Create a SQLite backed data base."""
         super().__init__()
@@ -228,7 +241,11 @@ class ContentDB:
                             None if not m.has_sender else self._encode_id(m.sender),
                             None if not m.has_sender else self._encode_id(m.signature)) for m in msgs])
 
-
+    def search_messages(self, search_term):
+        """Search the data base of messages.
+        """
+        return search_term # FIX this function later
+            
     def remove_messages(self, msgs=None):
         """Removes messages from the data base.
         
@@ -320,8 +337,19 @@ class ContentDB:
                             encode_b64_int(id.dsa_key.p),
                             encode_b64_int(id.dsa_key.q),
                             encode_b64_int(id.rsa_key.n),
-                            encode_b64_int(id.rsa_key.e)) for id in identities])
+                            encode_b64_int(id.rsa_key.e), 
+                            encode_b64_str(id.nick)) for id in identities])
 
+    def change_nick(self, nick, id):
+        """change a nick.
+        """ 
+        newnick = nick
+        oldname = id
+        with sqlite3.connect(self._db_file) as conn:
+            c = conn.cursor()
+        sql = """UPDATE OR IGNORE identities SET nick = '%s' WHERE nick = '%s'""" % (newnick, oldname)
+        c.execute(sql) # FIX this (decode/encode?) update nick.  
+        
     def remove_identities(self, identities=None):
         """Removes identities from the data base.
         
@@ -351,7 +379,7 @@ class ContentDB:
         _, id = self.get_identities(fingerprints=[fingerprint])
         return id is not None and len(id) == 1
 
-    def get_identities(self, fingerprints=None, time_cookie=None):
+    def get_identities(self, fingerprints=None, nick=None, time_cookie=None):
         """Get a list of all identities with specified fingerprints.
         
         If the parameter is None, all identities are returned.
@@ -377,12 +405,12 @@ class ContentDB:
                           (self._encode_id(time_cookie),)).fetchone()[0] == 0:
                     raise ValueError 
 
-                c.execute("""SELECT fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e 
+                c.execute("""SELECT fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e, nick 
                              FROM identities JOIN time_cookies ON identities.cookieid = time_cookies.id
                              WHERE time_cookies.id > (SELECT id FROM time_cookies WHERE cookie=?)""", 
                              (self._encode_id(time_cookie),)) 
             else:
-                c.execute("""SELECT fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e FROM identities""")
+                c.execute("""SELECT fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e, nick FROM identities""")
             
             id_rows = c.fetchall()
             current_tc = self._get_last_time_cookie(c)
@@ -394,9 +422,11 @@ class ContentDB:
                                           RSA_key(decode_b64_int(id[5]), 
                                                   decode_b64_int(id[6]))) for id in id_rows 
                                                   if id is not None]
+            
             if fingerprints is not None:
                 ids = [id for id in ids if id.fingerprint in fingerprints]
-            
+
+                            
             return (current_tc, ids)
             
 
@@ -486,3 +516,4 @@ class ContentDB:
                 c.execute(sql_statement)
             else:
                 c.executemany(sql_statement, [(id,) for id in ids])
+
