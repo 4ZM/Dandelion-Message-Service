@@ -18,8 +18,9 @@ class GUI(tkinter.Frame):
         self._config_manager = config_manager
         self._db = db
         self._identity = id
+        
 
-        # identity set w
+        # identity set
         self.has_been_run = False
         # welcome = self._db.add_search
         # print(welcome)
@@ -228,6 +229,8 @@ class GUI(tkinter.Frame):
         # left mouse click on a list item to display selection
         self.id_list.bind('<ButtonRelease-1>', self.get_name)
         
+        self.set_identities_nick()
+        
         self.mainloop()
 
     def _start_restart(self):
@@ -323,19 +326,28 @@ class GUI(tkinter.Frame):
     def validatecommand(self, *args):
         return len(self.get()) < self.Message.MAX_TEXT_LENGTH 
     
-    
     def show_identities(self):
+        _, self.identities = self._db.get_identities() 
+        self.id_list.delete(0, END) 
+        #id = db.select(sql)
+        for id in self.identities:
+            thisnick = encode_b64_str(id.nick)
+            # later get all nicks, if nick None set nick 
+            self.id_list.insert(END, thisnick)     
+                    
+        self.save_nickname.config(state=DISABLED)
+           
+    def set_identities_nick(self):
         _, self.identities = self._db.get_identities() 
         self.id_list.delete(0, END) 
         
         for id in self.identities:
             thisname = encode_b64_bytes(id.fingerprint).decode()
-            thisnick = "Anon_"+thisname[8:12]
-            self._db.change_nick(thisname, thisnick)
-            # print(encode_b64_bytes(id.fingerprint).decode())
-            self.id_list.insert(END, thisnick)
-        self.save_nickname.config(state=DISABLED)
-           
+            thisnick = "Anon_"+thisname[12:16]
+            self._db.set_nick(thisnick, thisname)
+            self.id_list.insert(END, thisnick)            
+        self.save_nickname.config(state=DISABLED) 
+              
     def get_name(self, event):
         """
         function to read the listbox selection
@@ -356,11 +368,11 @@ class GUI(tkinter.Frame):
         insert an edited line from the entry widget
         back into the listbox
         """
-        _, self.identities = self._db.get_identities() 
+        
         try:
-         
             index = self.id_list.curselection()[0]
-            oldid = self.id_list.get(index)
+            oldnick = self.id_list.get(index)
+            print(oldnick)
             # delete old listbox line
             self.id_list.delete(index)
         except IndexError:
@@ -369,7 +381,8 @@ class GUI(tkinter.Frame):
     
         self.id_list.insert(index, self.editnick.get())
         newnick = self.id_list.get(index)
-        self._db.change_nick(oldid, newnick)
+        print(newnick)
+        self._db.set_nick(newnick, oldnick)
         self.save_nickname.config(state=DISABLED) 
             
     def _search_messages(self):
@@ -411,4 +424,5 @@ class GUI(tkinter.Frame):
         else:
             pass # Error
     """
+
 
