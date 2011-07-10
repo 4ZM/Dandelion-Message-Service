@@ -145,11 +145,7 @@ class ContentDB:
     _QUERY_REMOTE_GET_LAST_TIME_COOKIE = """SELECT cookie FROM remote_time_cookies WHERE dbfp=?"""
     _QUERY_GET_MESSAGE_COUNT = """SELECT count(*) FROM messages"""
     _QUERY_GET_IDENTITY_COUNT = """SELECT count(*) FROM identities"""
-    thisfingerprint=""
-    _QUERY_GET_NICKS = """SELECT * FROM nicks""" #palle
-    _QUERY_UPDATE_NICK= """INSERT OR IGNORE INTO nicks (nick) VALUES (?)"""  # palle
-    _QUERY_SEARCH_MESSAGES="""SELECT message FROM messages WHERE message LIKE '%s', """ % ("hello") # Palle
-
+   
     _QUERY_REMOVE_ALL_IDENTITIES="""DELETE FROM identities"""
     _QUERY_REMOVE_SPECIFIC_IDENTITIES="""DELETE FROM identities WHERE fingerprint=?"""
     _QUERY_REMOVE_ALL_MESSAGES="""DELETE FROM messages"""
@@ -173,6 +169,7 @@ class ContentDB:
         else:
             self._id = id
             self._encoded_id = ContentDB._encode_id(self._id)
+        
             
             """Check existence of specified id"""
             with sqlite3.connect(self._db_file) as conn:  
@@ -184,7 +181,8 @@ class ContentDB:
         with sqlite3.connect(self._db_file) as conn:
             c = conn.cursor()
             self._create_tables(c)
-
+        
+        
     @property
     def id(self):
         """The data base id (bytes)"""
@@ -244,8 +242,13 @@ class ContentDB:
     def search_messages(self, search_term):
         """Search the data base of messages.
         """
-        return search_term # FIX this function later
+        with sqlite3.connect(self._db_file) as conn:
+            c = conn.cursor()
+            c.execute("""SELECT msg FROM messages WHERE msg LIKE '%s'""" % (search_term))
+            mm = c.fetchall()                 
+        return mm # FIX this function later
             
+          
     def remove_messages(self, msgs=None):
         """Removes messages from the data base.
         
@@ -329,7 +332,8 @@ class ContentDB:
 
         if identities is None or not hasattr(identities, '__iter__'):
             raise TypeError
-
+        
+        
         return self._add_content(self._QUERY_GET_IDENTITY_COUNT, self._QUERY_ADD_IDENTITIES,
                           [(self._encode_id(id.fingerprint), 
                             encode_b64_int(id.dsa_key.y),
@@ -339,16 +343,23 @@ class ContentDB:
                             encode_b64_int(id.rsa_key.n),
                             encode_b64_int(id.rsa_key.e), 
                             encode_b64_str(id.nick)) for id in identities])
-
-    def change_nick(self, nick, id):
-        """change a nick.
+        
+    def set_nick(self, nick, fingerprint):
+        """set a nick.
         """ 
-        newnick = nick
-        oldname = id
         with sqlite3.connect(self._db_file) as conn:
             c = conn.cursor()
-        sql = """UPDATE OR IGNORE identities SET nick = '%s' WHERE nick = '%s'""" % (newnick, oldname)
-        c.execute(sql) # FIX this (decode/encode?) update nick.  
+            c.execute("""UPDATE OR IGNORE identities SET nick = (?) WHERE fingerprint = (?)""", (nick, fingerprint)) 
+    
+    def change_nick(self, newnick, oldnick):
+        """change a nick.
+        """ 
+        print(newnick)
+        print(oldnick)
+        with sqlite3.connect(self._db_file) as conn:
+            c = conn.cursor()
+            c.execute("""UPDATE OR IGNORE identities SET nick = (?) WHERE nick = (?)""", (newnick, oldnick)) 
+    
         
     def remove_identities(self, identities=None):
         """Removes identities from the data base.
@@ -516,4 +527,5 @@ class ContentDB:
                 c.execute(sql_statement)
             else:
                 c.executemany(sql_statement, [(id,) for id in ids])
+
 
