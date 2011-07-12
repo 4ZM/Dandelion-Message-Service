@@ -99,13 +99,13 @@ class GUI(tkinter.Frame):
         # Insert text to search
         self.search_term = tkinter.Text(master, bg=bg_window, fg=fg_window, height=1, width=20)
         self.search_term.insert(END, "Search messages")
-        self.search_term.grid(row=row_pos, column=0, padx=8, pady=8)
+        self.search_term.grid(row=row_pos, column=1, sticky=W, padx=8, pady=8)
         
         # search message button 
         self.search_messages = tkinter.Button(master, text=lable_search_m, bg=bg_button, fg=fg_button, 
                                             activebackground=abg_button, highlightbackground=hbg_button, 
                                             command=self._search_messages)
-        self.search_messages.grid(row=row_pos, column=1, sticky=W, padx=8, pady=8)
+        self.search_messages.grid(row=row_pos, column=1, sticky=E, padx=8, pady=8)
 
         # quit message button        
         self.QUIT = tkinter.Button(master, text=lable_quit, bg=bg_button, fg=fg_button_a, 
@@ -157,7 +157,7 @@ class GUI(tkinter.Frame):
           
         row_pos+=1 # new row
           
-        #  Widget where messages are entered
+        #  widget where messages are entered
         self.message_entry_area = tkinter.Text(master, bg=bg_window, fg=fg_window, height=3)
         self.message_entry_area.grid(row=row_pos, column=1, 
                                 columnspan=3, 
@@ -196,13 +196,13 @@ class GUI(tkinter.Frame):
         self.START_RESTART = tkinter.Button(master, text=lable_start, bg=bg_button, fg=fg_button, 
                                           activebackground=abg_button, highlightbackground=hbg_button,
                                           command=self._start_restart) 
-        self.START_RESTART.grid(row=row_pos, column=0, sticky=W, padx=8, pady=8)
+        self.START_RESTART.grid(row=row_pos, column=2, sticky=W, padx=8, pady=8)
 
-        # stop button 
+        # stop button
         self.STOP = tkinter.Button(master, text=lable_stop, bg=bg_button, fg=fg_button, 
                                    activebackground=abg_button, highlightbackground=hbg_button,
                                    command=self._stop)
-        self.STOP.grid(row=row_pos, column=1)
+        self.STOP.grid(row=row_pos, sticky=E, column=1)
         
         # process text 
         self.processText = StringVar()
@@ -271,7 +271,6 @@ class GUI(tkinter.Frame):
             self.labelToLong = ("To message to long.")
             self.processTextLen.set(self.labelToLong)           
 
-    #def _say(self, msg, sign=None, receiver_name=None):
     def _say(self, msg, sign=None, receiver_name=None):
         print("_say %s" % (msg))
         if receiver_name:
@@ -331,7 +330,8 @@ class GUI(tkinter.Frame):
         self.id_list.delete(0, END) 
         #id = db.select(sql)
         for id in self.identities:
-            thisnick = encode_b64_str(id.nick)
+            thisname = encode_b64_bytes(id.fingerprint).decode()
+            thisnick = "Anon_"+thisname[12:16]
             # later get all nicks, if nick None set nick 
             self.id_list.insert(END, thisnick)     
                     
@@ -395,10 +395,11 @@ class GUI(tkinter.Frame):
         self.message_area.insert(END, term)  
         self.message_area.insert(END, " ------------------------------------------------- \n")
         self.message_area.insert(END, " ")   
-        s_term_reslut = self._db.search_messages(term) # needs FIX , get result from db
-        self.message_area.insert(END, s_term_reslut)  
+        result = self._db.search_messages(term) # needs FIX  
+        for row in result:
+            self.message_area.insert(END, row)  
         self.message_area.insert(END, " ------------------------------------------------- \n")
-        self.message_area.insert(END, " Result: ") 
+        self.message_area.insert(END, " Result for: ") 
         self.message_area.insert(END, term)         
         self.message_area.config(state=DISABLED) 
         
