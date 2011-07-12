@@ -123,14 +123,14 @@ class Identity:
     
     _FINGERPRINT_LENGTH_BYTES = 12
     
-    def __init__(self, dsa_key, rsa_key):
+    def __init__(self, dsa_key, rsa_key, db=None):
         """Create a new identity instance from the public or private keys."""
         
         self._dsa_key = dsa_key 
         self._rsa_key = rsa_key
         self._fp = None # Lazy evaluation
-        self.nick = "" # nick added
-        
+        self._db = db # May or may not be connected to local DB (i.e. have access to nick, etc..)
+
     @property 
     def fingerprint(self):
         """The identity fingerprint
@@ -157,6 +157,36 @@ class Identity:
     def dsa_key(self):
         """The DSA key used for signing"""
         return self._dsa_key
+
+    @property
+    def nick(self):
+        """Get the nick of the identity or None if no nick has been set"""
+        if self._db is None:
+          raise Exception("nick is not available - the identity is not connected to a data base")
+
+        return self._db.get_nick(self.fingerprint)
+
+    @nick.setter
+    def nick(self, value): 
+        """Set the nick of the identity or None to clear the nick"""
+        if self._db is None:
+          raise Exception("Can't set nick since the identity is not connected to a data base")
+
+        self._db.set_nick(self.fingerprint, self.nick)
+
+    @property
+    def db(self):
+        """Get the data base this identity is connected to or None if it's not
+           connected to any data base. The data base provides additional, local 
+           information like nick."""
+        return self._db
+
+    @db.setter
+    def db(self, value): 
+        """Set the data base this identity should be connected to or None to 
+           disconnect it. The data base provides additional, local information 
+           like nick."""
+        self._db = value
 
     def public_identity(self):
         """Return a copy of this identity without private parts""" 

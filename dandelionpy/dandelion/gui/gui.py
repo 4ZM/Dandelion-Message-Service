@@ -330,9 +330,12 @@ class GUI(tkinter.Frame):
         self.id_list.delete(0, END) 
         #id = db.select(sql)
         for id in self.identities:
-            thisname = encode_b64_bytes(id.fingerprint).decode()
-            thisnick = "Anon_"+thisname[12:16]
-            # later get all nicks, if nick None set nick 
+            if id.nick is None:
+                thisname = encode_b64_bytes(id.fingerprint).decode()
+                thisnick = "Anon_"+thisname[12:16]
+            else:
+                thisnick = id.nick          
+
             self.id_list.insert(END, thisnick)     
                     
         self.save_nickname.config(state=DISABLED)
@@ -382,7 +385,8 @@ class GUI(tkinter.Frame):
         self.id_list.insert(index, self.editnick.get())
         newnick = self.id_list.get(index)
         print(newnick)
-        self._db.set_nick(newnick, oldnick)
+        # self._db.set_nick(newnick, oldnick)
+        # Should interface with the identity object here ident.nick = newnick
         self.save_nickname.config(state=DISABLED) 
             
     def _search_messages(self):
@@ -425,5 +429,4 @@ class GUI(tkinter.Frame):
         else:
             pass # Error
     """
-
 

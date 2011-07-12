@@ -38,14 +38,6 @@ def encode_b64_int(x):
     """int to Base64 encoding"""
     return encode_b64_bytes(encode_int(x))
 
-def encode_b64_str(x):
-    """int to Base64 encoding"""
-    # FIXME: danger danger danger
-    # TODO: fix this
-    #return encode_b64_str(encode_str(x))
-    return encode_str(x)
-
-
 def decode_b64_int(bstr):
     """Base64 str to int decoding""" 
     return decode_int(decode_b64_bytes(bstr))
@@ -64,11 +56,6 @@ def encode_int(x):
         hstr = ''.join(['0', hstr])
 
     return binascii.a2b_hex(hstr.encode())
-
-def encode_str(x):
-    """str to byte conversion """
-    return x
-
 
 def decode_int(bstr):
     """bytes to int conversion"""

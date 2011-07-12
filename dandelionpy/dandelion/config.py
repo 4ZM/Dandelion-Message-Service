@@ -162,6 +162,7 @@ class ConfigManager:
         self._content_db = ContentDB(tempfile.NamedTemporaryFile().name)
         self._identity = dandelion.identity.generate() # Should read from DB if available
         self._content_db.add_identities([self._identity])
+        self._identity.db = self._content_db # Attach identity to db
 
     @property
     def config_file(self):

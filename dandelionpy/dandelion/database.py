@@ -18,7 +18,7 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 from dandelion.identity import Identity, DSA_key, RSA_key
 from dandelion.message import Message
-from dandelion.util import encode_b64_bytes, decode_b64_bytes, encode_b64_int, encode_b64_str, \
+from dandelion.util import encode_b64_bytes, decode_b64_bytes, encode_b64_int, \
     decode_b64_int
 import random
 import sqlite3
@@ -119,20 +119,12 @@ class ContentDB:
         nick TEXT,
         cookieid INTEGER NOT NULL REFERENCES time_cookies (id))"""
 
-  
     _CREATE_TABLE_PRIVATE_IDENTITIES = """CREATE TABLE IF NOT EXISTS
         private_identities
         (fingerprint TEXT PRIMARY KEY REFERENCES identities (fingerprint),
         dsa_x INTEGER NOT NULL,
         rsa_d INTEGER NOT NULL)"""
 
-    _CREATE_TABLE_NAMED_IDENTITIES = """CREATE TABLE IF NOT EXISTS
-        named_identities
-        (fingerprint TEXT PRIMARY KEY REFERENCES identities (fingerprint),
-        dsa_x INTEGER NOT NULL,
-        rsa_d INTEGER NOT NULL)"""
-
-    
     _CREATE_TABLE_MESSAGES = """CREATE TABLE IF NOT EXISTS messages
         (msgid TEXT PRIMARY KEY,
         msg TEXT NOT NULL,
@@ -145,7 +137,6 @@ class ContentDB:
     _QUERY_REMOTE_GET_LAST_TIME_COOKIE = """SELECT cookie FROM remote_time_cookies WHERE dbfp=?"""
     _QUERY_GET_MESSAGE_COUNT = """SELECT count(*) FROM messages"""
     _QUERY_GET_IDENTITY_COUNT = """SELECT count(*) FROM identities"""
-   
     _QUERY_REMOVE_ALL_IDENTITIES="""DELETE FROM identities"""
     _QUERY_REMOVE_SPECIFIC_IDENTITIES="""DELETE FROM identities WHERE fingerprint=?"""
     _QUERY_REMOVE_ALL_MESSAGES="""DELETE FROM messages"""
@@ -153,7 +144,7 @@ class ContentDB:
     
     _QUERY_ADD_MESSAGES="""INSERT OR IGNORE INTO messages (msgid, msg, receiver, sender, signature, cookieid) VALUES (?,?,?,?,?,?)"""
     _QUERY_ADD_IDENTITIES="""INSERT OR IGNORE INTO identities (fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e, nick, cookieid) VALUES (?,?,?,?,?,?,?,?,?)"""
-    
+
     def __init__(self, db_file, id=None):
         """Create a SQLite backed data base."""
         super().__init__()
@@ -169,7 +160,6 @@ class ContentDB:
         else:
             self._id = id
             self._encoded_id = ContentDB._encode_id(self._id)
-        
             
             """Check existence of specified id"""
             with sqlite3.connect(self._db_file) as conn:  
@@ -181,8 +171,7 @@ class ContentDB:
         with sqlite3.connect(self._db_file) as conn:
             c = conn.cursor()
             self._create_tables(c)
-        
-        
+
     @property
     def id(self):
         """The data base id (bytes)"""
@@ -250,7 +239,6 @@ class ContentDB:
         return messages # FIX this function later
     
 
-                          
     def remove_messages(self, msgs=None):
         """Removes messages from the data base.
         
@@ -334,8 +322,7 @@ class ContentDB:
 
         if identities is None or not hasattr(identities, '__iter__'):
             raise TypeError
-        
-        
+
         return self._add_content(self._QUERY_GET_IDENTITY_COUNT, self._QUERY_ADD_IDENTITIES,
                           [(self._encode_id(id.fingerprint), 
                             encode_b64_int(id.dsa_key.y),
@@ -344,23 +331,21 @@ class ContentDB:
                             encode_b64_int(id.dsa_key.q),
                             encode_b64_int(id.rsa_key.n),
                             encode_b64_int(id.rsa_key.e), 
-                            encode_b64_str(id.nick)) for id in identities])
+                            None if id.db is None else id.nick) for id in identities])
         
-    def set_nick(self, nick, fingerprint):
-        """set a nick.
-        """ 
+    def set_nick(self, fingerprint, nick):
+        """Set the nick of a specific identity.""" 
         with sqlite3.connect(self._db_file) as conn:
             c = conn.cursor()
             c.execute("""UPDATE OR IGNORE identities SET nick = (?) WHERE fingerprint = (?)""", (nick, fingerprint)) 
     
-    def change_nick(self, newnick, oldnick):
-        """change a nick.
-        """ 
+    def get_nick(self, fingerprint):
+        """Get the nick of a specific identity""" 
+
         with sqlite3.connect(self._db_file) as conn:
             c = conn.cursor()
-            c.execute("""UPDATE OR IGNORE identities SET nick = (?) WHERE nick = (?)""", (newnick, oldnick)) 
-    
-        
+            return c.execute("""SELECT nick FROM identities WHERE fingerprint = (?)""", (self._encode_id(fingerprint),)).fetchone()[0]
+
     def remove_identities(self, identities=None):
         """Removes identities from the data base.
         
@@ -431,13 +416,14 @@ class ContentDB:
                                                   decode_b64_int(id[3]), 
                                                   decode_b64_int(id[4])), 
                                           RSA_key(decode_b64_int(id[5]), 
-                                                  decode_b64_int(id[6]))) for id in id_rows 
+                                                  decode_b64_int(id[6])), self) for id in id_rows 
                                                   if id is not None]
             
             if fingerprints is not None:
                 ids = [id for id in ids if id.fingerprint in fingerprints]
+            
+			# TODO Pick out nick here!
 
-                            
             return (current_tc, ids)
             
 
@@ -527,5 +513,3 @@ class ContentDB:
                 c.execute(sql_statement)
             else:
                 c.executemany(sql_statement, [(id,) for id in ids])
-
-
