@@ -244,11 +244,13 @@ class ContentDB:
         """
         with sqlite3.connect(self._db_file) as conn:
             c = conn.cursor()
-            c.execute("""SELECT msg FROM messages WHERE msg LIKE '%s'""" % (search_term))
-            mm = c.fetchall()                 
-        return mm # FIX this function later
-            
-          
+            search_term = "%" + search_term + "%"
+            c.execute("""SELECT msg FROM messages WHERE msg LIKE ?""", (search_term,))
+            messages = c.fetchall()                 
+        return messages # FIX this function later
+    
+
+                          
     def remove_messages(self, msgs=None):
         """Removes messages from the data base.
         
@@ -354,8 +356,6 @@ class ContentDB:
     def change_nick(self, newnick, oldnick):
         """change a nick.
         """ 
-        print(newnick)
-        print(oldnick)
         with sqlite3.connect(self._db_file) as conn:
             c = conn.cursor()
             c.execute("""UPDATE OR IGNORE identities SET nick = (?) WHERE nick = (?)""", (newnick, oldnick)) 
