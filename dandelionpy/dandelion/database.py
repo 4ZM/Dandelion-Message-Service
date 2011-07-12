@@ -331,7 +331,7 @@ class ContentDB:
                             encode_b64_int(id.dsa_key.q),
                             encode_b64_int(id.rsa_key.n),
                             encode_b64_int(id.rsa_key.e), 
-                            None if id.db is None else id.nick) for id in identities])
+                            None) for id in identities])
         
     def set_nick(self, fingerprint, nick):
         """Set the nick of a specific identity.""" 

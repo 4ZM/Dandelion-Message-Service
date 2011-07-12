@@ -158,36 +158,6 @@ class Identity:
         """The DSA key used for signing"""
         return self._dsa_key
 
-    @property
-    def nick(self):
-        """Get the nick of the identity or None if no nick has been set"""
-        if self._db is None:
-          raise Exception("nick is not available - the identity is not connected to a data base")
-
-        return self._db.get_nick(self.fingerprint)
-
-    @nick.setter
-    def nick(self, value): 
-        """Set the nick of the identity or None to clear the nick"""
-        if self._db is None:
-          raise Exception("Can't set nick since the identity is not connected to a data base")
-
-        self._db.set_nick(self.fingerprint, self.nick)
-
-    @property
-    def db(self):
-        """Get the data base this identity is connected to or None if it's not
-           connected to any data base. The data base provides additional, local 
-           information like nick."""
-        return self._db
-
-    @db.setter
-    def db(self, value): 
-        """Set the data base this identity should be connected to or None to 
-           disconnect it. The data base provides additional, local information 
-           like nick."""
-        self._db = value
-
     def public_identity(self):
         """Return a copy of this identity without private parts""" 
         return Identity(self.dsa_key.public_key(), self.rsa_key.public_key())
@@ -243,6 +213,36 @@ class PrivateIdentity(Identity):
         The ciphertext and the returned plaintext are bytes strings.
         """
         return ciphertext[::-1].decode() # Dummy impl.
+
+class IdentityInfo:
+    """A class that provides additional, local information about an 
+       identity, e.g. nickname."""
+
+    def __init__(self, db, id):
+        """Create a new identity object with information about id 
+           from the specified data base."""
+        # TODO Check params...
+
+        self._db = db
+        self._id = id
+
+    @property
+    def db(self):
+        return self._db
+
+    @property
+    def id(self):
+        return self._id
+
+    @property
+    def nick(self):
+        """Get the nick of the identity or None if no nick has been set"""
+        return self._db.get_nick(self._id.fingerprint)
+
+    @nick.setter
+    def nick(self, value): 
+        """Set the nick of the identity or None to clear the nick"""
+        self._db.set_nick(self._id.fingerprint, value)
 
 
 def generate():

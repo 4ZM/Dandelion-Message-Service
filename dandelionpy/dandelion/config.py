@@ -78,7 +78,7 @@ class ServerConfig(Config):
 
     def store(self, confparser):
         confparser.add_section(ServerConfig._SECTION_NAME)
-        confparser.set(ServerConfig._SECTION_NAME, ServerConfig._PORT_NAME, self._port)
+        confparser.set(ServerConfig._SECTION_NAME, ServerConfig._PORT_NAME, str(self._port))
         confparser.set(ServerConfig._SECTION_NAME, ServerConfig._IP_NAME, self._ip)
 
 
@@ -162,7 +162,6 @@ class ConfigManager:
         self._content_db = ContentDB(tempfile.NamedTemporaryFile().name)
         self._identity = dandelion.identity.generate() # Should read from DB if available
         self._content_db.add_identities([self._identity])
-        self._identity.db = self._content_db # Attach identity to db
 
     @property
     def config_file(self):

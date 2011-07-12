@@ -330,11 +330,12 @@ class GUI(tkinter.Frame):
         self.id_list.delete(0, END) 
         #id = db.select(sql)
         for id in self.identities:
-            if id.nick is None:
+            id_info = IdentityInfo(self._db, id)
+            if id_info.nick is None:
                 thisname = encode_b64_bytes(id.fingerprint).decode()
                 thisnick = "Anon_"+thisname[12:16]
             else:
-                thisnick = id.nick          
+                thisnick = id_info.nick
 
             self.id_list.insert(END, thisnick)     
                     
@@ -347,7 +348,7 @@ class GUI(tkinter.Frame):
         for id in self.identities:
             thisname = encode_b64_bytes(id.fingerprint).decode()
             thisnick = "Anon_"+thisname[12:16]
-            self._db.set_nick(thisnick, thisname)
+            # self._db.set_nick(thisnick, thisname)
             self.id_list.insert(END, thisnick)            
         self.save_nickname.config(state=DISABLED) 
               
