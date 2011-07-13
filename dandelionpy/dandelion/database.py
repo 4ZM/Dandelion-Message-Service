@@ -391,7 +391,7 @@ class ContentDB:
         _, id = self.get_identities(fingerprints=[fingerprint])
         return id is not None and len(id) == 1
 
-    def get_identities(self, fingerprints=None, nick=None, time_cookie=None):
+    def get_identities(self, fingerprints=None, time_cookie=None):
         """Get a list of all identities with specified fingerprints.
         
         If the parameter is None, all identities are returned.
@@ -438,11 +438,7 @@ class ContentDB:
             if fingerprints is not None:
                 ids = [id for id in ids if id.fingerprint in fingerprints]
 
-			# TODO Pick out nick here!
-
             return (current_tc, ids)
-
-
 
     def _create_tables(self, cursor):
         """Create the tables if they don't exist"""
