@@ -7,12 +7,13 @@ from tkinter import *
 import threading # vad använd detta till? 
 import dandelion
 from dandelion.util import *
+from re import sub
 
 class GUI(tkinter.Frame):
 
     def __init__(self, config_manager, db, id, server=None, content_synchronizer=None):
 
-        print("initing GUI")
+        print("initiating GUI")
         self._server = server
         self._synchronizer = content_synchronizer
         self._config_manager = config_manager
@@ -165,6 +166,7 @@ class GUI(tkinter.Frame):
                                 sticky=W, padx=8, pady=8)
 
         row_pos += message_entry_area_height
+        #self.message_entry_area.bind('<Return>', self._send_text) # TODO binds return to send msg?
         
         # Check this box to sign your message 
         self.sign_var = tkinter.IntVar()
@@ -256,6 +258,7 @@ class GUI(tkinter.Frame):
 
     def _send_text(self):
         msg = self.message_entry_area.get(1.0, END)
+        msg = sub("\n"," ",msg) # regexp strips newlines from msgs /plan
         print("checked: %s send_text: %s " % (self.sign_var.get(), msg))
         if self.processCheck == 0:
             self.labelNotRunning = ("To message pls press Start.")
@@ -268,7 +271,7 @@ class GUI(tkinter.Frame):
         self.toLong = IntVar()    
         self.toLong = len(msg)
         if self.toLong > 140:
-            self.labelToLong = ("To message to long.")
+            self.labelToLong = ("Message too long.") 
             self.processTextLen.set(self.labelToLong)           
 
     def _say(self, msg, sign=None, receiver_name=None):
@@ -295,7 +298,7 @@ class GUI(tkinter.Frame):
         message_screen = """  
  Dandelion Messages                                    
  -------------------------------------------------
-        """
+"""
 
         self.all_msgs = StringVar()
         (current_tc, self.all_msgs) = self._db.get_messages()
@@ -304,9 +307,10 @@ class GUI(tkinter.Frame):
         self.message_area.insert(END, message_screen)
         for m in self.all_msgs:   
                 self.all_msgs = (' : '.join([encode_b64_bytes(m.id).decode(), 
-                            m.text if not m.has_receiver else encode_b64_bytes(m.text).decode(), 
-                            'N/A' if not m.has_receiver else encode_b64_bytes(m.receiver).decode(), 
-                            'N/A' if not m.has_sender else encode_b64_bytes(m.sender).decode()])) 
+                                             m.text if not m.has_receiver else encode_b64_bytes(m.text).decode(), 
+                                             'N/A' if not m.has_receiver else encode_b64_bytes(m.receiver).decode(), 
+                                             'N/A' if not m.has_sender else encode_b64_bytes(m.sender).decode(),
+                                             "\n"])) 
                 self.message_area.insert(END, self.all_msgs)
         
         self.message_area.config(state=DISABLED)
