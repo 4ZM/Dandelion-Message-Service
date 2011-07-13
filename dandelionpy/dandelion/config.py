@@ -210,4 +210,3 @@ class ConfigManager:
         confparser.read(self._cfg_file_name)
         
         self._server_config.load(confparser)
-
