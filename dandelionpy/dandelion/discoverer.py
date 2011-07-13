@@ -19,10 +19,13 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 
 import threading
 import datetime
+import time
 import pybonjour
 import select, socket
+import random
 
 from dandelion.service import Service
+import dandelion
 
 class DiscovererException(Exception):
     '''Exception from operations on the Discoverer'''
@@ -31,17 +34,17 @@ class DiscovererException(Exception):
 class Discoverer(Service):
     REGTYPE = "_dandelion._tcp"
     """The discoverer finds and keeps track of the status of known nodes."""
-    
+
     def __init__(self, config, server_config):
         self._config = config
         self._server_config = server_config
-        self._nodes = []        
+        self._nodes = []
         self._running = False
         self._stop_requested = True
         self._register_fd = None
         self._thread = None
         self._listen_fds = []
-        
+
     def add_node(self, ip, port=1337, pin=False, last_sync=None):
         """Explicitly add a new node to the list of known nodes.
         
@@ -49,7 +52,7 @@ class Discoverer(Service):
         """
         self._validate_node(ip, port)
         with threading.Lock():
-            if self._contains_node(ip, port): 
+            if self._contains_node(ip, port):
                 raise DiscovererException()
             self._nodes.append({ 'ip' : ip, 'port' : port, 'pin' : pin, 'last_sync' : last_sync, 'processing' : False })
 
@@ -59,7 +62,7 @@ class Discoverer(Service):
         This will remove a node even if it is pinned.  
         """
         self._validate_node(ip, port)
-        with threading.Lock(): 
+        with threading.Lock():
             if not self._contains_node(ip, port):
                 raise DiscovererException()
             self._remove_node(ip, port)
@@ -72,46 +75,46 @@ class Discoverer(Service):
 
 
     def acquire_node(self):
-        """Request an available node and raise an exception if there are none.""" 
-        
+        """Request an available node and raise an exception if there are none."""
+
         with threading.Lock():
             resting_nodes = [n for n in self._nodes if not n['processing']]
 
             if len(resting_nodes) == 0: # Do we have any nodes to sync with? 
                 raise DiscovererException()
-            
+
             # Sync with the oldest one first
             resting_nodes.sort(key=lambda x: x['last_sync'] if x['last_sync'] is not None else datetime.datetime.min)
             next_node = resting_nodes[0]
             next_node['processing'] = True
-        
-            return (next_node['ip'], next_node['port']) 
-        
+
+            return (next_node['ip'], next_node['port'])
+
     def release_node(self, ip, port, successful_sync):
         """Return a node to the discoverer that was previously acquired."""
         self._validate_node(ip, port)
-        
+
         if not isinstance(successful_sync, bool):
             raise TypeError()
-        
+
         with threading.Lock():
-            if not self._contains_node(ip, port): 
+            if not self._contains_node(ip, port):
                 raise DiscovererException()
-            
+
             node = [node for node in self._nodes if node['ip'] == ip and node['port'] == port][0]
-            
+
             if not node['processing']: # Returned node that wasn't processed!
                 raise DiscovererException()
-            
+
             if successful_sync:
                 node['last_sync'] = datetime.datetime.now()
             elif not node['pin']: # No success and not pinned; drop it.
                 self._remove_node(node['ip'], node['port'])
             else: # No success and pinned; do nothing
                 pass
-              
+
             node['processing'] = False
-            
+
     def _validate_node(self, ip, port):
         """Raise the appropriate exception if the ip or port is invalid. Otherwise do nothing."""
         if not isinstance(ip, str) or not isinstance(port, int):
@@ -124,7 +127,7 @@ class Discoverer(Service):
         """ 
         Should only be executed inside a lock.
         """
-        
+
         # Copy all but the one to remove
         self._nodes = [node for node in self._nodes if not (node['ip'] == ip and node['port'] == port)]
 
@@ -137,52 +140,78 @@ class Discoverer(Service):
 
 
     def _register_callback(self, sdRef, flags, errorCode, name, regtype, domain):
-        pass
+        """Called when the service has been registered."""
 
-    def _register(self):
-        self._register_fd = pybonjour.DNSServiceRegister(name = "dandelionnode",
-                                             regtype = Discoverer.REGTYPE,
-                                             port = self._server_config.port,
-                                             callBack = self._register_callback)
-        pybonjour.DNSServiceProcessResult(self._register_fd)
+    def _register_service(self):
 
-    def _unregister(self):
-        self._register_fd.close()
+        re_tries = 2
+        while True:
 
+            pad = ''.join([str(int(random.random() * 9)) for _ in range(8)])
+            try:
+                self._register_fd = pybonjour.DNSServiceRegister(name="dandelionnode_" + pad,
+                                                             regtype=Discoverer.REGTYPE,
+                                                             port=self._server_config.port,
+                                                             callBack=self._register_callback)
+                return
 
-    def _resolve_callback(self, sdRef, flags, interfaceIndex, errorCode, fullname,
+            except pybonjour.BonjourError:
+                if re_tries > 0:
+                    re_tries -= 1
+                    continue
+                raise
+
+    def _unregister_service(self):
+        if self._register_fd is not None:
+            self._register_fd.close()
+
+    def _resolve_callback(self, fd, flags, interfaceIndex, errorCode, fullname,
                          hosttarget, port, txtRecord):
+
+        # Close the handle used for the resolve request
+        self._listen_fds.remove(fd)
+        fd.close()
+
         if errorCode != pybonjour.kDNSServiceErr_NoError:
             return
 
-#        print('Resolved service:')
-#        print('  fullname   =', fullname)
-#        print('  hosttarget =', hosttarget)
-#        print('  port       =', port)
-
-        def query_record_callback(sdRef, flags, interfaceIndex, errorCode, fullname,
+        def query_record_callback(fd, flags, interfaceIndex, errorCode, fullname,
                                    rrtype, rrclass, rdata, ttl):
-            if errorCode == pybonjour.kDNSServiceErr_NoError:
-                self.add_node(ip=socket.inet_ntoa(rdata), port=port)
-#                print('  IP,port         =', socket.inet_ntoa(rdata), port)
 
-        query_fd = pybonjour.DNSServiceQueryRecord(interfaceIndex = interfaceIndex,
-                                                   fullname = hosttarget,
-                                                   rrtype = pybonjour.kDNSServiceType_A,
-                                                   callBack = query_record_callback)
-        self._listen_fds.append(query_fd) # XXX LEAKS
+            # Close the handle used to make the query
+            self._listen_fds.remove(fd)
+            fd.close()
+
+            if errorCode != pybonjour.kDNSServiceErr_NoError:
+                return
+
+            # Don't add self
+            # TODO : We haven to check for external (the advertised) IP here - the 
+            # server config might contain local! 
+            if socket.inet_ntoa(rdata) == self._server_config.ip and port == self._server_config.port:
+                return
+
+            # We have an A record to a node - add it to the sync pool
+            self.add_node(ip=socket.inet_ntoa(rdata), port=port)
+
+        query_fd = pybonjour.DNSServiceQueryRecord(interfaceIndex=interfaceIndex,
+                                                   fullname=hosttarget,
+                                                   rrtype=pybonjour.kDNSServiceType_A,
+                                                   callBack=query_record_callback)
+
+        self._listen_fds.append(query_fd)
 
 
     def _browse_callback(self, sdRef, flags, interfaceIndex, errorCode, serviceName,
                     regtype, replyDomain):
+
         if errorCode != pybonjour.kDNSServiceErr_NoError:
             return
 
         if not (flags & pybonjour.kDNSServiceFlagsAdd):
-            print('Service removed')
             return
 
-#        print('Service added; resolving')
+        self._service_registration_completed = True
 
         resolve_fd = pybonjour.DNSServiceResolve(0,
                                                  interfaceIndex,
@@ -190,36 +219,47 @@ class Discoverer(Service):
                                                  regtype,
                                                  replyDomain,
                                                  self._resolve_callback)
-        self._listen_fds.append(resolve_fd) # XXX LEAKS
+
+        self._listen_fds.append(resolve_fd)
 
 
     def _work_loop(self):
-        browse_fd = pybonjour.DNSServiceBrowse(regtype = Discoverer.REGTYPE,
-                                               callBack = self._browse_callback)
 
+        self._register_service() # Start advertising self
+
+        # Start browsing for others
+        browse_fd = pybonjour.DNSServiceBrowse(regtype=Discoverer.REGTYPE,
+                                               callBack=self._browse_callback)
+
+        # Pump zeroconf messages 
         while not self._stop_requested:
-            ready = select.select([browse_fd]+self._listen_fds, [], [], 0.1)
+            ready = select.select([browse_fd] + self._listen_fds, [], [], 0.1)
             for fd in ready[0]:
                 pybonjour.DNSServiceProcessResult(fd)
-            
+            time.sleep(0.5) # Throttle traffic slightly
 
+        browse_fd.close()
+
+        self._unregister_service() # Stop advertising self
+
+        if len(self._listen_fds) > 0:
+            raise Exception("pybonjour descriptors leaked!")
 
     def start(self):
         """Start the service. Block until the service is running."""
 
-        if self._running: 
+        if self._running:
             return # Starting twice is a nop
-       
+
         self._stop_requested = False
-        self._register()
         self._thread = threading.Thread(target=self._work_loop)
         self._thread.start()
         self._running = True
-    
+
     def stop(self):
         """Stop the service. Block until the service is stopped."""
 
-        if not self._running: 
+        if not self._running:
             return # Stopping twice is a nop
 
         self._stop_requested = True
@@ -227,10 +267,11 @@ class Discoverer(Service):
             self._thread.join(1)
             if self._thread.is_alive():
                 raise Exception # Timeout
-        self._unregister()
+
         self._running = False
 
-    @property 
+    @property
     def running(self):
         """Returns True if the service is running, False otherwise"""
         return self._running
+

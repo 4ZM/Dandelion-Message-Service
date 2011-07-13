@@ -121,7 +121,8 @@ class DiscovererTest(unittest.TestCase):
                              'config_test_data.conf')
 
     def test_start_stop(self): 
-        d = dandelion.discoverer.Discoverer(dandelion.config.ConfigManager(self.TEST_FILE))
+        cfg_mgr = dandelion.config.ConfigManager(self.TEST_FILE)
+        d = dandelion.discoverer.Discoverer(cfg_mgr.discoverer_config, server_config=cfg_mgr.server_config)
         self.assertFalse(d.running)
         d.start()
         self.assertTrue(d.running)
@@ -129,7 +130,8 @@ class DiscovererTest(unittest.TestCase):
         self.assertFalse(d.running)    
 
     def test_add_remove(self): 
-        d = dandelion.discoverer.Discoverer(dandelion.config.ConfigManager(self.TEST_FILE))
+        cfg_mgr = dandelion.config.ConfigManager(self.TEST_FILE)
+        d = dandelion.discoverer.Discoverer(cfg_mgr.discoverer_config, server_config=cfg_mgr.server_config)
 
         # Initially empty
         self.assertFalse(d.contains_node("127.0.0.1", 1234))
@@ -158,7 +160,8 @@ class DiscovererTest(unittest.TestCase):
         self.assertRaises(ValueError, d.add_node, "127.0.0.1", 65536)
 
     def test_requst_release(self):
-        d = dandelion.discoverer.Discoverer(dandelion.config.ConfigManager(self.TEST_FILE))
+        cfg_mgr = dandelion.config.ConfigManager(self.TEST_FILE)
+        d = dandelion.discoverer.Discoverer(cfg_mgr.discoverer_config, server_config=cfg_mgr.server_config)
         
         # No nodes to acquire yet...
         self.assertRaises(dandelion.discoverer.DiscovererException, d.acquire_node)
@@ -208,7 +211,8 @@ class DiscovererTest(unittest.TestCase):
         self.assertRaises(TypeError, d.release_node, "127.0.0.1", 1234, 1234)
         
     def test_pining(self):
-        d = dandelion.discoverer.Discoverer(dandelion.config.ConfigManager(self.TEST_FILE))
+        cfg_mgr = dandelion.config.ConfigManager(self.TEST_FILE)
+        d = dandelion.discoverer.Discoverer(cfg_mgr.discoverer_config, server_config=cfg_mgr.server_config)
 
         # Not pinned (default)
         d.add_node("127.0.0.1", 1234) 
@@ -227,7 +231,8 @@ class DiscovererTest(unittest.TestCase):
         self.assertEqual(port, 1234)
 
     def test_acquire_order(self):
-        d = dandelion.discoverer.Discoverer(dandelion.config.ConfigManager(self.TEST_FILE))
+        cfg_mgr = dandelion.config.ConfigManager(self.TEST_FILE)
+        d = dandelion.discoverer.Discoverer(cfg_mgr.discoverer_config, server_config=cfg_mgr.server_config)
 
         d.add_node("127.0.0.1", 1)
         d.add_node("127.0.0.1", 2)
@@ -264,9 +269,11 @@ class SynchronizerTest(unittest.TestCase):
     def test_start_stop(self): 
         # Create synchronizer with already running discoverer
         db = ContentDB(":memory:")
-        d = dandelion.discoverer.Discoverer(dandelion.config.ConfigManager(self.TEST_FILE))
+        cfg_mgr = dandelion.config.ConfigManager(self.TEST_FILE)
+        d = dandelion.discoverer.Discoverer(cfg_mgr.discoverer_config, server_config=cfg_mgr.server_config)
+
         d.start()
-        s = dandelion.synchronizer.Synchronizer(dandelion.config.ConfigManager(self.TEST_FILE), d, db)
+        s = dandelion.synchronizer.Synchronizer(cfg_mgr.synchronizer_config, d, db)
         self.assertFalse(s.running)
         s.start()
         self.assertTrue(s.running)        
@@ -275,7 +282,7 @@ class SynchronizerTest(unittest.TestCase):
         d.stop()
         
         # Create synchronizer with discoverer started later
-        d = dandelion.discoverer.Discoverer(dandelion.config.ConfigManager(self.TEST_FILE))
+        d = dandelion.discoverer.Discoverer(cfg_mgr.discoverer_config, server_config=cfg_mgr.server_config)
         s = dandelion.synchronizer.Synchronizer(dandelion.config.ConfigManager(self.TEST_FILE), d, db)
         d.start()
         self.assertFalse(s.running)
@@ -311,7 +318,7 @@ class SynchronizerTest(unittest.TestCase):
         cm = dandelion.config.ConfigManager(self.TEST_FILE)
         remote_db = ContentDB(tempfile.NamedTemporaryFile().name)
         local_db = ContentDB(tempfile.NamedTemporaryFile().name)
-        d = dandelion.discoverer.Discoverer(cm)
+        d = dandelion.discoverer.Discoverer(cm.discoverer_config, cm.server_config)
         d.start()
         s = dandelion.synchronizer.Synchronizer(d, cm, local_db)
         s.start()
