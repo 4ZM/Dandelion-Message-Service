@@ -339,10 +339,6 @@ class DatabaseTest(unittest.TestCase):
         """"Test getting and setting nickname"""
 
         db = ContentDB(tempfile.NamedTemporaryFile().name)
-
-        _, idlist = db.get_identities()
-        self.assertEqual(idlist, [])
-
         id_a = dandelion.identity.generate()
         db.add_identities([id_a])
 
