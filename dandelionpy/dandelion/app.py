@@ -23,6 +23,7 @@ from dandelion.synchronizer import Synchronizer
 from dandelion.discoverer import Discoverer
 from dandelion.ui import UI
 from dandelion.gui.gui import GUI
+import sys
 
 class DandelionApp:
 
@@ -66,11 +67,14 @@ class DandelionApp:
 
 def run():
     app = DandelionApp('dandelion.conf')
-
     app._server.start()
     app._discoverer.start()
     app._synchronizer.start()
-    app.run_gui()
+
+    if "--no-gui" in sys.argv:
+        app.run_ui()
+    else:
+        app.run_gui()
 
     app.exit()
 
