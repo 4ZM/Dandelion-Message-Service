@@ -25,7 +25,6 @@ import select, socket
 import random
 
 from dandelion.service import Service
-import dandelion
 
 class DiscovererException(Exception):
     '''Exception from operations on the Discoverer'''
@@ -146,16 +145,16 @@ class Discoverer(Service):
 
         re_tries = 2
         while True:
-
-            pad = ''.join([str(int(random.random() * 9)) for _ in range(8)])
             try:
-                self._register_fd = pybonjour.DNSServiceRegister(name="dandelionnode_" + pad,
+                self._node_name = 'dandelionnode_' + ''.join([str(int(random.random() * 9)) for _ in range(8)])
+                self._register_fd = pybonjour.DNSServiceRegister(name=self._node_name,
                                                              regtype=Discoverer.REGTYPE,
                                                              port=self._server_config.port,
                                                              callBack=self._register_callback)
                 return
 
             except pybonjour.BonjourError:
+                self._node_name = None
                 if re_tries > 0:
                     re_tries -= 1
                     continue
@@ -185,12 +184,6 @@ class Discoverer(Service):
             if errorCode != pybonjour.kDNSServiceErr_NoError:
                 return
 
-            # Don't add self
-            # TODO : We haven to check for external (the advertised) IP here - the 
-            # server config might contain local! 
-            if socket.inet_ntoa(rdata) == self._server_config.ip and port == self._server_config.port:
-                return
-
             # We have an A record to a node - add it to the sync pool
             self.add_node(ip=socket.inet_ntoa(rdata), port=port)
 
@@ -211,6 +204,10 @@ class Discoverer(Service):
         if not (flags & pybonjour.kDNSServiceFlagsAdd):
             return
 
+        # Did we just find our self?
+        if serviceName == self._node_name:
+            return
+
         self._service_registration_completed = True
 
         resolve_fd = pybonjour.DNSServiceResolve(0,
@@ -221,7 +218,6 @@ class Discoverer(Service):
                                                  self._resolve_callback)
 
         self._listen_fds.append(resolve_fd)
-
 
     def _work_loop(self):
 
