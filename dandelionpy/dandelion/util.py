@@ -23,14 +23,14 @@ import binascii
 def encode_b64_bytes(bstr):
     """bytes to Base64 encoding"""
     if not isinstance(bstr, bytes) and not isinstance(bstr, bytearray):
-        raise TypeError    
-    
+        raise TypeError
+
     return base64.b64encode(bstr)
-    
+
 def decode_b64_bytes(bstr):
     """Base64 to bytes decoding"""
     if not isinstance(bstr, bytes) and not isinstance(bstr, bytearray):
-        raise TypeError    
+        raise TypeError
 
     return base64.b64decode(bstr)
 
@@ -39,19 +39,19 @@ def encode_b64_int(x):
     return encode_b64_bytes(encode_int(x))
 
 def decode_b64_int(bstr):
-    """Base64 str to int decoding""" 
+    """Base64 str to int decoding"""
     return decode_int(decode_b64_bytes(bstr))
 
 def encode_int(x):
     """int to bytes conversion"""
     if not isinstance(x, int):
         raise TypeError
-    
+
     if x < 0:
         raise ValueError
-    
+
     hstr = '{0:X}'.format(x)
-    
+
     if len(hstr) % 2 != 0:
         hstr = ''.join(['0', hstr])
 
@@ -60,6 +60,7 @@ def encode_int(x):
 def decode_int(bstr):
     """bytes to int conversion"""
     if not isinstance(bstr, bytes) and not isinstance(bstr, bytearray):
-        raise TypeError    
+        raise TypeError
 
     return int(binascii.b2a_hex(bstr), 16)
+

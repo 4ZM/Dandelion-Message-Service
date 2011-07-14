@@ -23,7 +23,7 @@ from dandelion.discoverer import DiscovererException
 
 class Synchronizer(RepetitiveWorker):
     """The synchronizer dispatches requests to nodes found by the discoverer."""
-    
+
     def __init__(self, discoverer, config, db):
         super().__init__(self._do_sync, 1) # TODO: get time from cfg-file
         self._config = config
@@ -39,14 +39,14 @@ class Synchronizer(RepetitiveWorker):
     def _do_sync(self):
         """Use the discoverer to get a node (or several) to synchronize with 
         and then perform the synchronization.
-        """    
+        """
 
-        try: 
+        try:
             host, port = self._discoverer.acquire_node()
         except DiscovererException:
             return
-        
-        try: 
+
+        try:
             self.sync(host, port)
         except:
             self._discoverer.release_node(host, port, False) # Ack failure

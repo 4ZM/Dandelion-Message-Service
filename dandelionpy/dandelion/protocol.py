@@ -38,7 +38,7 @@ class ProtocolParseError(Exception):
 
 class ProtocolVersionError(Exception):
     pass
-    
+
 PROTOCOL_VERSION = '1.0'
 TERMINATOR = '\n'
 
@@ -65,15 +65,15 @@ def create_greeting_message(dbid):
      |<-----------------------------------------------------| 
      |                                                      | 
     """
-    
+
     if not dbid:
         raise ValueError
-    
+
     if not isinstance(dbid, bytes):
         raise TypeError
-    
-    return '{0}{3}{1}{3}{2}{4}'.format(_PROTOCOL_COOKIE, 
-                                       PROTOCOL_VERSION, 
+
+    return '{0}{3}{1}{3}{2}{4}'.format(_PROTOCOL_COOKIE,
+                                       PROTOCOL_VERSION,
                                        encode_b64_bytes(dbid).decode(),
                                        _FIELD_SEPARATOR,
                                        TERMINATOR)
@@ -89,39 +89,39 @@ def parse_greeting_message(msgstr):
     """
 
     _assert_type(msgstr, str)
-    
+
     match = re.search(
-      ''.join([r'^', 
-               _PROTOCOL_COOKIE, 
-               _FIELD_SEPARATOR, 
+      ''.join([r'^',
+               _PROTOCOL_COOKIE,
+               _FIELD_SEPARATOR,
                r'([0-9]+\.[0-9]+)',
                _FIELD_SEPARATOR,
                r'([a-zA-Z0-9+/=]+)',
                TERMINATOR,
                r'$']), msgstr)
-    
+
     if not match:
         raise ProtocolParseError
-    
+
     ver, dbid_str = match.groups()
-    
+
     """Only exact match for now (should preferably support older versions)"""
     if PROTOCOL_VERSION != ver:
         raise ProtocolVersionError('Incompatible Protocol versions')
-    
+
     try:
         dbid = decode_b64_bytes(dbid_str.encode())
     except ValueError:
         raise ProtocolParseError
-    
-    return dbid 
-    
+
+    return dbid
+
 
 def is_message_id_list_request(msgstr):
     """Check if the string is a message id request."""
-    
+
     _assert_type(msgstr, str)
-    
+
     return msgstr.startswith(_GETMESSAGELIST)
 
 
@@ -129,9 +129,9 @@ def is_identity_id_list_request(msgstr):
     """Check if the string is a identity id request."""
 
     _assert_type(msgstr, str)
-            
-    return msgstr.startswith(_GETIDENTITYLIST)    
-    
+
+    return msgstr.startswith(_GETIDENTITYLIST)
+
 
 def create_message_id_list_request(time_cookie=None):
     """Create the message id request string.
@@ -144,18 +144,18 @@ def create_message_id_list_request(time_cookie=None):
      |             GETMESSAGELIST [<time cookie>]           | 
      |----------------------------------------------------->| 
      |                                                      | 
-    """ 
-    
+    """
+
     if time_cookie is None:
         return ''.join([_GETMESSAGELIST, TERMINATOR])
 
     if not isinstance(time_cookie, bytes):
         raise TypeError
-    
-    return '{0} {1}{2}'.format(_GETMESSAGELIST, 
-                               encode_b64_bytes(time_cookie).decode(), 
+
+    return '{0} {1}{2}'.format(_GETMESSAGELIST,
+                               encode_b64_bytes(time_cookie).decode(),
                                TERMINATOR)
-        
+
 
 def create_identity_id_list_request(time_cookie=None):
     """Create the identity id request string.
@@ -168,19 +168,19 @@ def create_identity_id_list_request(time_cookie=None):
      |              GETUSERLIST [<time cookie> ]            | 
      |----------------------------------------------------->| 
      |                                                      | 
-    """         
+    """
 
     if time_cookie is None:
         return ''.join([_GETIDENTITYLIST, TERMINATOR])
 
     if not isinstance(time_cookie, bytes):
         raise TypeError
-    
-    return '{0} {1}{2}'.format(_GETIDENTITYLIST, 
-                               encode_b64_bytes(time_cookie).decode(), 
+
+    return '{0} {1}{2}'.format(_GETIDENTITYLIST,
+                               encode_b64_bytes(time_cookie).decode(),
                                TERMINATOR)
 
-    
+
 
 def parse_message_id_list_request(msgstr):
     """Parse the message id request string.
@@ -190,26 +190,26 @@ def parse_message_id_list_request(msgstr):
     
     Raises a ProtocolParseError if the string can't be parsed.
     """
-    
+
     _assert_type(msgstr, str)
-            
+
     if not is_message_id_list_request(msgstr):
         raise ProtocolParseError
-            
-    match = re.search(''.join([r'^', 
-                               _GETMESSAGELIST, 
+
+    match = re.search(''.join([r'^',
+                               _GETMESSAGELIST,
                                r'( ([a-zA-Z0-9+/=]+))?',
                                TERMINATOR,
                                r'$']), msgstr)
-    
+
     if not match:
         raise ProtocolParseError
-    
+
     if match.groups()[0] is None:
         return None
-    
+
     return decode_b64_bytes(match.groups()[1].encode())
-    
+
 
 def parse_identity_id_list_request(identitystr):
     """Parse the identity id request string.
@@ -219,27 +219,27 @@ def parse_identity_id_list_request(identitystr):
     
     Raises a ProtocolParseError if the string can't be parsed.
     """
-    
+
     _assert_type(identitystr, str)
-            
+
     if not is_identity_id_list_request(identitystr):
         raise ProtocolParseError
-            
-    match = re.search(''.join([r'^', 
-                               _GETIDENTITYLIST, 
+
+    match = re.search(''.join([r'^',
+                               _GETIDENTITYLIST,
                                r'( ([a-zA-Z0-9+/=]+))?',
                                TERMINATOR,
                                r'$']), identitystr)
-    
+
     if not match:
         raise ProtocolParseError
-    
+
     if match.groups()[0] is None:
         return None
-    
+
     return decode_b64_bytes(match.groups()[1].encode())
 
-    
+
 def create_message_id_list(time_cookie, messages=None):
     """Create the response string for sending message IDs from the server.
     
@@ -252,7 +252,7 @@ def create_message_id_list(time_cookie, messages=None):
      |<-----------------------------------------------------| 
      |                                                      | 
     """
-    
+
     _assert_type(time_cookie, bytes)
 
     if messages is None: # Don't use mutable default (e.g. [])
@@ -260,15 +260,15 @@ def create_message_id_list(time_cookie, messages=None):
 
     if not hasattr(messages, '__iter__'):
         raise TypeError
-    
+
     tc_str = encode_b64_bytes(time_cookie).decode()
-    
+
     msgparts = [tc_str]
     msgparts.extend([encode_b64_bytes(msg.id).decode() for msg in messages])
     return ''.join([_FIELD_SEPARATOR.join(msgparts),
                     TERMINATOR])
 
-    
+
 def create_identity_id_list(time_cookie, identities=None):
     """Create the response string for sending identity IDs from the server.
     
@@ -281,7 +281,7 @@ def create_identity_id_list(time_cookie, identities=None):
      |<-----------------------------------------------------| 
      |                                                      | 
     """
-    
+
     _assert_type(time_cookie, bytes)
 
     if identities is None: # Don't use mutable default (e.g. [])
@@ -289,15 +289,15 @@ def create_identity_id_list(time_cookie, identities=None):
 
     if not hasattr(identities, '__iter__'):
         raise TypeError
-    
+
     tc_str = encode_b64_bytes(time_cookie).decode()
-    
+
     identityparts = [tc_str]
     identityparts.extend([encode_b64_bytes(identity.fingerprint).decode() for identity in identities])
     return ''.join([_FIELD_SEPARATOR.join(identityparts),
                     TERMINATOR])
 
-            
+
 
 def parse_message_id_list(msgstr):
     """Parse the message ID response string from the server.
@@ -306,23 +306,23 @@ def parse_message_id_list(msgstr):
     
     Raises a ProtocolParseError if the string can't be parsed.
     """
-    
+
     _assert_type(msgstr, str)
 
-    match = re.search(''.join([r'^', 
-                               r'([a-zA-Z0-9+/=]+)', 
+    match = re.search(''.join([r'^',
+                               r'([a-zA-Z0-9+/=]+)',
                                r'(;[a-zA-Z0-9+/=]+)*',
                                TERMINATOR,
                                r'$']), msgstr)
-    
+
     if not match:
         raise ProtocolParseError
-    
+
     tc = match.groups()[0]
     if tc is None:
         raise ProtocolParseError
-    
-    return (decode_b64_bytes(tc.encode()), 
+
+    return (decode_b64_bytes(tc.encode()),
             [decode_b64_bytes(m.encode()) for m in msgstr[:-len(TERMINATOR)].split(_FIELD_SEPARATOR)[1:]])
 
 
@@ -333,23 +333,23 @@ def parse_identity_id_list(identitystr):
     
     Raises a ProtocolParseError if the string can't be parsed.
     """
-    
+
     _assert_type(identitystr, str)
 
-    match = re.search(''.join([r'^', 
-                               r'([a-zA-Z0-9+/=]+)', 
+    match = re.search(''.join([r'^',
+                               r'([a-zA-Z0-9+/=]+)',
                                r'(;[a-zA-Z0-9+/=]+)*',
                                TERMINATOR,
                                r'$']), identitystr)
-    
+
     if not match:
         raise ProtocolParseError
-    
+
     tc = match.groups()[0]
     if tc is None:
         raise ProtocolParseError
-    
-    return (decode_b64_bytes(tc.encode()), 
+
+    return (decode_b64_bytes(tc.encode()),
             [decode_b64_bytes(identityid.encode()) for identityid in identitystr[:-len(TERMINATOR)].split(_FIELD_SEPARATOR)[1:]])
 
 
@@ -358,14 +358,14 @@ def parse_identity_id_list(identitystr):
 def is_message_list_request(msgstr):
     """Check if the string is a message list request"""
     _assert_type(msgstr, str)
-            
+
     return msgstr.startswith(_GETMESSAGES)
 
 
 def is_identity_list_request(identitystr):
     """Check if the string is a identity list request"""
     _assert_type(identitystr, str)
-            
+
     return identitystr.startswith(_GETIDENTITIES)
 
 
@@ -379,7 +379,7 @@ def create_message_list_request(msg_ids=None):
      |----------------------------------------------------->| 
      |                                                      |  
     """
-    
+
     if msg_ids is None: # Don't use mutable default (e.g. [])
         msg_ids = []
 
@@ -388,11 +388,11 @@ def create_message_list_request(msg_ids=None):
 
     if len(msg_ids) == 0:
         return ''.join([_GETMESSAGES, TERMINATOR])
-    
+
     msgid_str = _FIELD_SEPARATOR.join([encode_b64_bytes(mid).decode() for mid in msg_ids])
-    
+
     return '{0} {1}{2}'.format(_GETMESSAGES, msgid_str, TERMINATOR)
-    
+
 
 def create_identity_list_request(identity_ids=None):
     """Create the request string used by the client to request a list of identities.
@@ -413,7 +413,7 @@ def create_identity_list_request(identity_ids=None):
     if len(identity_ids) == 0:
         return ''.join([_GETIDENTITIES, TERMINATOR])
     identityid_str = _FIELD_SEPARATOR.join([encode_b64_bytes(uid).decode() for uid in identity_ids])
-    
+
     return '{0} {1}{2}'.format(_GETIDENTITIES, identityid_str, TERMINATOR)
 
 
@@ -428,8 +428,8 @@ def parse_message_list_request(msgstr):
         raise ProtocolParseError
 
     match = re.search(r''.join([r'^',
-                                _GETMESSAGES, 
-                                r'( [a-zA-Z0-9+/=]+)?', 
+                                _GETMESSAGES,
+                                r'( [a-zA-Z0-9+/=]+)?',
                                 r'(;[a-zA-Z0-9+/=]+)*',
                                 TERMINATOR,
                                 r'$']), msgstr)
@@ -438,7 +438,7 @@ def parse_message_list_request(msgstr):
 
     if not match.groups()[0]:
         return None
-    
+
     id_strings = msgstr[len(_GETMESSAGES) + 1:-len(TERMINATOR)].split(_FIELD_SEPARATOR)
     return [decode_b64_bytes(id.encode()) for id in id_strings]
 
@@ -448,13 +448,13 @@ def parse_identity_list_request(identitystr):
     
     Raises a ProtocolParseError if the string can't be parsed.
     """
-    
+
     if not is_identity_list_request(identitystr):
         raise ProtocolParseError
 
     match = re.search(r''.join([r'^',
-                                _GETIDENTITIES, 
-                                r'( [a-zA-Z0-9+/=]+)?', 
+                                _GETIDENTITIES,
+                                r'( [a-zA-Z0-9+/=]+)?',
                                 r'(;[a-zA-Z0-9+/=]+)*',
                                 TERMINATOR,
                                 r'$']), identitystr)
@@ -463,7 +463,7 @@ def parse_identity_list_request(identitystr):
 
     if not match.groups()[0]:
         return None
-    
+
     id_strings = identitystr[len(_GETIDENTITIES) + 1:-len(TERMINATOR)].split(_FIELD_SEPARATOR)
     return [decode_b64_bytes(id.encode()) for id in id_strings]
 
@@ -487,13 +487,13 @@ def create_message_list(messages):
 
     if not hasattr(messages, '__iter__'):
         raise TypeError
-    
+
     msgstrings = []
     for msg in messages:
         msgstrings.extend([_message2string(msg)])
-    
+
     msg = _FIELD_SEPARATOR.join(msgstrings)
-    
+
     return ''.join([msg, TERMINATOR])
 
 
@@ -509,19 +509,19 @@ def create_identity_list(identities):
      |<-----------------------------------------------------| 
      |                                                      | 
     """
-    
+
     if identities is None:
         raise ValueError
 
     if not hasattr(identities, '__iter__'):
         raise TypeError
-    
+
     identitystrings = []
     for identity in identities:
         identitystrings.extend([_identity2string(identity)])
-    
+
     identity = _FIELD_SEPARATOR.join(identitystrings)
-    
+
     return ''.join([identity, TERMINATOR])
 
 
@@ -531,22 +531,22 @@ def parse_message_list(msgstr):
     Raises a ProtocolParseError if the string can't be parsed.
     Returns a list of messages. 
     """
-    
+
     _assert_type(msgstr, str)
 
-    match = re.search(''.join([r'^(.+)(', 
-                               _FIELD_SEPARATOR, 
-                               r'.+)*', 
-                               TERMINATOR, 
+    match = re.search(''.join([r'^(.+)(',
+                               _FIELD_SEPARATOR,
+                               r'.+)*',
+                               TERMINATOR,
                                r'$']), msgstr)
 
     if not match:
         raise ProtocolParseError
 
     parts = msgstr[:-len(TERMINATOR)].split(_FIELD_SEPARATOR)
-    
+
     return [_string2message(m) for m in parts]
- 
+
 
 def parse_identity_list(identitystr):
     """Parse the identity transmission string from the server.
@@ -554,20 +554,20 @@ def parse_identity_list(identitystr):
     Raises a ProtocolParseError if the string can't be parsed.
     Returns a list of identities. 
     """
-    
+
     _assert_type(identitystr, str)
 
-    match = re.search(''.join([r'^(.+)(', 
-                               _FIELD_SEPARATOR, 
-                               r'.+)*', 
-                               TERMINATOR, 
+    match = re.search(''.join([r'^(.+)(',
+                               _FIELD_SEPARATOR,
+                               r'.+)*',
+                               TERMINATOR,
                                r'$']), identitystr)
 
     if not match:
         raise ProtocolParseError
 
     parts = identitystr[:-len(TERMINATOR)].split(_FIELD_SEPARATOR)
-    
+
     return [_string2identity(identity) for identity in parts]
 
 
@@ -577,15 +577,15 @@ def _assert_type(x, type):
     """
     if x is None:
         raise ValueError
-    
+
     if not isinstance(x, type):
         raise TypeError
 
- 
+
 
 def _message2string(msg):
     """Serialize a message to a DMS string"""
-    
+
     text = msg.text.encode() if isinstance(msg.text, str) else msg.text # Convert to bytes string
     receiver = b'' if msg.receiver is None else msg.receiver
     sender, signature = (b'',(b'',b'')) if msg.sender is None else (msg.sender, (encode_int(msg.signature[0]), encode_int(msg.signature[1])))
@@ -596,7 +596,7 @@ def _message2string(msg):
               encode_b64_bytes(sender).decode(),
               encode_b64_bytes(signature[0]).decode(),
               encode_b64_bytes(signature[1]).decode()])
-    
+
 
 def _string2message(mstr):
     """Parse the string and create a message"""
@@ -604,15 +604,15 @@ def _string2message(mstr):
     TEXT_INDEX, RECEIVER_INDEX, SENDER_INDEX, SIGNATURE_INDEX = (0,1,2,(3,4))
 
     mparts = mstr.split(_SUB_FIELD_SEPARATOR)
-    
+
     if len(mparts) != 5:
         raise ProtocolParseError
-    
+
     if (mparts[SENDER_INDEX] != '' and mparts[SIGNATURE_INDEX[0]] == '' and mparts[SIGNATURE_INDEX[1]] == '') or \
        (mparts[SENDER_INDEX] == '' and mparts[SIGNATURE_INDEX[0]] != '' and mparts[SIGNATURE_INDEX[1]] != ''):
         raise  ProtocolParseError
 
-    receiver = None if mparts[RECEIVER_INDEX] == '' else decode_b64_bytes(mparts[RECEIVER_INDEX].encode()) 
+    receiver = None if mparts[RECEIVER_INDEX] == '' else decode_b64_bytes(mparts[RECEIVER_INDEX].encode())
     text = decode_b64_bytes(mparts[TEXT_INDEX].encode())
     textstr = text.decode() if receiver is None else text # Decode unless encrypted
     sender = None if mparts[SENDER_INDEX] == '' else decode_b64_bytes(mparts[SENDER_INDEX].encode())
@@ -637,20 +637,20 @@ def _identity2string(identity):
 def _string2identity(identitystr):
     """Parse the string and create a identity"""
 
-    RSA_N_INDEX, RSA_E_INDEX, DSA_Y_INDEX, DSA_G_INDEX, DSA_P_INDEX, DSA_Q_INDEX = (0,1,2,3,4,5)
+    RSA_N_INDEX, RSA_E_INDEX, DSA_Y_INDEX, DSA_G_INDEX, DSA_P_INDEX, DSA_Q_INDEX = (0, 1, 2, 3, 4, 5)
 
     idparts = identitystr.split(_SUB_FIELD_SEPARATOR)
-    
+
     if len(idparts) != 6:
         raise ProtocolParseError
 
-    rsa_key = RSA_key(decode_b64_int(idparts[RSA_N_INDEX].encode()), 
+    rsa_key = RSA_key(decode_b64_int(idparts[RSA_N_INDEX].encode()),
                      decode_b64_int(idparts[RSA_E_INDEX].encode()))
-            
-    dsa_key = DSA_key(decode_b64_int(idparts[DSA_Y_INDEX].encode()), 
+
+    dsa_key = DSA_key(decode_b64_int(idparts[DSA_Y_INDEX].encode()),
                      decode_b64_int(idparts[DSA_G_INDEX].encode()),
                      decode_b64_int(idparts[DSA_P_INDEX].encode()),
                      decode_b64_int(idparts[DSA_Q_INDEX].encode()))
-    
+
     return Identity(dsa_key, rsa_key)
 

@@ -39,55 +39,55 @@ RSA_KEY_SIZE = 2048
 
 class RSA_key:
     """Encryption key for the RSA crypto"""
-    
+
     def __init__(self, n, e, d=None):
         """Create an RSA key. 
 
         The n,e,d are integers and d is optional.
         """
-        
+
         if not isinstance(n, int) or not isinstance(e, int) or (d is not None and not isinstance(d, int)):
-            raise TypeError 
-            
+            raise TypeError
+
         self._n = n
         self._e = e
         self._d = d # Private key
-    
+
     @property
     def is_private(self):
         """Returns true if the key has a private component"""
         return self._d is not None
-    
+
     def public_key(self):
         """Make a copy of the key without private data"""
         return RSA_key(self.n, self.e)
-    
-    @property 
+
+    @property
     def n(self):
         """n is used as the modulus for both the public and private keys."""
         return self._n
-    
+
     @property
     def e(self):
         """e is the public key exponent."""
         return self._e
-    
+
     @property
     def d(self):
         """d is the private key exponent."""
         return self._d
-    
-    
+
+
 class DSA_key:
     """Signing key for the DSA signature"""
-    
+
     def __init__(self, y, g, p, q, x=None):
         """Create a DSA signature key."""
-        
-        if not isinstance(y, int) or not isinstance(g, int) or not isinstance(p, int) or not isinstance(q, int) or (x is not None and not isinstance(g, int)):
-            raise TypeError 
 
-        
+        if not isinstance(y, int) or not isinstance(g, int) or not isinstance(p, int) or not isinstance(q, int) or (x is not None and not isinstance(g, int)):
+            raise TypeError
+
+
         self._y = y
         self._g = g
         self._p = p
@@ -98,32 +98,32 @@ class DSA_key:
     def is_private(self):
         """Returns true if the key has a private component"""
         return self._x is not None
-    
+
     def public_key(self):
         """Make a copy of the key without private data"""
         return DSA_key(self.y, self.g, self.p, self.q)
 
-    @property 
+    @property
     def y(self):
         """DSA key parameter y"""
         return self._y
-    
-    @property 
+
+    @property
     def g(self):
         """DSA key parameter g"""
         return self._g
-    
-    @property 
+
+    @property
     def p(self):
         """DSA key parameter p"""
         return self._p
 
-    @property 
+    @property
     def q(self):
         """DSA key parameter q"""
         return self._q
-    
-    @property 
+
+    @property
     def x(self):
         """The private DSA key parameter x"""
         return self._x
@@ -131,20 +131,21 @@ class DSA_key:
 
 class Identity:
     """A class that represents the public identity of a node in the network"""
-    
+
     _FINGERPRINT_LENGTH_BYTES = 12
-    
-    def __init__(self, dsa_key, rsa_key):
+
+    def __init__(self, dsa_key, rsa_key, db=None):
         """Create a new identity instance from the public or private keys."""
 
         self._dsa_key = Crypto.PublicKey.DSA.construct((dsa_key.y, dsa_key.g, 
                                                         dsa_key.p, dsa_key.q, 
-                                                        dsa_key.x))    
+                                                        dsa_key.x))
  
         self._rsa_key = Crypto.PublicKey.RSA.construct((rsa_key.n, rsa_key.e, rsa_key.d))
         self._fp = None # Lazy evaluation
+        self._db = db # May or may not be connected to local DB (i.e. have access to nick, etc..)
 
-    @property 
+    @property
     def fingerprint(self):
         """The identity fingerprint
         
@@ -157,22 +158,22 @@ class Identity:
             h.update(encode_int(self._dsa_key.y))
             h.update(encode_int(self._dsa_key.g))
             h.update(encode_int(self._dsa_key.p))
-            self._fp = h.digest()[- Identity._FINGERPRINT_LENGTH_BYTES:] 
-        
+            self._fp = h.digest()[-Identity._FINGERPRINT_LENGTH_BYTES:]
+
         return self._fp
 
-    @property 
+    @property
     def rsa_key(self):
         """The RSA key used for encryption"""
         return RSA_key(self._rsa_key.n, self._rsa_key.e, self._rsa_key.d if self._rsa_key.has_private() else None)
 
-    @property 
+    @property
     def dsa_key(self):
         """The DSA key used for signing"""
         return DSA_key(self._dsa_key.y,  self._dsa_key.g,  self._dsa_key.p,  self._dsa_key.q,  self._dsa_key.x if self._dsa_key.has_private() else None)
 
     def public_identity(self):
-        """Return a copy of this identity without private parts""" 
+        """Return a copy of this identity without private parts"""
         return Identity(self.dsa_key.public_key(), self.rsa_key.public_key())
 
     def verify(self, msg, signature):
@@ -181,7 +182,7 @@ class Identity:
         The message is a bytes strings. The signature is a pair of ints.
         
         Return true if the message with the specified signature is signed by this identity.
-        """     
+        """
         return self._dsa_key.verify(self._hash(msg), signature)
 
     def _hash(self, msg):
@@ -193,31 +194,31 @@ class Identity:
         
         The plaintext message is a bytes string and the returned encrypted message is a bytes string.
         """
-        
+
         return self._rsa_key.encrypt(plaintext, b'n/a')[0] # no k value for RSA
-    
+
     def __str__(self):
         """String conversion is user Base64 encoded fingerprint"""
         return encode_b64_bytes(self.fingerprint).decode()
-         
+
     def __eq__(self, other):
         return isinstance(other, Identity) and self.fingerprint == other.fingerprint
-    
+
     def __ne__(self, other):
         return not self.__eq__(other)
 
 
 class PrivateIdentity(Identity):
     """A class that represents the private identity of a node in the network"""
-    
+
     def __init__(self, dsa_key, rsa_key):
         """Create a new identity instance from the private keys."""
         super().__init__(dsa_key, rsa_key)
-        
+
         """Both keys have to have private components"""
         if not self.dsa_key.is_private or not self.rsa_key.is_private:
-            raise ValueError 
-        
+            raise ValueError
+
     def sign(self, msg):
         """Sign a message from this identity.
         
@@ -234,6 +235,36 @@ class PrivateIdentity(Identity):
         The ciphertext and the returned plaintext are bytes strings.
         """
         return self._rsa_key.decrypt(ciphertext)
+
+class IdentityInfo:
+    """A class that provides additional, local information about an 
+       identity, e.g. nickname."""
+
+    def __init__(self, db, id):
+        """Create a new identity object with information about id 
+           from the specified data base."""
+        # TODO Check params...
+
+        self._db = db
+        self._id = id
+
+    @property
+    def db(self):
+        return self._db
+
+    @property
+    def id(self):
+        return self._id
+
+    @property
+    def nick(self):
+        """Get the nick of the identity or None if no nick has been set"""
+        return self._db.get_nick(self._id.fingerprint)
+
+    @nick.setter
+    def nick(self, value):
+        """Set the nick of the identity or None to clear the nick"""
+        self._db.set_nick(self._id.fingerprint, value)
 
 _rnd = Crypto.Random.new().read
 

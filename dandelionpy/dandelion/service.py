@@ -21,19 +21,19 @@ import time
 
 class Service:
     """Interface for an asynchronous background daemon."""
-    
+
     def start(self):
         """Start the service. Block until the service is running."""
-    
+
     def stop(self):
         """Stop the service. Block until the service is running."""
-    
+
     def restart(self):
         """Stop then start the service. Blocking call"""
         self.stop()
         self.start()
 
-    @property 
+    @property
     def running(self):
         """Returns True if the service is running, False otherwise"""
 
@@ -41,37 +41,37 @@ class Service:
 class RepetitiveWorker(Service):
     """Helper for a service implementation of a service that 
     repeatedly runs one and the same function."""
-    
+
     def __init__(self, work_func, min_wait_time_sec=10):
 
         if not hasattr(work_func, '__call__'):
             raise TypeError
-        
+
         if float(min_wait_time_sec) < 0:
             raise ValueError
-        
+
         self._running = False
         self._stop_requested = True
         self._thread = None
-        
+
         self._work_func = work_func
         self._min_wait_time_sec = min_wait_time_sec
-        
+
     def start(self):
         """Start the service. Block until the service is running."""
 
-        if self._running: 
+        if self._running:
             return # Starting twice is a nop
-       
+
         self._stop_requested = False
         self._thread = threading.Thread(target=self._work_loop)
         self._thread.start()
         self._running = True
-    
+
     def stop(self):
         """Stop the service. Block until the service is stopped."""
-        
-        if not self._running: 
+
+        if not self._running:
             return # Stopping twice is a nop
 
         self._stop_requested = True
@@ -79,19 +79,19 @@ class RepetitiveWorker(Service):
             self._thread.join(0.1)
             if self._thread.is_alive():
                 raise Exception # Timeout
-                
+
         self._running = False
-        
-    @property 
+
+    @property
     def running(self):
         """Returns True if the service is running, False otherwise"""
         return self._running
-        
+
     def _work_loop(self):
         """The sisyphosian work loop. Repeat the work function until it is stopped.
         
         No matter how fast the work function returns, wait at least min_wait_time_sec before running again.
-        """ 
+        """
 
         t1 = time.time()
         while not self._stop_requested:
@@ -102,7 +102,6 @@ class RepetitiveWorker(Service):
                 time.sleep(0.01) # Don't busy wait
                 continue
 
-            self._work_func() 
-            
+            self._work_func()
+
             t1 = time.time()
-    
