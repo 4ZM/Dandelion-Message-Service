@@ -77,7 +77,7 @@ class CmdLine(cmd.Cmd):
             self._ui.server_ctrl(self._parse_service_op(args[0]))
         except:
             print("SYNTAX ERROR")
-    
+
     def do_synchronizer(self, args):
         """synchronizer [op] : Perform a synchronizer operation [start|stop|restart|stat]"""
         args = args.split(' ')
@@ -85,7 +85,7 @@ class CmdLine(cmd.Cmd):
             self._ui.synchronizer_ctrl(self._parse_service_op(args[0]))
         except:
             print("SYNTAX ERROR")
-            
+
     def do_discoverer(self, args):
         """discoverer [op] : Perform a discoverer operation [start|stop|restart|stat|add|remove]"""
         args = args.split(' ')
@@ -99,12 +99,12 @@ class CmdLine(cmd.Cmd):
                 self._ui.discoverer_remove(args[1], int(args[2]))
         except:
             print("Sync Error")
-        
+
         try:
             self._ui.discoverer_ctrl(self._parse_service_op(args[0]))
         except:
             print("SYNTAX ERROR")
-        
+
 
     def do_EOF(self, args):
         return True
@@ -126,9 +126,9 @@ class CmdLine(cmd.Cmd):
             raise Exception
 
 OP_START, OP_STOP, OP_RESTART, OP_STATUS = range(4)
-        
+
 class UI:
-    
+
     def __init__(self, config_manager, db, id, server, discoverer, content_synchronizer):
         self._server = server
         self._synchronizer = content_synchronizer
@@ -144,12 +144,12 @@ class UI:
         self._cmd_line.cmdloop()
 
     def say(self, msg, sign=None, receiver_name=None):
-        
+
         if receiver_name:
             receiver_ = dandelion.identity.generate() # Should look up id of receiver
         else:
             receiver_ = None
-        
+
         if sign and receiver_:
             m = dandelion.message.create(msg, sender=self._identity, receiver=receiver_)
             self._db.add_messages([m])
@@ -166,11 +166,11 @@ class UI:
     def show_messages(self):
         _, msgs = self._db.get_messages()
         print(' --- MESSAGES BEGIN --- ')
-        
+
         for m in msgs:
-            print(' : '.join([encode_b64_bytes(m.id).decode(), 
-                              m.text if not m.has_receiver else encode_b64_bytes(m.text).decode(), 
-                              'N/A' if not m.has_receiver else encode_b64_bytes(m.receiver).decode(), 
+            print(' : '.join([encode_b64_bytes(m.id).decode(),
+                              m.text if not m.has_receiver else encode_b64_bytes(m.text).decode(),
+                              'N/A' if not m.has_receiver else encode_b64_bytes(m.receiver).decode(),
                               'N/A' if not m.has_sender else encode_b64_bytes(m.sender).decode()]))
 
         print(' --- MESSAGES END --- ')
@@ -178,7 +178,7 @@ class UI:
     def show_identities(self):
         _, identities = self._db.get_identities()
         print(' --- IDENTITIES BEGIN --- ')
-        
+
         for id in identities:
             print(' : '.join([encode_b64_bytes(id.fingerprint).decode()]))
 
@@ -186,23 +186,23 @@ class UI:
 
     def server_ctrl(self, op=OP_STATUS):
         self._service_ctrl(self._server, op)
-    
+
     def listen_to(self, host, port):
         self._server.ip = host
         self._server.port = port
-    
+
     def synchronizer_ctrl(self, op=OP_STATUS):
         self._service_ctrl(self._synchronizer, op)
 
     def discoverer_ctrl(self, op=OP_STATUS):
         self._service_ctrl(self._discoverer, op)
-        
+
     def discoverer_add(self, host, port):
         self._discoverer.add_node(host, port, pin=True)
 
     def discoverer_remove(self, host, port):
         self._discoverer.remove_node(host, port)
-    
+
     def _service_ctrl(self, service, op):
         if op == OP_START:
             service.start()

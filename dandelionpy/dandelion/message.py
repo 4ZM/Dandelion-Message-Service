@@ -22,38 +22,38 @@ import dandelion.util
 
 class Message:
     """A DMS Message"""
-    
+
     _ID_LENGTH_BYTES = 12
-    MAX_TEXT_LENGTH = 140 
-    
+    MAX_TEXT_LENGTH = 140
+
     def __init__(self, text, receiver_fp=None, sender_fp=None, signature=None):
         """Create a message. Sender and receiver are optional.
         
         Typically, the factory method create will be used.
         """
-        
+
         if text is None: # Must have content
             raise ValueError
-        
+
         if receiver_fp is None and len(text) > Message.MAX_TEXT_LENGTH: # Limit only applies to plaintext data
             raise ValueError
-        
+
         if receiver_fp is None and not isinstance(text, str):
             raise TypeError
 
         if receiver_fp is not None and not isinstance(text, bytes):
             raise TypeError
-        
+
         if (receiver_fp is not None and not isinstance(receiver_fp, bytes)):
-            return TypeError 
-         
+            return TypeError
+
         if (sender_fp is not None and not isinstance(sender_fp, bytes)):
-            raise TypeError 
+            raise TypeError
 
         # Must have both sender and signature if it has one
         if (sender_fp is None and signature is not None) or (sender_fp is not None and signature is None):
-            raise ValueError             
-        
+            raise ValueError
+
         self._id = None # Lazy evalutation
         self._text = text
         self._receiver_fp = receiver_fp
@@ -67,19 +67,19 @@ class Message:
         if self._id is None: # Lazy hashing
             h = hashlib.sha256()
             h.update(self._text if self._receiver_fp is not None else self._text.encode()) # Decode unless encrypted
-            
+
             if self._receiver_fp is not None:
                 h.update(self._receiver_fp)
-            
+
             if self._sender_fp is not None:
                 h.update(self._sender_fp)
                 h.update(self._signature)
-            
-            self._id = h.digest()[- Message._ID_LENGTH_BYTES:] # Least significant bytes
+
+            self._id = h.digest()[-Message._ID_LENGTH_BYTES:] # Least significant bytes
 
         return self._id
-    
-    @property    
+
+    @property
     def text(self):
         """Message text string UTF-8 string or bytes if the message is encrypted"""
         return self._text
@@ -100,16 +100,16 @@ class Message:
         """
         return self._sender_fp
 
-    @property 
+    @property
     def signature(self):
         """Message signature"""
-        return self._signature 
-        
+        return self._signature
+
     @property
     def has_sender(self):
         """Returns true if the message has a sender"""
         return self._sender_fp is not None
-        
+
     @property
     def has_receiver(self):
         """Returns true if the message has a receiver"""
@@ -118,16 +118,16 @@ class Message:
     def __str__(self):
         """String conversion is Base64 encoded message ID"""
         return dandelion.util.encode_b64_bytes(self.id).decode()
-         
+
     def __eq__(self, other):
         return isinstance(other, Message) and self.id == other.id
-    
+
     def __ne__(self, other):
         return not self.__eq__(other)
-             
+
 def create(text, sender=None, receiver=None):
     """Factory method for Messages"""
-    
+
     if sender is None and receiver is None:
         return Message(text)
     elif sender is None and receiver is not None:
@@ -139,4 +139,4 @@ def create(text, sender=None, receiver=None):
         text = receiver.encrypt(text)
         sig = sender.sign(text)
         return Message(text, receiver_fp=receiver.fingerprint, sender_fp=sender.fingerprint, signature=sig)
-        
+

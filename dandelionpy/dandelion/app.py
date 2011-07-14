@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from dandelion.config import ConfigManager 
+from dandelion.config import ConfigManager
 from dandelion.network import Server
 from dandelion.synchronizer import Synchronizer
 from dandelion.discoverer import Discoverer
@@ -28,36 +28,36 @@ class DandelionApp:
 
     def __init__(self, config_file=None):
         self._config_manager = ConfigManager(config_file)
-    
+
         self._server = Server(self._config_manager.server_config,
                               self._config_manager.content_db,
                               self._config_manager.identity)
 
         self._discoverer = Discoverer(self._config_manager.discoverer_config, server_config=self._config_manager.server_config)
-        
+
         self._synchronizer = Synchronizer(self._discoverer,
                                           self._config_manager.synchronizer_config,
                                           self._config_manager.content_db)
 
-    def run_ui(self): 
-        
-        self._ui = UI(self._config_manager.ui_config, 
+    def run_ui(self):
+
+        self._ui = UI(self._config_manager.ui_config,
                       self._config_manager.content_db,
                       self._config_manager.identity,
-                      self._server, 
+                      self._server,
                       self._discoverer,
                       self._synchronizer)
-        
+
         self._ui.run()
-    
+
     def run_gui(self):
 
-        self._gui = GUI(self._config_manager.ui_config, 
+        self._gui = GUI(self._config_manager.ui_config,
                         self._config_manager.content_db,
                         self._config_manager.identity,
-                        self._server, 
+                        self._server,
                         self._synchronizer)
-        
+
     def exit(self):
         self._synchronizer.stop()
         self._discoverer.stop()
@@ -76,3 +76,4 @@ def run():
 
 if __name__ == '__main__':
     run()
+
