@@ -8,6 +8,7 @@ import threading
 import dandelion
 import dandelion.identity
 from dandelion.util import *
+from dandelion.identity import IdentityInfo
 from re import sub
 import time
 
