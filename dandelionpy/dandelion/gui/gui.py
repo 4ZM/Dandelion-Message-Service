@@ -6,8 +6,10 @@ import tkinter
 from tkinter import *
 import threading
 import dandelion
+import dandelion.identity
 from dandelion.util import *
 from re import sub
+import time
 
 class GUI(tkinter.Frame):
 
@@ -24,7 +26,7 @@ class GUI(tkinter.Frame):
         self.has_been_run = False
         # welcome = self._db.add_search
         # print(welcome)
-        
+
         # TKinter 
         master = None
         tkinter.Frame.__init__(self, master)
@@ -50,7 +52,7 @@ class GUI(tkinter.Frame):
         message_entry_area_height = message_area_height = 3
         
         row_pos = 2
-       
+        
         # Insert text to search
         self.search_term = tkinter.Text(master, 
                                         bg=self._config_manager["bg_window"], 
@@ -161,7 +163,7 @@ class GUI(tkinter.Frame):
                                 sticky=W, padx=8, pady=8)
 
         row_pos += message_entry_area_height
-        #self.message_entry_area.bind('<Return>', self._send_text) # TODO binds return to send msg?
+        self.message_entry_area.bind('<Return>', self._send_text) # TODO binds return to send msg?
         
         # Check this box to sign your message 
         self.sign_var = tkinter.IntVar()
@@ -265,7 +267,15 @@ class GUI(tkinter.Frame):
         
         self.set_identities_nick()
         
+        self._start_restart()
+
         self.mainloop()
+
+    def _msgloop(self): #todo
+        while not self._stop_requested:
+            self._show_messages()
+            self.show_identities()
+            time.sleep(1)
 
     def _start_restart(self):
         print("starting things")
@@ -273,14 +283,27 @@ class GUI(tkinter.Frame):
         self.processText.set(self.labelStarted)
         self.processCheck = 1
         self._synchronizer.start()
+        self._stop_requested = False
+        
+        # Thread for checking new messages
+        self._stop_requested = False
+        self._msgthread = threading.Thread(target=self._msgloop)
+        self._msgthread.start()
 
     def _stop(self):
+        self._stop_requested = True
+        if self._msgthread is not None:
+            self._msgthread.join(2)
+            if self._msgthread.is_alive():
+                print("msgthread is alive")
+                raise Exception # timeout
+            
         print("stopping things")
         self.labelStop = ("Peer Down..")
         self.processText.set(self.labelStop)
         self.processCheck = 0
         self._synchronizer.stop()
-
+        
     def _quit(self):
         print("Quitting program")
         self.labelQuit = ("Quitting..")
@@ -288,7 +311,8 @@ class GUI(tkinter.Frame):
         self._stop()
         self.quit()
 
-    def _send_text(self):
+    def _send_text(self, *dummy):
+        self.dummy = dummy
         msg = self.message_entry_area.get(1.0, END)
         msg = sub("\n"," ",msg) # regexp strips newlines from msgs /plan
         print("checked: %s send_text: %s " % (self.sign_var.get(), msg))
@@ -366,7 +390,7 @@ class GUI(tkinter.Frame):
         self.id_list.delete(0, END) 
         #id = db.select(sql)
         for id in self.identities:
-            id_info = IdentityInfo(self._db, id)
+            id_info = dandelion.identity.IdentityInfo(self._db, id)
             if id_info.nick is None:
                 thisname = encode_b64_bytes(id.fingerprint).decode()
                 thisnick = "Anon_"+thisname[12:16]
