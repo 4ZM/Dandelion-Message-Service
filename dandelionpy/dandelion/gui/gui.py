@@ -7,6 +7,7 @@ from tkinter import *
 import threading # vad använd detta till? 
 import dandelion
 from dandelion.util import *
+from dandelion.identity import IdentityInfo
 from re import sub
 
 class GUI(tkinter.Frame):
