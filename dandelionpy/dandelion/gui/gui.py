@@ -6,11 +6,11 @@ import tkinter
 from tkinter import *
 import threading
 import dandelion
-import dandelion.identity
 from dandelion.util import *
 from dandelion.identity import IdentityInfo
 from re import sub
-import time
+#import time
+#from Queue import Queue
 
 class GUI(tkinter.Frame):
 
@@ -24,7 +24,10 @@ class GUI(tkinter.Frame):
         self._identity = id
 
         # identity set
-        self.has_been_run = False
+        
+        # for threading..
+        # self.has_been_run = False
+        
         # welcome = self._db.add_search
         # print(welcome)
 
@@ -268,15 +271,19 @@ class GUI(tkinter.Frame):
         
         self.set_identities_nick()
         
-        self._start_restart()
+    #    self._start_restart()
 
         self.mainloop()
 
-    def _msgloop(self): #todo
-        while not self._stop_requested:
-            self._show_messages()
-            self.show_identities()
-            time.sleep(1)
+    #def _msgloop(self):
+    #    while not self._stop_requested:
+    #        self._show_messages()
+    #        time.sleep(1)
+
+    #def _idloop(self):
+    #    while not self._stop_requested:
+    #        self.show_identities()
+    #        time.sleep(10)
 
     def _start_restart(self):
         print("starting things")
@@ -287,17 +294,26 @@ class GUI(tkinter.Frame):
         self._stop_requested = False
         
         # Thread for checking new messages
-        self._stop_requested = False
-        self._msgthread = threading.Thread(target=self._msgloop)
-        self._msgthread.start()
+        # self._stop_requested = False
+        #self._msgthread = threading.Thread(target=self._msgloop)
+        # self._msgthread.start()
+
+        # Thread for checking id list
+        # self._idthread = threading.Thread(target=self._idloop)
+        # self._idthread.start()
 
     def _stop(self):
-        self._stop_requested = True
-        if self._msgthread is not None:
-            self._msgthread.join(2)
-            if self._msgthread.is_alive():
-                print("msgthread is alive")
-                raise Exception # timeout
+        #self._stop_requested = True
+        #if self._msgthread is not None:
+        #    self._msgthread.join(2)
+        #    if self._msgthread.is_alive():
+        #        print("msgthread is alive")
+        #        raise Exception # timeout
+        #if self._idthread is not None:
+        #    self._idthread.join(11)
+        #    if self._idthread.is_alive():
+        #        print("idthread is alive")
+        #        raise Exception # timeout
             
         print("stopping things")
         self.labelStop = ("Peer Down..")
@@ -312,10 +328,9 @@ class GUI(tkinter.Frame):
         self._stop()
         self.quit()
 
-    def _send_text(self, *dummy):
-        self.dummy = dummy
+    def _send_text(self, *event):
         msg = self.message_entry_area.get(1.0, END)
-        msg = sub("\n"," ",msg) # regexp strips newlines from msgs /plan
+        msg = sub("\n"," ",msg) 
         print("checked: %s send_text: %s " % (self.sign_var.get(), msg))
         if self.processCheck == 0:
             self.labelNotRunning = ("To message pls press Start.")
@@ -330,6 +345,7 @@ class GUI(tkinter.Frame):
         if self.toLong > 140:
             self.labelToLong = ("Message too long.") 
             self.processTextLen.set(self.labelToLong)           
+        self._show_messages()
 
     def _say(self, msg, sign=None, receiver_name=None):
         print("_say %s" % (msg))
@@ -391,7 +407,7 @@ class GUI(tkinter.Frame):
         self.id_list.delete(0, END) 
         #id = db.select(sql)
         for id in self.identities:
-            id_info = dandelion.identity.IdentityInfo(self._db, id)
+            id_info = IdentityInfo(self._db, id)
             if id_info.nick is None:
                 thisname = encode_b64_bytes(id.fingerprint).decode()
                 thisnick = "Anon_"+thisname[12:16]
@@ -418,34 +434,33 @@ class GUI(tkinter.Frame):
         function to read the listbox selection
         and put the result in an entry widget
         """
-        # get selected line index
-        index = self.id_list.curselection()[0]
+        # get selected line index. i set a class-wide variable here instead /plan
+        self.index = self.id_list.curselection()[0] 
         # get the line's text
-        seltext = self.id_list.get(index)
+        seltext = self.id_list.get(self.index)
         # delete previous text in editnick
         self.editnick.delete(0, 50)
         # now display the selected text
         self.editnick.insert(0, seltext)
         self.save_nickname.config(state=NORMAL)
         
-    def set_nick(self, event):
+    def set_nick(self, *event): 
         """
         insert an edited line from the entry widget
         back into the listbox
         """
         
         try:
-            index = self.id_list.curselection()[0]
-            oldnick = self.id_list.get(index)
+            oldnick = self.id_list.get(self.index)
             print(oldnick)
             # delete old listbox line
-            self.id_list.delete(index)
+            self.id_list.delete(self.index)
         except IndexError:
-            index = tkinter.END
+            self.index = tkinter.END
         # insert edited item back into listbox1 at index
     
-        self.id_list.insert(index, self.editnick.get())
-        newnick = self.id_list.get(index)
+        self.id_list.insert(self.index, self.editnick.get())
+        newnick = self.id_list.get(self.index)
         print(newnick)
         # self._db.set_nick(newnick, oldnick)
         # Should interface with the identity object here ident.nick = newnick
@@ -491,4 +506,3 @@ class GUI(tkinter.Frame):
         else:
             pass # Error
     """
-
