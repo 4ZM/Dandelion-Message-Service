@@ -29,6 +29,8 @@ from dandelion.service import Service
 class DiscovererException(Exception):
     '''Exception from operations on the Discoverer'''
 
+class DuplicateNodeException(DiscovererException):
+    '''Exception raised when trying to add already exisiting node.'''
 
 class Discoverer(Service):
     REGTYPE = "_dandelion._tcp"
@@ -52,7 +54,7 @@ class Discoverer(Service):
         self._validate_node(ip, port)
         with threading.Lock():
             if self._contains_node(ip, port):
-                raise DiscovererException()
+                raise DuplicateNodeException()
             self._nodes.append({ 'ip' : ip, 'port' : port, 'pin' : pin, 'last_sync' : last_sync, 'processing' : False })
 
     def remove_node(self, ip, port=1337):
@@ -185,7 +187,10 @@ class Discoverer(Service):
                 return
 
             # We have an A record to a node - add it to the sync pool
-            self.add_node(ip=socket.inet_ntoa(rdata), port=port)
+            try:
+                self.add_node(ip=socket.inet_ntoa(rdata), port=port)
+            except DuplicateNodeException:
+                pass # Node already in the sync pool
 
         query_fd = pybonjour.DNSServiceQueryRecord(interfaceIndex=interfaceIndex,
                                                    fullname=hosttarget,
