@@ -283,7 +283,7 @@ class GUI(tkinter.Frame):
 
     def _message_listener(self, type, msgs):
         self._event_queue.put_nowait("newmessage")
-        print(type, msgs)
+#        print(type, msgs)
 
     def _check_queue(self):
         while self._event_queue.qsize():
@@ -404,6 +404,7 @@ class GUI(tkinter.Frame):
                 self.message_area.insert(END, self.all_msgs)
         
         self.message_area.config(state=DISABLED)
+        self.message_area.see(tkinter.END)
                 
     def _help(self):
         help_screen = """  
