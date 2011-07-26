@@ -154,6 +154,8 @@ class ContentDB:
 
         self._db_file = db_file
 
+        self._listener_functions = []
+
         if id is None:
             self._id = ContentDB._generate_random_db_id()
             self._encoded_id = ContentDB._encode_id(self._id)
@@ -211,6 +213,9 @@ class ContentDB:
                 dbid = c.execute("""SELECT id FROM databases WHERE fingerprint=?""", (self._encode_id(dbfp),)).fetchone()[0]
                 c.execute("""UPDATE remote_time_cookies SET cookie=? WHERE dbid=?""", (self._encode_id(time_cookie), dbid))
 
+    def add_event_listener(self, listener):
+        self._listener_functions.append(listener)
+
     def add_messages(self, msgs):
         """Add a a list of messages to the data base.
         
@@ -222,11 +227,14 @@ class ContentDB:
         if msgs is None or not hasattr(msgs, '__iter__'):
             raise TypeError
 
-        return self._add_content(self._QUERY_GET_MESSAGE_COUNT, self._QUERY_ADD_MESSAGES,
+        cookie = self._add_content(self._QUERY_GET_MESSAGE_COUNT, self._QUERY_ADD_MESSAGES,
                           [(self._encode_id(m.id), m.text,
                             None if not m.has_receiver else self._encode_id(m.receiver),
                             None if not m.has_sender else self._encode_id(m.sender),
                             None if not m.has_sender else self._encode_id(m.signature)) for m in msgs])
+        for listener in self._listener_functions:
+            listener("message", msgs)
+        return cookie
 
     def search_messages(self, search_term):
         """Search the data base of messages.
@@ -323,7 +331,7 @@ class ContentDB:
         if identities is None or not hasattr(identities, '__iter__'):
             raise TypeError
 
-        return self._add_content(self._QUERY_GET_IDENTITY_COUNT, self._QUERY_ADD_IDENTITIES,
+        cookie = self._add_content(self._QUERY_GET_IDENTITY_COUNT, self._QUERY_ADD_IDENTITIES,
                           [(self._encode_id(id.fingerprint),
                             encode_b64_int(id.dsa_key.y),
                             encode_b64_int(id.dsa_key.g),
@@ -332,6 +340,9 @@ class ContentDB:
                             encode_b64_int(id.rsa_key.n),
                             encode_b64_int(id.rsa_key.e),
                             None) for id in identities])
+        for listener in self._listener_functions:
+            listener("identity", identities)
+        return cookie
 
     def remove_identities(self, identities=None):
         """Removes identities from the data base.

@@ -10,7 +10,7 @@ from dandelion.util import *
 from dandelion.identity import IdentityInfo
 from re import sub
 #import time
-#from Queue import Queue
+from queue import Queue
 
 class GUI(tkinter.Frame):
 
@@ -273,7 +273,24 @@ class GUI(tkinter.Frame):
         
     #    self._start_restart()
 
+        self._db.add_event_listener(self._message_listener)
+
+        self._event_queue = Queue()
+
+        self._check_queue()
+        
         self.mainloop()
+
+    def _message_listener(self, type, msgs):
+        self._event_queue.put_nowait("newmessage")
+        print(type, msgs)
+
+    def _check_queue(self):
+        while self._event_queue.qsize():
+            msg = self._event_queue.get(0)
+            self._show_messages()
+            self.show_identities()
+        self.master.after(100, self._check_queue)
 
     #def _msgloop(self):
     #    while not self._stop_requested:
