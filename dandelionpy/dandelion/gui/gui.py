@@ -395,13 +395,15 @@ class GUI(tkinter.Frame):
         self.message_area.config(state=NORMAL) 
         self.message_area.delete(1.0,END)
         self.message_area.insert(END, message_screen)
-        for m in self.all_msgs:   
-                self.all_msgs = (' : '.join([encode_b64_bytes(m.id).decode(), 
-                                             m.text if not m.has_receiver else encode_b64_bytes(m.text).decode(), 
-                                             'N/A' if not m.has_receiver else encode_b64_bytes(m.receiver).decode(), 
-                                             'N/A' if not m.has_sender else encode_b64_bytes(m.sender).decode(),
-                                             "\n"])) 
-                self.message_area.insert(END, self.all_msgs)
+        for m in self.all_msgs:
+            sender = 'anon' if not m.has_sender else encode_b64_bytes(m.sender).decode()
+            if  m.has_receiver:
+                msg = "%s to %s> %s\n" % (sender,
+                                        'N/A' if not m.has_sender else encode_b64_bytes(m.sender).decode(),
+                                        encode_b64_bytes(m.text).decode())
+            else:
+                msg = "%s> %s\n" % (sender, m.text)
+                self.message_area.insert(END, msg)
         
         self.message_area.config(state=DISABLED)
         self.message_area.see(tkinter.END)
