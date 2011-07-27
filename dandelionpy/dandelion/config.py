@@ -68,13 +68,9 @@ class ServerConfig(Config):
         # TODO for python 3.2; replace with fallback arg.
         if confparser.has_option(ServerConfig._SECTION_NAME, ServerConfig._PORT_NAME):
             self._port = confparser.getint(ServerConfig._SECTION_NAME, ServerConfig._PORT_NAME)
-        else:
-            self._port = ServerConfig._PORT_DEFAULT
         
         if confparser.has_option(ServerConfig._SECTION_NAME, ServerConfig._IP_NAME):
             self._ip = confparser.get(ServerConfig._SECTION_NAME, ServerConfig._IP_NAME)
-        else: 
-            self._ip = ServerConfig._IP_DEFAULT
 
     def store(self, confparser):
         confparser.add_section(ServerConfig._SECTION_NAME)
@@ -240,17 +236,24 @@ class UiConfig(Config):
         return self.uidict[key]
 
     def __setitem__(self, key, value):
-        self.uidict[key] = value #?
+        self.uidict[key] = value
 
-
-        # load tillräcklig för att ladda confparsers configs om de finns??
     def load(self, confparser):
         if not confparser.has_section(UiConfig._SECTION_NAME):
             #raise ConfigException
             confparser.add_section(UiConfig._SECTION_NAME)
         
+        for key in confparser[UiConfig._SECTION_NAME]:
+            if key in self.uidict:
+                self.uidict[key] = confparser[UiConfig._SECTION_NAME][key]
+            else:
+                pass # TODO complain in a user friendly way
+
     def store(self, confparser):
         confparser.add_section(UiConfig._SECTION_NAME)
+
+        for key in self.uidict:
+            confparser.set(UiConfig._SECTION_NAME, key, self.uidict[key])
 
 class IdentityConfig(Config):
     
@@ -269,13 +272,8 @@ class IdentityConfig(Config):
 
 class ConfigManager:
 
-    def __init__(self, config_file=None):
-
-        if config_file is None:
-            self._cfg_file_name = 'dandelion.conf'
-        else:
-            self._cfg_file_name = config_file
-        
+    def __init__(self, config_file='dandelion.conf'):
+        self._cfg_file_name = config_file
         self._server_config = ServerConfig()
         self._synchronizer_config = SynchronizerConfig()
         self._discoverer_config = DiscovererConfig()
@@ -325,7 +323,8 @@ class ConfigManager:
         confparser = configparser.ConfigParser()
         
         self._server_config.store(confparser)
-        
+        self._ui_config.store(confparser)
+
         with open(self._cfg_file_name, 'w') as configfile:
             confparser.write(configfile)
     
@@ -335,3 +334,4 @@ class ConfigManager:
         confparser.read(self._cfg_file_name)
         
         self._server_config.load(confparser)
+        self._ui_config.load(confparser)
