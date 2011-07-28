@@ -40,10 +40,14 @@ class ServerConfig(Config):
     
     _IP_NAME = 'ip'
     _IP_DEFAULT = '0.0.0.0' # Bind to anything
+
+    _DB_FILE_NAME = "db_file"
+    _DB_FILE_DEFAULT = "dandelion.sqlite"
     
     def __init__(self):
         self._port = ServerConfig._PORT_DEFAULT
         self._ip = ServerConfig._IP_DEFAULT
+        self._db_file = ServerConfig._DB_FILE_DEFAULT
         
     @property
     def port(self):
@@ -61,6 +65,10 @@ class ServerConfig(Config):
     def ip(self, value):
         self._ip = value
         
+    @property
+    def db_file(self):
+        return self._db_file
+
     def load(self, confparser):
         if not confparser.has_section(ServerConfig._SECTION_NAME):
             confparser.add_section(ServerConfig._SECTION_NAME)
@@ -72,10 +80,14 @@ class ServerConfig(Config):
         if confparser.has_option(ServerConfig._SECTION_NAME, ServerConfig._IP_NAME):
             self._ip = confparser.get(ServerConfig._SECTION_NAME, ServerConfig._IP_NAME)
 
+        if confparser.has_option(ServerConfig._SECTION_NAME, ServerConfig._DB_FILE_NAME):
+            self._db_file = confparser.get(ServerConfig._SECTION_NAME, ServerConfig._DB_FILE_NAME)
+
     def store(self, confparser):
         confparser.add_section(ServerConfig._SECTION_NAME)
         confparser.set(ServerConfig._SECTION_NAME, ServerConfig._PORT_NAME, str(self._port))
         confparser.set(ServerConfig._SECTION_NAME, ServerConfig._IP_NAME, self._ip)
+        confparser.set(ServerConfig._SECTION_NAME, ServerConfig._DB_FILE_NAME, self._db_file)
 
 
 class SynchronizerConfig(Config):
@@ -282,7 +294,7 @@ class ConfigManager:
         
         self.read_file()
         
-        self._content_db = ContentDB(tempfile.NamedTemporaryFile().name)
+        self._content_db = ContentDB(self._server_config.db_file)
         self._identity = dandelion.identity.generate() # Should read from DB if available
         self._content_db.add_identities([self._identity])
 
