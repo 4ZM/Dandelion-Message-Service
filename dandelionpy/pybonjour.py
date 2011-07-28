@@ -90,15 +90,21 @@ if sys.platform == 'win32':
 else:
     if sys.platform == 'darwin':
         _libdnssd = 'libSystem.B.dylib'
+        _libavahi_client = None
+    elif sys.platform[:-1] == 'openbsd': # sys.platform is openbsd{4|5}
+        _libdnssd = 'libdns_sd.so.0.0'
+        _libavahi_client = 'libavahi-client.so.0.0'
     else:
         _libdnssd = 'libdns_sd.so.1'
+        _libavahi_client = 'libavahi-client.so.3'
 
-        # If libdns_sd is actually Avahi's Bonjour compatibility
-        # layer, silence its annoying warning messages, and use a real
-        # RLock as the global lock, since the compatibility layer
-        # isn't thread safe.
+    # If libdns_sd is actually Avahi's Bonjour compatibility
+    # layer, silence its annoying warning messages, and use a real
+    # RLock as the global lock, since the compatibility layer
+    # isn't thread safe.
+    if _libavahi_client != None: 
         try:
-            ctypes.cdll.LoadLibrary('libavahi-client.so.3')
+            ctypes.cdll.LoadLibrary(_libavahi_client)
         except OSError:
             pass
         else:
