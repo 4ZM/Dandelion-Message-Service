@@ -46,7 +46,7 @@ class GUI(tkinter.Frame):
         self.MAX_TEXT_LENGTH = StringVar()
         self.MAX_TEXT_LENGTH = "Max 140 chars"
 
-        # Message lables
+        # Message labels
         self.labelMsgs = StringVar()
         self.labelMsgs.set("...looking for messages")   
         
@@ -62,12 +62,12 @@ class GUI(tkinter.Frame):
                                         fg=self._config_manager["fg_window"], 
                                         height=1, 
                                         width=20)
-        self.search_term.insert(END, self._config_manager["lable_searchbox"])
+        self.search_term.insert(END, self._config_manager["label_searchbox"])
         self.search_term.grid(row=row_pos, column=1, sticky=W, padx=8, pady=8)
         
         # search message button 
         self.search_messages = tkinter.Button(master, 
-                                              text=self._config_manager["lable_search_m"], 
+                                              text=self._config_manager["label_search_m"], 
                                               bg=self._config_manager["bg_button"], 
                                               fg=self._config_manager["fg_button"], 
                                               activebackground=self._config_manager["abg_button"],
@@ -77,7 +77,7 @@ class GUI(tkinter.Frame):
 
         # quit message button        
         self.QUIT = tkinter.Button(master, 
-                                   text=self._config_manager["lable_quit"], 
+                                   text=self._config_manager["label_quit"], 
                                    bg=self._config_manager["bg_button"], 
                                    fg=self._config_manager["fg_button_a"], 
                                    activebackground=self._config_manager["abg_button"], 
@@ -87,7 +87,7 @@ class GUI(tkinter.Frame):
         
         # get ids button         
         self.UpdateNodes = tkinter.Button(master, 
-                                          text=self._config_manager["lable_get_id"], 
+                                          text=self._config_manager["label_get_id"], 
                                           bg=self._config_manager["bg_button"], 
                                           fg=self._config_manager["fg_button"], 
                                           activebackground=self._config_manager["abg_button"], 
@@ -145,7 +145,7 @@ class GUI(tkinter.Frame):
          
         # show message button 
         self.show_messages = tkinter.Button(master, 
-                                            text=self._config_manager["lable_show_m"], 
+                                            text=self._config_manager["label_show_m"], 
                                             bg=self._config_manager["bg_button"], 
                                             fg=self._config_manager["fg_button"], 
                                             activebackground=self._config_manager["abg_button"],
@@ -192,7 +192,7 @@ class GUI(tkinter.Frame):
         
         # send message button 
         self.send_button = tkinter.Button(master, 
-                                          text=self._config_manager["lable_send"], 
+                                          text=self._config_manager["label_send"], 
                                           bg=self._config_manager["bg_button"], 
                                           fg=self._config_manager["fg_button"], 
                                           activebackground=self._config_manager["abg_button"], 
@@ -205,14 +205,14 @@ class GUI(tkinter.Frame):
                                       width=18, 
                                       bg=self._config_manager["bg_window"], 
                                       fg=self._config_manager["fg_window"])
-        self.editnick.insert(0, self._config_manager["lable_nickbox"])
+        self.editnick.insert(0, self._config_manager["label_nickbox"])
         self.editnick.grid(row=row_pos, column=4, padx=8, pady=8)
         
         row_pos+=1 #new row
         
         # start and restart button 
         self.START_RESTART = tkinter.Button(master, 
-                                            text=self._config_manager["lable_start"], 
+                                            text=self._config_manager["label_start"], 
                                             bg=self._config_manager["bg_button"], 
                                             fg=self._config_manager["fg_button"], 
                                             activebackground=self._config_manager["abg_button"],
@@ -222,7 +222,7 @@ class GUI(tkinter.Frame):
 
         # stop button
         self.STOP = tkinter.Button(master, 
-                                   text=self._config_manager["lable_stop"], 
+                                   text=self._config_manager["label_stop"], 
                                    bg=self._config_manager["bg_button"], 
                                    fg=self._config_manager["fg_button"], 
                                    activebackground=self._config_manager["abg_button"], 
@@ -242,7 +242,7 @@ class GUI(tkinter.Frame):
 
         # help button                
         self.HELP = tkinter.Button(master, 
-                                   text=self._config_manager["lable_help"], 
+                                   text=self._config_manager["label_help"], 
                                    bg=self._config_manager["bg_button"], 
                                    fg=self._config_manager["fg_button"], 
                                    activebackground=self._config_manager["abg_button"], 
@@ -252,7 +252,7 @@ class GUI(tkinter.Frame):
         
         
         self.save_nickname = tkinter.Button(master, 
-                                            text=self._config_manager["lable_set_new_nick"], 
+                                            text=self._config_manager["label_set_new_nick"], 
                                             bg=self._config_manager["bg_button"], 
                                             fg=self._config_manager["fg_button"], 
                                             activebackground=self._config_manager["abg_button"], 
