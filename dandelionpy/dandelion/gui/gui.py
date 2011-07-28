@@ -16,7 +16,6 @@ class GUI(tkinter.Frame):
 
     def __init__(self, config_manager, db, id, server=None, content_synchronizer=None):
 
-        print("initiating GUI")
         self._server = server
         self._synchronizer = content_synchronizer
         self._config_manager = config_manager
