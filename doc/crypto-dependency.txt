@@ -1,0 +1,12 @@
+
+                   DANDELION MESSAGE SERVICE 
+                DEPENDENCIES FOR THE CRYPTO IMPL
+					
+To run the topic/crypto branch, the py3k branch of the pycrypto library has to
+be installed.
+
+$ git clone git://github.com/dlitz/pycrypto.git pycrypto
+$ cd pycrypto 
+$ git checkout origin/py3k
+$ python3.2 setup.py build
+$ sudo python3.2 setup.py install
