@@ -481,6 +481,8 @@ class GUI(tkinter.Frame):
             if id_info.nick is None:
                 thisname = encode_b64_bytes(id.fingerprint).decode()
                 thisnick = "Anon_"+thisname[12:16]
+                if self._identity == id:
+                    thisnick = thisnick + " (me)"
             else:
                 thisnick = id_info.nick
 
