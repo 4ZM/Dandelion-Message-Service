@@ -519,20 +519,16 @@ class GUI(tkinter.Frame):
         back into the listbox
         """
 
-        try:
-            oldnick = self.id_list.get(self.index)
-            print(oldnick)
-            # delete old listbox line
-            self.id_list.delete(self.index)
-        except IndexError:
-            self.index = tkinter.END
-        # insert edited item back into listbox1 at index
+        selindices = self.id_list.curselection()
+        if selindices:
+            selindex = int(selindices[0])
+            selection = self.identities[selindex]
+            id_info = IdentityInfo(self._db, selection)
+            newnick = self.editnick.get()
+            id_info.nick = newnick
+            
+            self.show_identities()
 
-        self.id_list.insert(self.index, self.editnick.get())
-        newnick = self.id_list.get(self.index)
-        print(newnick)
-        # self._db.set_nick(newnick, oldnick)
-        # Should interface with the identity object here ident.nick = newnick
         self.save_nickname.config(state=DISABLED)
 
     def _search_messages(self):
