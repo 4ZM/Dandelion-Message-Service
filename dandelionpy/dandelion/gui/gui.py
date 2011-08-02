@@ -168,7 +168,7 @@ class GUI(tkinter.Frame):
         # title over your message widget
         self.tilte = tkinter.Label(master,
                                    text=self._config_manager["your_m_title"],
-                                   bg=self._config_manager["bg_window"],
+                                   bg=self._config_manager["bg_master"],
                                    fg=self._config_manager["fg_window"])
         self.tilte.grid(row=row_pos, column=1, sticky=W, padx=8)
 
@@ -211,7 +211,7 @@ class GUI(tkinter.Frame):
         self.sign_var = tkinter.IntVar()
         self.sign_checkbutton = tkinter.Checkbutton(master,
                                                     text=self._config_manager["sign"],
-                                                    bg=self._config_manager["bg_button"],
+                                                    bg=self._config_manager["bg_master"],
                                                     fg=self._config_manager["fg_button"],
                                                     activebackground=self._config_manager["abg_button"],
                                                     highlightbackground=self._config_manager["hbg_button"],
@@ -220,14 +220,14 @@ class GUI(tkinter.Frame):
         self.sign_checkbutton.grid(row=row_pos, column=1, sticky=W, padx=8)
 
         # Process text
-        self.processTextLen = StringVar()
-        self.processTextLen.set(self.MAX_TEXT_LENGTH)
-        self.processTextStartLen = tkinter.Label(master,
-                                                 bg=self._config_manager["bg_window"],
-                                                 fg=self._config_manager["fg_window"],
-                                                 textvariable=self.processTextLen,
-                                                 height=4)
-        self.processTextStartLen.grid(row=row_pos, column=4, sticky=W, padx=8)
+        # self.processTextLen = StringVar()
+        # self.processTextLen.set(self.MAX_TEXT_LENGTH)
+        # self.processTextStartLen = tkinter.Label(master,
+        #                                         bg=self._config_manager["bg_window"],
+        #                                         fg=self._config_manager["fg_window"],
+        #                                         textvariable=self.processTextLen,
+        #                                         height=4)
+        # self.processTextStartLen.grid(row=row_pos, column=4, sticky=W, padx=8)
 
         # send message button
         self.send_button = tkinter.Button(master,
@@ -278,7 +278,7 @@ class GUI(tkinter.Frame):
         self.processText = StringVar()
         self.processText.set("Active...")
         self.processTextStart = tkinter.Label(master,
-                                              bg=self._config_manager["bg_window"],
+                                              bg=self._config_manager["bg_master"],
                                               fg=self._config_manager["fg_window"],
                                               textvariable=self.processText,
                                               height=4)
