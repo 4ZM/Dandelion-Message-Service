@@ -68,7 +68,7 @@ class GUI(tkinter.Frame):
         self.search_term.insert(END, self._config_manager["label_searchbox"])
 
         self.search_term_frame.grid(row=row_pos, column=1, sticky=W, padx=8, pady=8)
-        self.search_term.grid(row=row_pos, column=1, sticky=W, padx=8, pady=8)
+        self.search_term.grid(row=row_pos, column=1, sticky=W, padx=0, pady=0)
 
         # search message button
         self.search_messages = tkinter.Button(master,
@@ -126,8 +126,8 @@ class GUI(tkinter.Frame):
                                columnspan=3,
                                rowspan=message_area_height,
                                sticky=W,
-                               padx=8,
-                               pady=8)
+                               padx=0,
+                               pady=0)
 
         self.yscroll = tkinter.Scrollbar(command=self.message_area.yview,
                                          orient=tkinter.VERTICAL)
@@ -160,15 +160,15 @@ class GUI(tkinter.Frame):
                           columnspan=1,
                           rowspan=6,
                           sticky=W,
-                          padx=8,
-                          pady=8)
+                          padx=0,
+                          pady=0)
 
         row_pos += message_area_height
 
         # title over your message widget
         self.tilte = tkinter.Label(master,
                                    text=self._config_manager["your_m_title"],
-                                   bg=self._config_manager["bg_window"],
+                                   bg=self._config_manager["bg_master"],
                                    fg=self._config_manager["fg_window"])
         self.tilte.grid(row=row_pos, column=1, sticky=W, padx=8)
 
@@ -202,7 +202,7 @@ class GUI(tkinter.Frame):
         self.message_entry_area.grid(row=row_pos, column=1,
                                 columnspan=3,
                                 rowspan=message_entry_area_height,
-                                sticky=W, padx=8, pady=8)
+                                sticky=W, padx=0, pady=0)
 
         row_pos += message_entry_area_height
         self.message_entry_area.bind('<Return>', self._send_text) # TODO binds return to send msg?
@@ -211,7 +211,7 @@ class GUI(tkinter.Frame):
         self.sign_var = tkinter.IntVar()
         self.sign_checkbutton = tkinter.Checkbutton(master,
                                                     text=self._config_manager["sign"],
-                                                    bg=self._config_manager["bg_button"],
+                                                    bg=self._config_manager["bg_master"],
                                                     fg=self._config_manager["fg_button"],
                                                     activebackground=self._config_manager["abg_button"],
                                                     highlightbackground=self._config_manager["hbg_button"],
@@ -220,14 +220,14 @@ class GUI(tkinter.Frame):
         self.sign_checkbutton.grid(row=row_pos, column=1, sticky=W, padx=8)
 
         # Process text
-        self.processTextLen = StringVar()
-        self.processTextLen.set(self.MAX_TEXT_LENGTH)
-        self.processTextStartLen = tkinter.Label(master,
-                                                 bg=self._config_manager["bg_window"],
-                                                 fg=self._config_manager["fg_window"],
-                                                 textvariable=self.processTextLen,
-                                                 height=4)
-        self.processTextStartLen.grid(row=row_pos, column=4, sticky=W, padx=8)
+        # self.processTextLen = StringVar()
+        # self.processTextLen.set(self.MAX_TEXT_LENGTH)
+        # self.processTextStartLen = tkinter.Label(master,
+        #                                         bg=self._config_manager["bg_window"],
+        #                                         fg=self._config_manager["fg_window"],
+        #                                         textvariable=self.processTextLen,
+        #                                         height=4)
+        # self.processTextStartLen.grid(row=row_pos, column=4, sticky=W, padx=8)
 
         # send message button
         self.send_button = tkinter.Button(master,
@@ -250,7 +250,7 @@ class GUI(tkinter.Frame):
                                       fg=self._config_manager["fg_window"])
         self.editnick.insert(0, self._config_manager["label_nickbox"])
         self.editnick_frame.grid(row=row_pos, column=4, padx=8, pady=8)
-        self.editnick.grid(row=row_pos, column=4, padx=8, pady=8)
+        self.editnick.grid(row=row_pos, column=4, padx=0, pady=0)
 
         row_pos+=1 #new row
 
@@ -278,7 +278,7 @@ class GUI(tkinter.Frame):
         self.processText = StringVar()
         self.processText.set("Active...")
         self.processTextStart = tkinter.Label(master,
-                                              bg=self._config_manager["bg_window"],
+                                              bg=self._config_manager["bg_master"],
                                               fg=self._config_manager["fg_window"],
                                               textvariable=self.processText,
                                               height=4)
