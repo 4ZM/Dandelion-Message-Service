@@ -16,12 +16,13 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
-from dandelion.identity import Identity, DSA_key, RSA_key
+from dandelion.identity import Identity, PrivateIdentity, DSA_key, RSA_key, IdentityInfo
 from dandelion.message import Message
 from dandelion.util import encode_b64_bytes, decode_b64_bytes, encode_b64_int, \
     decode_b64_int
 import random
 import sqlite3
+import dandelion
 
 
 class ContentDBException(Exception):
@@ -319,6 +320,41 @@ class ContentDB:
 
             return (current_tc, msgs)
 
+    def add_private_identity(self, identity):
+        """Add a private identity to the data base."""
+
+        if identity is None:
+            raise TypeError
+
+        if not dandelion.identity.IdentityInfo(self, identity).is_private():
+            raise ValueError
+
+        # Add the public part
+        self.add_identities([identity])
+
+        # ... and the private part
+        with sqlite3.connect(self._db_file) as conn:
+            c = conn.cursor()
+            c.execute("INSERT INTO private_identities (fingerprint, dsa_x, rsa_d) VALUES (?,?,?)",
+                      (self._encode_id(identity.fingerprint), encode_b64_int(identity.dsa_key.x), encode_b64_int(identity.rsa_key.d)))
+
+    def remove_private_identity(self, identity, keep_public_identity=False):
+        """Remove a private identity to the data base."""
+
+        if identity is None:
+            raise TypeError
+
+        if not dandelion.identity.IdentityInfo(self, identity).is_private():
+            raise ValueError
+
+        if not keep_public_identity:
+            self.remove_identities([identity])
+
+        # ... and the private part
+        with sqlite3.connect(self._db_file) as conn:
+            c = conn.cursor()
+            c.execute("DELETE FROM private_identities WHERE fingerprint=?",
+                      (self._encode_id(identity.fingerprint),))
 
     def add_identities(self, identities):
         """Add a a list of identities to the data base.
@@ -402,6 +438,30 @@ class ContentDB:
         _, id = self.get_identities(fingerprints=[fingerprint])
         return id is not None and len(id) == 1
 
+
+    def get_private_identity(self, fingerprint):
+        """Get a private identity from the data base"""
+        
+        if not isinstance(fingerprint, bytes):
+            raise TypeError
+
+        with sqlite3.connect(self._db_file) as conn:
+            c = conn.cursor()
+            c.execute("""SELECT dsa_y, dsa_g, dsa_p, dsa_q, dsa_x, rsa_n, rsa_e, rsa_d FROM identities JOIN private_identities ON identities.fingerprint == private_identities.fingerprint WHERE private_identities.fingerprint == ?""", (self._encode_id(fingerprint),))
+            id = c.fetchone()
+            
+            if id is None:
+                raise ValueError
+
+            return PrivateIdentity(DSA_key(decode_b64_int(id[0]),
+                                           decode_b64_int(id[1]),
+                                           decode_b64_int(id[2]),
+                                           decode_b64_int(id[3]),
+                                           decode_b64_int(id[4])),
+                                   RSA_key(decode_b64_int(id[5]),
+                                           decode_b64_int(id[6]),
+                                           decode_b64_int(id[7])))
+
     def get_identities(self, fingerprints=None, time_cookie=None):
         """Get a list of all identities with specified fingerprints.
         
@@ -443,7 +503,7 @@ class ContentDB:
                                                   decode_b64_int(id[3]),
                                                   decode_b64_int(id[4])),
                                           RSA_key(decode_b64_int(id[5]),
-                                                  decode_b64_int(id[6])), self) for id in id_rows
+                                                  decode_b64_int(id[6]))) for id in id_rows
                                                   if id is not None]
 
             if fingerprints is not None:

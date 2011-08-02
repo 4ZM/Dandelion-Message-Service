@@ -123,13 +123,12 @@ class Identity:
 
     _FINGERPRINT_LENGTH_BYTES = 12
 
-    def __init__(self, dsa_key, rsa_key, db=None):
+    def __init__(self, dsa_key, rsa_key):
         """Create a new identity instance from the public or private keys."""
 
         self._dsa_key = dsa_key
         self._rsa_key = rsa_key
         self._fp = None # Lazy evaluation
-        self._db = db # May or may not be connected to local DB (i.e. have access to nick, etc..)
 
     @property
     def fingerprint(self):
@@ -233,6 +232,10 @@ class IdentityInfo:
     @property
     def id(self):
         return self._id
+
+    def is_private(self):
+        """Return true if the identity has private components"""
+        return self._id._dsa_key.is_private and self._id._rsa_key.is_private
 
     @property
     def nick(self):

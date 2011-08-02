@@ -41,6 +41,8 @@ class IdentityTest(unittest.TestCase):
         self.assertEqual(id_info_a.db, db)
         self.assertEqual(id_info_a.id.fingerprint, id_a.fingerprint)
         self.assertIsNone(id_info_a.nick)
+        self.assertTrue(id_info_a.is_private())
+        self.assertFalse(IdentityInfo(db, id_a.public_identity()).is_private())
 
         # Test nick set/get
         id_info_a.nick = "me"

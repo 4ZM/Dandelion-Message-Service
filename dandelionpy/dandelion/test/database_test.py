@@ -23,6 +23,7 @@ import dandelion.message
 import dandelion.identity
 from dandelion.message import Message
 from dandelion.database import ContentDB, ContentDBException
+from dandelion.identity import IdentityInfo
 
 class DatabaseTest(unittest.TestCase):
     """Unit test suite for the InMemoryContentDB class"""
@@ -326,14 +327,35 @@ class DatabaseTest(unittest.TestCase):
             self.assertFalse(id.rsa_key.is_private)
             self.assertFalse(id.dsa_key.is_private)
 
-#        self.assertRaises(ValueError, db.add_private_identity, id2)
-#        self.assertIsNone(db.get_private_identitity(id2.fingerprint))
-#        
-#        db.add_private_identity(id1)
-#        id = db.get_private_identitity(id1.fingerprint)
-#        self.assertEqual(id1.fingerprint, id.fingerprint)
-#        self.assertTrue(id.is_private)
-#        self.assertTrue(id1.is_private)
+    def test_private_identities(self):
+        """Test private id interface"""
+
+        db = ContentDB(tempfile.NamedTemporaryFile().name)
+        id_priv = dandelion.identity.generate()
+        id_pub = dandelion.identity.generate().public_identity()
+
+        # Add junk
+        self.assertRaises(TypeError, db.add_private_identity, None)
+        self.assertRaises(ValueError, db.add_private_identity, id_pub)
+
+        # Add, get, remove
+        db.add_private_identity(id_priv)
+        id = db.get_private_identity(id_priv.fingerprint)
+
+        self.assertEqual(id_priv.fingerprint, id.fingerprint)
+        self.assertEqual(id_priv, id)
+        self.assertTrue(IdentityInfo(db, id).is_private())
+
+        db.remove_private_identity(id_priv, keep_public_identity=False)
+        self.assertFalse(db.contains_identity(id_priv.fingerprint))
+
+        # Add and remove private, but keep public
+        db.add_private_identity(id_priv)
+        db.remove_private_identity(id_priv, keep_public_identity=True)
+        self.assertTrue(db.contains_identity(id_priv.fingerprint))
+        self.assertFalse(IdentityInfo(db, db.get_identities([id_priv.fingerprint])[1][0]).is_private())
+        self.assertRaises(ValueError, db.get_private_identity, id_priv.fingerprint)
+
 
     def test_identity_info_nick(self):
         """"Test getting and setting nickname"""

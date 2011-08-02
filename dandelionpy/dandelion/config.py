@@ -316,15 +316,15 @@ class ConfigManager:
 
         if self._id_manager_config.my_id is None:
             self._identity = dandelion.identity.generate()
-            self._content_db.add_identities([self._identity])
+            self._content_db.add_private_identity(self._identity)
             id_str = encode_b64_bytes(self._identity.fingerprint).decode()
             self._id_manager_config.my_id = id_str
             print("My new ID:", id_str)
 
         else:
-            self._identity = self._content_db.get_identities(fingerprints=[decode_b64_bytes(self._id_manager_config.my_id.encode())])[0]
+            fp = decode_b64_bytes(self._id_manager_config.my_id.encode())
+            self._identity = self._content_db.get_private_identity(fp)
             print("My claimed ID:", self._id_manager_config.my_id)
-
 
     @property
     def config_file(self):
