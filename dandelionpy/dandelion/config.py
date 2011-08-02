@@ -131,6 +131,14 @@ class UiConfig(Config):
     _BG_MASTER_NAME = 'bg_master'
     _BG_MASTER_DEFAULT = 'black'
 
+    # frames
+
+    _BG_FRAME_NAME = 'bg_frame'
+    _BG_FRAME_DEFAULT = 'black'
+
+    _BORDER_NAME = 'border'
+    _BORDER_DEFAULT = '1'
+
     # welcome screen
 
     _WELCOME_SCREEN_NAME = 'welcome_screen'
@@ -222,6 +230,8 @@ class UiConfig(Config):
     def __init__(self):
         self.uidict = {
             UiConfig._BG_MASTER_NAME : UiConfig._BG_MASTER_DEFAULT,
+            UiConfig._BG_FRAME_NAME : UiConfig._BG_FRAME_DEFAULT,
+            UiConfig._BORDER_NAME : UiConfig._BORDER_DEFAULT,
             UiConfig._WELCOME_SCREEN_NAME : UiConfig._WELCOME_SCREEN_DEFAULT,
             UiConfig._BG_BUTTON_NAME : UiConfig._BG_BUTTON_DEFAULT,
             UiConfig._FG_BUTTON_NAME : UiConfig._FG_BUTTON_DEFAULT,
