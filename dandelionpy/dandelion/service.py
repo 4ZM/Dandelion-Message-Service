@@ -76,7 +76,7 @@ class RepetitiveWorker(Service):
 
         self._stop_requested = True
         if self._thread is not None:
-            self._thread.join(0.1)
+            self._thread.join(1)
             if self._thread.is_alive():
                 raise Exception # Timeout
 
