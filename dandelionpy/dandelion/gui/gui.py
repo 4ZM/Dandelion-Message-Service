@@ -312,7 +312,7 @@ class GUI(tkinter.Frame):
         # left mouse click on a list item to display selection
         self.id_list.bind('<ButtonRelease-1>', self.get_name)
 
-        self.set_identities_nick()
+        self.show_identities()
 
     #    self._start_restart()
 
@@ -466,10 +466,17 @@ class GUI(tkinter.Frame):
         return len(self.get()) < self.Message.MAX_TEXT_LENGTH
 
     def show_identities(self):
-        _, self.identities = self._db.get_identities()
+        _, newidentities = self._db.get_identities()
+
+        selindices = self.id_list.curselection()
+        if selindices:
+            selindex = int(selindices[0])
+            selection = self.identities[selindex]
+            self.id_list.selection_clear(selindex)
+
         self.id_list.delete(0, END)
-        #id = db.select(sql)
-        for id in self.identities:
+
+        for id in newidentities:
             id_info = IdentityInfo(self._db, id)
             if id_info.nick is None:
                 thisname = encode_b64_bytes(id.fingerprint).decode()
@@ -479,17 +486,16 @@ class GUI(tkinter.Frame):
 
             self.id_list.insert(END, thisnick)
 
-        self.save_nickname.config(state=DISABLED)
+        if selindices:
+            try:
+                selindex = newidentities.index(selection)
+                self.id_list.selection_set(selindex)
+                self.id_list.activate(selindex)
+            except ValueError:
+                pass
 
-    def set_identities_nick(self):
-        _, self.identities = self._db.get_identities()
-        self.id_list.delete(0, END)
+        self.identities = newidentities
 
-        for id in self.identities:
-            thisname = encode_b64_bytes(id.fingerprint).decode()
-            thisnick = "Anon_"+thisname[12:16]
-            # self._db.set_nick(thisnick, thisname)
-            self.id_list.insert(END, thisnick)
         self.save_nickname.config(state=DISABLED)
 
     def get_name(self, event):
