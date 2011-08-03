@@ -324,17 +324,20 @@ class ConfigManager:
             print("WARNING! Bad or non existing ID requested in config. Requested:", self._id_manager_config.my_id)
             self._id_manager_config.my_id = None
 
-        if self._id_manager_config.my_id is None:
-            self._identity = dandelion.identity.generate()
-            self._content_db.add_private_identity(self._identity)
-            id_str = encode_b64_bytes(self._identity.fingerprint).decode()
-            self._id_manager_config.my_id = id_str
-            print("My new ID:", id_str)
-
-        else:
+        if self._id_manager_config.my_id is not None:
             fp = decode_b64_bytes(self._id_manager_config.my_id.encode())
-            self._identity = self._content_db.get_private_identity(fp)
-            print("My claimed ID:", self._id_manager_config.my_id)
+            try:
+                self._identity = self._content_db.get_private_identity(fp)
+                print("My claimed ID:", self._id_manager_config.my_id)
+                return
+            except ValueError:
+                pass
+            
+        self._identity = dandelion.identity.generate()
+        self._content_db.add_private_identity(self._identity)
+        id_str = encode_b64_bytes(self._identity.fingerprint).decode()
+        self._id_manager_config.my_id = id_str
+        print("My new ID:", id_str)
 
     @property
     def config_file(self):
