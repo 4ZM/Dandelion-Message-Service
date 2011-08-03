@@ -313,7 +313,9 @@ class GUI(tkinter.Frame):
         self.id_list.bind('<ButtonRelease-1>', self.get_name)
 
         self.show_identities()
-
+        self.save_nickname.config(state=DISABLED)
+        self._selected_identity = None
+        
     #    self._start_restart()
 
         self._db.add_event_listener(self._message_listener)
@@ -498,21 +500,26 @@ class GUI(tkinter.Frame):
 
         self.identities = newidentities
 
-        self.save_nickname.config(state=DISABLED)
 
     def get_name(self, event):
         """
         function to read the listbox selection
         and put the result in an entry widget
         """
-        # get selected line index. i set a class-wide variable here instead /plan
-        self.index = self.id_list.curselection()[0]
-        # get the line's text
-        seltext = self.id_list.get(self.index)
+        selindex = int(self.id_list.curselection()[0])
+
+        self._selected_identity = self.identities[selindex]
+        id_info = IdentityInfo(self._db, self._selected_identity)
+
         # delete previous text in editnick
         self.editnick.delete(0, 50)
         # now display the selected text
-        self.editnick.insert(0, seltext)
+        if id_info.nick is None:
+            thisname = encode_b64_bytes(id_info.id.fingerprint).decode()
+            thisnick = "Anon_"+thisname[12:16]
+        else:
+            thisnick = id_info.nick
+        self.editnick.insert(0, thisnick)
         self.save_nickname.config(state=NORMAL)
 
     def set_nick(self, *event):
@@ -521,15 +528,15 @@ class GUI(tkinter.Frame):
         back into the listbox
         """
 
-        selindices = self.id_list.curselection()
-        if selindices:
-            selindex = int(selindices[0])
-            selection = self.identities[selindex]
-            id_info = IdentityInfo(self._db, selection)
+        if self._selected_identity:
+            id_info = IdentityInfo(self._db, self._selected_identity)
             newnick = self.editnick.get()
             id_info.nick = newnick
             
             self.show_identities()
+
+        self._selected_identity = None
+        self.editnick.delete(0, 50)
 
         self.save_nickname.config(state=DISABLED)
 
