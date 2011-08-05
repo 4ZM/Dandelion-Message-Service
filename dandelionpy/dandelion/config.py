@@ -131,6 +131,14 @@ class UiConfig(Config):
     _BG_MASTER_NAME = 'bg_master'
     _BG_MASTER_DEFAULT = 'black'
 
+    # frames
+
+    _BG_FRAME_NAME = 'bg_frame'
+    _BG_FRAME_DEFAULT = 'black'
+
+    _BORDER_NAME = 'border'
+    _BORDER_DEFAULT = '1'
+
     # welcome screen
 
     _WELCOME_SCREEN_NAME = 'welcome_screen'
@@ -176,33 +184,33 @@ class UiConfig(Config):
     _FG_BUTTON_A_NAME = 'fg_button_a'
     _FG_BUTTON_A_DEFAULT = 'red'
 
-    # Lables for buttons
+    # Labels for buttons
 
-    _LABLE_SEARCH_M_NAME = 'lable_search_m'
-    _LABLE_SEARCH_M_DEFAULT = 'Search'
+    _LABEL_SEARCH_M_NAME = 'label_search_m'
+    _LABEL_SEARCH_M_DEFAULT = 'Search'
 
-    _LABLE_SHOW_M_NAME = 'lable_show_m'
-    _LABLE_SHOW_M_DEFAULT = 'Get messages'
+    _LABEL_SHOW_M_NAME = 'label_show_m'
+    _LABEL_SHOW_M_DEFAULT = 'Get messages'
 
-    _LABLE_QUIT_NAME = 'lable_quit'
-    _LABLE_QUIT_DEFAULT = 'x'
+    _LABEL_QUIT_NAME = 'label_quit'
+    _LABEL_QUIT_DEFAULT = 'x'
 
-    _LABLE_GET_ID_NAME = 'lable_get_id'
-    _LABLE_GET_ID_DEFAULT = 'Get ids'
+    _LABEL_GET_ID_NAME = 'label_get_id'
+    _LABEL_GET_ID_DEFAULT = 'Get ids'
 
-    _LABLE_STOP_NAME = 'lable_stop'
-    _LABLE_STOP_DEFAULT = 'Stop'
+    _LABEL_STOP_NAME = 'label_stop'
+    _LABEL_STOP_DEFAULT = 'Stop'
 
-    _LABLE_START_NAME = 'lable_start'
-    _LABLE_START_DEFAULT = 'Start'
+    _LABEL_START_NAME = 'label_start'
+    _LABEL_START_DEFAULT = 'Start'
 
-    _LABLE_SEND_NAME = 'lable_send'
-    _LABLE_SEND_DEFAULT = 'Send'
+    _LABEL_SEND_NAME = 'label_send'
+    _LABEL_SEND_DEFAULT = 'Send'
 
-    _LABLE_HELP_NAME = 'lable_help'
-    _LABLE_HELP_DEFAULT = '?'
+    _LABEL_HELP_NAME = 'label_help'
+    _LABEL_HELP_DEFAULT = '?'
 
-    # Lables misc      
+    # Labels misc      
 
     _YOUR_M_TITLE_NAME = 'your_m_title'
     _YOUR_M_TITLE_DEFAULT = 'What on your mind?'
@@ -210,18 +218,20 @@ class UiConfig(Config):
     _SIGN_NAME = 'sign'
     _SIGN_DEFAULT = 'Sign'
 
-    _LABLE_NICKBOX_NAME = 'lable_nickbox'
-    _LABLE_NICKBOX_DEFAULT = 'Rename nick'
+    _LABEL_NICKBOX_NAME = 'label_nickbox'
+    _LABEL_NICKBOX_DEFAULT = 'Rename nick'
 
-    _LABLE_SET_NEW_NICK_NAME = 'lable_set_new_nick'
-    _LABLE_SET_NEW_NICK_DEFAULT = 'Set new nick'
+    _LABEL_SET_NEW_NICK_NAME = 'label_set_new_nick'
+    _LABEL_SET_NEW_NICK_DEFAULT = 'Set new nick'
 
-    _LABLE_SEARCHBOX_NAME = 'lable_searchbox'
-    _LABLE_SEARCHBOX_DEFAULT = 'Search'
+    _LABEL_SEARCHBOX_NAME = 'label_searchbox'
+    _LABEL_SEARCHBOX_DEFAULT = 'Search'
 
     def __init__(self):
         self.uidict = {
             UiConfig._BG_MASTER_NAME : UiConfig._BG_MASTER_DEFAULT,
+            UiConfig._BG_FRAME_NAME : UiConfig._BG_FRAME_DEFAULT,
+            UiConfig._BORDER_NAME : UiConfig._BORDER_DEFAULT,
             UiConfig._WELCOME_SCREEN_NAME : UiConfig._WELCOME_SCREEN_DEFAULT,
             UiConfig._BG_BUTTON_NAME : UiConfig._BG_BUTTON_DEFAULT,
             UiConfig._FG_BUTTON_NAME : UiConfig._FG_BUTTON_DEFAULT,
@@ -230,19 +240,19 @@ class UiConfig(Config):
             UiConfig._BG_WINDOW_NAME : UiConfig._BG_WINDOW_DEFAULT,
             UiConfig._FG_WINDOW_NAME : UiConfig._FG_WINDOW_DEFAULT,
             UiConfig._FG_BUTTON_A_NAME : UiConfig._FG_BUTTON_A_DEFAULT,
-            UiConfig._LABLE_SEARCH_M_NAME : UiConfig._LABLE_SEARCH_M_DEFAULT,
-            UiConfig._LABLE_SHOW_M_NAME : UiConfig._LABLE_SHOW_M_DEFAULT,
-            UiConfig._LABLE_QUIT_NAME : UiConfig._LABLE_QUIT_DEFAULT,
-            UiConfig._LABLE_GET_ID_NAME : UiConfig._LABLE_GET_ID_DEFAULT,
-            UiConfig._LABLE_STOP_NAME : UiConfig._LABLE_STOP_DEFAULT,
-            UiConfig._LABLE_START_NAME : UiConfig._LABLE_START_DEFAULT,
-            UiConfig._LABLE_SEND_NAME : UiConfig._LABLE_SEND_DEFAULT,
-            UiConfig._LABLE_HELP_NAME : UiConfig._LABLE_HELP_DEFAULT,
+            UiConfig._LABEL_SEARCH_M_NAME : UiConfig._LABEL_SEARCH_M_DEFAULT,
+            UiConfig._LABEL_SHOW_M_NAME : UiConfig._LABEL_SHOW_M_DEFAULT,
+            UiConfig._LABEL_QUIT_NAME : UiConfig._LABEL_QUIT_DEFAULT,
+            UiConfig._LABEL_GET_ID_NAME : UiConfig._LABEL_GET_ID_DEFAULT,
+            UiConfig._LABEL_STOP_NAME : UiConfig._LABEL_STOP_DEFAULT,
+            UiConfig._LABEL_START_NAME : UiConfig._LABEL_START_DEFAULT,
+            UiConfig._LABEL_SEND_NAME : UiConfig._LABEL_SEND_DEFAULT,
+            UiConfig._LABEL_HELP_NAME : UiConfig._LABEL_HELP_DEFAULT,
             UiConfig._YOUR_M_TITLE_NAME : UiConfig._YOUR_M_TITLE_DEFAULT,
             UiConfig._SIGN_NAME : UiConfig._SIGN_DEFAULT,
-            UiConfig._LABLE_NICKBOX_NAME : UiConfig._LABLE_NICKBOX_DEFAULT,
-            UiConfig._LABLE_SET_NEW_NICK_NAME : UiConfig._LABLE_SET_NEW_NICK_DEFAULT,
-            UiConfig._LABLE_SEARCHBOX_NAME : UiConfig._LABLE_SEARCHBOX_DEFAULT}
+            UiConfig._LABEL_NICKBOX_NAME : UiConfig._LABEL_NICKBOX_DEFAULT,
+            UiConfig._LABEL_SET_NEW_NICK_NAME : UiConfig._LABEL_SET_NEW_NICK_DEFAULT,
+            UiConfig._LABEL_SEARCHBOX_NAME : UiConfig._LABEL_SEARCHBOX_DEFAULT}
 
     def __getitem__(self, key):
         return self.uidict[key]
@@ -314,17 +324,20 @@ class ConfigManager:
             print("WARNING! Bad or non existing ID requested in config. Requested:", self._id_manager_config.my_id)
             self._id_manager_config.my_id = None
 
-        if self._id_manager_config.my_id is None:
-            self._identity = dandelion.identity.generate()
-            self._content_db.add_identities([self._identity])
-            id_str = encode_b64_bytes(self._identity.fingerprint).decode()
-            self._id_manager_config.my_id = id_str
-            print("My new ID:", id_str)
-
-        else:
-            self._identity = self._content_db.get_identities(fingerprints=[decode_b64_bytes(self._id_manager_config.my_id.encode())])[0]
-            print("My claimed ID:", self._id_manager_config.my_id)
-
+        if self._id_manager_config.my_id is not None:
+            fp = decode_b64_bytes(self._id_manager_config.my_id.encode())
+            try:
+                self._identity = self._content_db.get_private_identity(fp)
+                print("My claimed ID:", self._id_manager_config.my_id)
+                return
+            except ValueError:
+                pass
+            
+        self._identity = dandelion.identity.generate()
+        self._content_db.add_private_identity(self._identity)
+        id_str = encode_b64_bytes(self._identity.fingerprint).decode()
+        self._id_manager_config.my_id = id_str
+        print("My new ID:", id_str)
 
     @property
     def config_file(self):
