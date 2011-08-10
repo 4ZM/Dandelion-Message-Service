@@ -399,7 +399,7 @@ class GUI(tkinter.Frame):
             self.processText.set(self.labelNotRunning)
             print("To message the client must be running")
         else:
-            self._say(msg)
+            self._say(msg, sign=self.sign_var.get())
             self.message_entry_area.delete(1.0, END)
 
         self.toLong = IntVar()

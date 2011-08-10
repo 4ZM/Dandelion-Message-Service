@@ -257,7 +257,7 @@ class IdentityInfo:
 
     def is_private(self):
         """Return true if the identity has private components"""
-        return self._id._dsa_key.is_private and self._id._rsa_key.is_private
+        return self._id.dsa_key.is_private and self._id.rsa_key.is_private
 
     @property
     def nick(self):
