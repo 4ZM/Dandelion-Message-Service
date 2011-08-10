@@ -104,7 +104,7 @@ class ContentDB:
     @classmethod
     def _decode_int(self, x):
         """Text to binary decoding of int's"""
-        return decode_b64_int(x)
+        return decode_b64_int(x.encode())
 
     _CREATE_TABLE_DATABASES = """CREATE TABLE IF NOT EXISTS databases
         (id INTEGER PRIMARY KEY AUTOINCREMENT,
