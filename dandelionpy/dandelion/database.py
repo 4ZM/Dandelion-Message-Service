@@ -348,7 +348,7 @@ class ContentDB:
         with sqlite3.connect(self._db_file) as conn:
             c = conn.cursor()
             c.execute("INSERT INTO private_identities (fingerprint, dsa_x, rsa_d) VALUES (?,?,?)",
-                      (self._encode_id(identity.fingerprint), encode_b64_int(identity.dsa_key.x), encode_b64_int(identity.rsa_key.d)))
+                      (self._encode_id(identity.fingerprint), self._encode_int(identity.dsa_key.x), self._encode_int(identity.rsa_key.d)))
 
     def remove_private_identity(self, identity, keep_public_identity=False):
         """Remove a private identity to the data base."""
@@ -465,14 +465,14 @@ class ContentDB:
             if id is None:
                 raise ValueError
 
-            return PrivateIdentity(DSA_key(decode_b64_int(id[0]),
-                                           decode_b64_int(id[1]),
-                                           decode_b64_int(id[2]),
-                                           decode_b64_int(id[3]),
-                                           decode_b64_int(id[4])),
-                                   RSA_key(decode_b64_int(id[5]),
-                                           decode_b64_int(id[6]),
-                                           decode_b64_int(id[7])))
+            return PrivateIdentity(DSA_key(self._decode_int(id[0]),
+                                           self._decode_int(id[1]),
+                                           self._decode_int(id[2]),
+                                           self._decode_int(id[3]),
+                                           self._decode_int(id[4])),
+                                   RSA_key(self._decode_int(id[5]),
+                                           self._decode_int(id[6]),
+                                           self._decode_int(id[7])))
 
     def get_identities(self, fingerprints=None, time_cookie=None):
         """Get a list of all identities with specified fingerprints.
