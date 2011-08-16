@@ -80,6 +80,12 @@ class GUI(tkinter.Frame):
                                               command=self._search_messages)
         self.search_messages.grid(row=row_pos, column=1, sticky=E, padx=8, pady=8)
 
+        fingerprint = tkinter.Label(master,
+                                   text=encode_b64_bytes(self._identity.fingerprint).decode(),
+                                   bg=self._config_manager["bg_master"],
+                                   fg=self._config_manager["fg_window"])
+        fingerprint.grid(row=row_pos, column=2, sticky=E, padx=8)
+
         # quit message button
         self.QUIT = tkinter.Button(master,
                                    text=self._config_manager["label_quit"],
@@ -429,6 +435,16 @@ class GUI(tkinter.Frame):
             m = dandelion.message.create(msg)
             self._db.add_messages([m])
 
+    def _get_nick(self, fingerprint, mark_me=False):
+        thisnick = self._db.get_nick(fingerprint)
+        # id_info = IdentityInfo(self._db, id)
+        if thisnick is None:
+            thisname = encode_b64_bytes(fingerprint).decode()
+            thisnick = "Anon_"+thisname[12:16]
+        if self._identity.fingerprint == fingerprint and mark_me:
+            thisnick = thisnick + " (me)"
+        return thisnick
+
     def _show_messages(self):
         message_screen = """
  Dandelion Messages
@@ -441,7 +457,7 @@ class GUI(tkinter.Frame):
         self.message_area.delete(1.0,END)
         self.message_area.insert(END, message_screen)
         for m in self.all_msgs:
-            sender = 'anon' if not m.has_sender else encode_b64_bytes(m.sender).decode()
+            sender = 'anon' if not m.has_sender else self._get_nick(m.sender)
             if  m.has_receiver:
                 msg = "%s to %s> %s\n" % (sender,
                                         'N/A' if not m.has_sender else encode_b64_bytes(m.sender).decode(),
@@ -479,16 +495,7 @@ class GUI(tkinter.Frame):
         self.id_list.delete(0, END)
 
         for id in newidentities:
-            id_info = IdentityInfo(self._db, id)
-            if id_info.nick is None:
-                thisname = encode_b64_bytes(id.fingerprint).decode()
-                thisnick = "Anon_"+thisname[12:16]
-            else:
-                thisnick = id_info.nick
-            if self._identity == id:
-                thisnick = thisnick + " (me)"
-
-            self.id_list.insert(END, thisnick)
+            self.id_list.insert(END, self._get_nick(id.fingerprint, mark_me=True))
 
         if selindices:
             try:
