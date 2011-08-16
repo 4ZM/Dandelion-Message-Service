@@ -39,7 +39,7 @@ class Discoverer(Service):
     def __init__(self, config, server_config):
         self._config = config
         self._server_config = server_config
-        self._nodes = []
+        self._nodes = [{'ip' : ip, 'port' : port, 'pin' : True, 'last_sync' : None, 'processing' : False } for ip, port in config.extra_servers]
         self._running = False
         self._stop_requested = True
         self._register_fd = None
