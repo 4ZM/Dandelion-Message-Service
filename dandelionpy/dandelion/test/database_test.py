@@ -333,14 +333,15 @@ class DatabaseTest(unittest.TestCase):
         db = ContentDB(tempfile.NamedTemporaryFile().name)
         id_priv = dandelion.identity.generate()
         id_pub = dandelion.identity.generate().public_identity()
+        key = b'secret'
 
         # Add junk
-        self.assertRaises(TypeError, db.add_private_identity, None)
-        self.assertRaises(ValueError, db.add_private_identity, id_pub)
+        self.assertRaises(TypeError, db.add_private_identity, None, key)
+        self.assertRaises(ValueError, db.add_private_identity, id_pub, key)
 
         # Add, get, remove
-        db.add_private_identity(id_priv)
-        id = db.get_private_identity(id_priv.fingerprint)
+        db.add_private_identity(id_priv, key)
+        id = db.get_private_identity(id_priv.fingerprint, key)
 
         self.assertEqual(id_priv.fingerprint, id.fingerprint)
         self.assertEqual(id_priv, id)
@@ -350,11 +351,11 @@ class DatabaseTest(unittest.TestCase):
         self.assertFalse(db.contains_identity(id_priv.fingerprint))
 
         # Add and remove private, but keep public
-        db.add_private_identity(id_priv)
+        db.add_private_identity(id_priv, key)
         db.remove_private_identity(id_priv, keep_public_identity=True)
         self.assertTrue(db.contains_identity(id_priv.fingerprint))
         self.assertFalse(IdentityInfo(db, db.get_identities([id_priv.fingerprint])[1][0]).is_private())
-        self.assertRaises(ValueError, db.get_private_identity, id_priv.fingerprint)
+        self.assertRaises(ValueError, db.get_private_identity, id_priv.fingerprint, key)
 
 
     def test_identity_info_nick(self):

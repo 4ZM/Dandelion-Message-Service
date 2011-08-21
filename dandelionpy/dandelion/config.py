@@ -319,6 +319,7 @@ class ConfigManager:
         self.read_file()
 
         self._content_db = ContentDB(self._server_config.db_file)
+        key = b'a secret key'
 
         if self._id_manager_config.my_id is not None and not self._content_db.contains_identity(decode_b64_bytes(self._id_manager_config.my_id.encode())) :
             print("WARNING! Bad or non existing ID requested in config. Requested:", self._id_manager_config.my_id)
@@ -327,14 +328,14 @@ class ConfigManager:
         if self._id_manager_config.my_id is not None:
             fp = decode_b64_bytes(self._id_manager_config.my_id.encode())
             try:
-                self._identity = self._content_db.get_private_identity(fp)
+                self._identity = self._content_db.get_private_identity(fp, key)
                 print("My claimed ID:", self._id_manager_config.my_id)
                 return
             except ValueError:
                 pass
             
         self._identity = dandelion.identity.generate()
-        self._content_db.add_private_identity(self._identity)
+        self._content_db.add_private_identity(self._identity, key)
         id_str = encode_b64_bytes(self._identity.fingerprint).decode()
         self._id_manager_config.my_id = id_str
         print("My new ID:", id_str)

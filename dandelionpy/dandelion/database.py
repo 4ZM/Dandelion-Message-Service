@@ -20,10 +20,10 @@ from dandelion.identity import Identity, PrivateIdentity, DSA_key, RSA_key, Iden
 from dandelion.message import Message
 from dandelion.util import encode_b64_bytes, decode_b64_bytes, encode_b64_int, \
     decode_b64_int
+
 import random
 import sqlite3
-import dandelion
-
+import dandelion.encryption
 
 class ContentDBException(Exception):
     '''Exception from the operations on the ContentDB'''
@@ -95,6 +95,20 @@ class ContentDB:
     def _decode_id(self, id):
         """Text to binary decoding of id's"""
         return decode_b64_bytes(id.encode())
+
+    @classmethod
+    def _encrypt_int(self, key, x):
+        """Binary to text encryption and encoding of int's"""
+        encoded_x = dandelion.util.encode_int(x)
+        encrypted_x = dandelion.encryption.symetric_encrypt(key, encoded_x)
+        return encode_b64_bytes(encrypted_x).decode()
+
+    @classmethod
+    def _decrypt_int(self, key, x):
+        """Text to binary decryption and decoding of int's"""
+        decoded_x = decode_b64_bytes(x.encode())
+        decrypted_x = dandelion.encryption.symetric_decrypt(key, decoded_x)
+        return dandelion.util.decode_int(decrypted_x)
 
     @classmethod
     def _encode_int(self, x):
@@ -332,8 +346,8 @@ class ContentDB:
 
             return (current_tc, msgs)
 
-    def add_private_identity(self, identity):
-        """Add a private identity to the data base."""
+    def add_private_identity(self, identity, key):
+        """Add a private identity to the data base. Use the key to encrypt private fields."""
 
         if identity is None:
             raise TypeError
@@ -348,7 +362,9 @@ class ContentDB:
         with sqlite3.connect(self._db_file) as conn:
             c = conn.cursor()
             c.execute("INSERT INTO private_identities (fingerprint, dsa_x, rsa_d) VALUES (?,?,?)",
-                      (self._encode_id(identity.fingerprint), self._encode_int(identity.dsa_key.x), self._encode_int(identity.rsa_key.d)))
+                      (self._encode_id(identity.fingerprint),
+                       self._encrypt_int(key, identity.dsa_key.x),
+                       self._encrypt_int(key, identity.rsa_key.d)))
 
     def remove_private_identity(self, identity, keep_public_identity=False):
         """Remove a private identity to the data base."""
@@ -451,8 +467,8 @@ class ContentDB:
         return id is not None and len(id) == 1
 
 
-    def get_private_identity(self, fingerprint):
-        """Get a private identity from the data base"""
+    def get_private_identity(self, fingerprint, key):
+        """Get a private identity from the data base. Use the key to uncrypt private fields."""
         
         if not isinstance(fingerprint, bytes):
             raise TypeError
@@ -469,10 +485,10 @@ class ContentDB:
                                            self._decode_int(id[1]),
                                            self._decode_int(id[2]),
                                            self._decode_int(id[3]),
-                                           self._decode_int(id[4])),
+                                           self._decrypt_int(key, id[4])),
                                    RSA_key(self._decode_int(id[5]),
                                            self._decode_int(id[6]),
-                                           self._decode_int(id[7])))
+                                           self._decrypt_int(key, id[7])))
 
     def get_identities(self, fingerprints=None, time_cookie=None):
         """Get a list of all identities with specified fingerprints.
