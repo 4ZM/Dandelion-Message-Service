@@ -26,8 +26,6 @@ import Crypto.Util
 
 from dandelion.util import encode_int, encode_b64_bytes
 import hashlib
-import random
-import dandelion
 from oaep_encoder import OAEPEncoder
 
 class IdentityManager:

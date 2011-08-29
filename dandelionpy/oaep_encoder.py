@@ -5,9 +5,8 @@ http://japrogbits.blogspot.com/2011/02/using-encrypted-data-between-python-and.h
 Modified for Python 3k compatibility by Anders Sundman, 2011
 """
 
-
+import Crypto.Random
 import hashlib
-import os
 import struct
 
 class PKCS1Error(RuntimeError):
@@ -141,7 +140,7 @@ class OAEPEncoder(PKCSAuxiliary):
         shash = self.compute_hash(salt)
         dbout = b''.join([shash, zfill, b'\x01', msg])
 
-        seed = os.urandom(self.hash_length)
+        seed = Crypto.Random.get_random_bytes(self.hash_length)
         assert len(seed) == self.hash_length
 
         dbMask = self.mgf(seed, emLen - self.hash_length)

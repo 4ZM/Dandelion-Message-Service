@@ -21,9 +21,9 @@ from dandelion.message import Message
 from dandelion.util import encode_b64_bytes, decode_b64_bytes, encode_b64_int, \
     decode_b64_int
 
-import random
 import sqlite3
 import dandelion.encryption
+import Crypto.Random
 
 class ContentDBException(Exception):
     '''Exception from the operations on the ContentDB'''
@@ -84,7 +84,7 @@ class ContentDB:
     @classmethod
     def _generate_random_id(self, length):
         """Create a new random binary id"""
-        return bytes([int(random.random() * 255) for _ in range(length)])
+        return Crypto.Random.get_random_bytes(length)
 
     @classmethod
     def _encode_id(self, id):

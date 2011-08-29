@@ -17,8 +17,8 @@ You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import random 
 import dandelion.util
+import Crypto.Random
 
 from Crypto.Cipher import AES
 
@@ -64,9 +64,13 @@ def _append_padding(bstr, blocksize, pad_value=None):
 
     data_length = len(bstr) + 1 # Add one for padding length field 
     padding_length = blocksize - (data_length % blocksize)
-    padding = bytes([(int(random.random() * 255) if pad_value is None else pad_value) 
-                     for _ in range(padding_length)])
-    return b''.join([bstr, padding, bytes([padding_length])])    
+
+    if pad_value is None:
+        padding = Crypto.Random.get_random_bytes(padding_length)
+    else:
+        padding = bytes([pad_value for _ in range(padding_length)])
+
+    return b''.join([bstr, padding, bytes([padding_length])])
         
 def _strip_padding(padded_bstr):
     """Remove the padding added with the _append_padding function"""
