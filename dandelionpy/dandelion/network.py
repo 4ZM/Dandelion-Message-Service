@@ -123,6 +123,9 @@ class ServerTransaction(SocketTransaction):
     class _AbortTransactionException(Exception):
         """Exception for internal signaling that the transaction should end."""
 
+    class TurnRequest(Exception):
+        """Raised when client has requested a turn-around"""
+
     def __init__(self, sock, db, buff_size=1024):
         super().__init__(sock, dandelion.protocol.TERMINATOR.encode(), buff_size)
         self._db = db
@@ -183,6 +186,10 @@ class ServerTransaction(SocketTransaction):
                 _, ids = self._db.get_identities(fingerprints=identities)
                 response_str = dandelion.protocol.create_identity_list(ids)
                 self._write(response_str.encode())
+            elif dandelion.protocol.is_turn_request(data):
+                response_str = dandelion.protocol.create_turn_reply()
+                self._write(response_str.encode())
+                raise ServerTransaction.TurnRequest
             else:
                 raise ProtocolParseError
 
@@ -289,7 +296,11 @@ class _ServerHandler(socketserver.BaseRequestHandler):
 #        print("SERVER: In handler")
 
         comm_transaction = ServerTransaction(self.request, self.server.db)
-        comm_transaction.process()
+        try:
+            comm_transaction.process()
+        except ServerTransaction.TurnRequest:
+            comm_transaction = ClientTransaction(self.request, self.server.db)
+            comm_transaction.process()
 
 #        print("SERVER: Out handler")
 
@@ -351,6 +362,10 @@ class ClientTransaction(SocketTransaction):
 
         #print("CLIENT TRANSACTION: hanging up")
 
+    def turn(self):
+        self._write(dandelion.protocol.create_turn_request().encode())
+        ok = dandelion.protocol.parse_turn_reply(self._read().decode())
+        return ok
 
 class Client:
     def __init__(self, host, port, db):
@@ -376,5 +391,6 @@ class Client:
     def execute_transaction(self):
         comm_transaction = ClientTransaction(self._sock, self._db)
         comm_transaction.process()
-
-
+        if comm_transaction.turn():
+            comm_transaction = ServerTransaction(self._sock, self._db)
+            comm_transaction.process()

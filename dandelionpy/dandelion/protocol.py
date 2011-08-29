@@ -52,6 +52,8 @@ _GETMESSAGES = 'GETMESSAGES'
 _GETIDENTITYLIST = 'GETIDENTITYLIST'
 _GETIDENTITIES = 'GETIDENTITIES'
 
+_TURN = 'TURN'
+_TURN_REPLY = 'TURN OK'
 
 def create_greeting_message(dbid):
     """Create the server greeting message string.
@@ -570,6 +572,27 @@ def parse_identity_list(identitystr):
 
     return [_string2identity(identity) for identity in parts]
 
+def create_turn_request():
+    """Create turn request
+    """
+
+    return '{0}{1}'.format(_TURN, TERMINATOR)
+
+def parse_turn_reply(msgstr):
+    _assert_type(msgstr, str)
+    if not msgstr == (_TURN_REPLY + TERMINATOR):
+        raise ProtocolParseError
+    return True
+
+def is_turn_request(msgstr):
+    """Check if the string is a turn request."""
+
+    _assert_type(msgstr, str)
+
+    return msgstr == (_TURN + TERMINATOR)
+
+def create_turn_reply():
+    return _TURN_REPLY + TERMINATOR
 
 def _assert_type(x, type):
     """If x is a string this function does nothing. If it is None it raises a 

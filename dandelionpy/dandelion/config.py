@@ -21,6 +21,7 @@ from dandelion.database import ContentDB
 import configparser
 import dandelion.identity
 from dandelion.util import decode_b64_bytes, encode_b64_bytes
+import re
 
 class ConfigException(Exception):
     pass
@@ -108,17 +109,41 @@ class SynchronizerConfig(Config):
 class DiscovererConfig(Config):
 
     _SECTION_NAME = 'discoverer'
+    
+    _EXTRA_SERVERS = 'extra_servers'
 
     def __init__(self):
+        self._extra_servers = []
         pass
+
+    @property
+    def extra_servers(self):
+        return self._extra_servers
+
+    _ip_port_pattern = re.compile(r'^(?P<ip>\d+\.\d+\.\d+\.\d+):(?P<port>\d+)$')
+    
+    def _parse_ip_port(self, s):
+        m = self._ip_port_pattern.match(s.strip())
+        if m:
+            return (m.group('ip'), int(m.group('port')))
+        else:
+            raise ConfigException
+
+    def _write_ip_port(self, server):
+        (host, port) = server
+        return host + ":" + str(port)
 
     def load(self, confparser):
         if not confparser.has_section(DiscovererConfig._SECTION_NAME):
-            raise ConfigException
+            return
+        if confparser.has_option(DiscovererConfig._SECTION_NAME, DiscovererConfig._EXTRA_SERVERS):
+            self._extra_servers = [self._parse_ip_port(s) for s in confparser.get(DiscovererConfig._SECTION_NAME, DiscovererConfig._EXTRA_SERVERS).split(",")]
 
 
     def store(self, confparser):
         confparser.add_section(DiscovererConfig._SECTION_NAME)
+        if self._extra_servers:
+            confparser.set(DiscovererConfig._SECTION_NAME, DiscovererConfig._EXTRA_SERVERS, ",".join([self._write_ip_port(server) for server in self._extra_servers]))
 
 class UiConfig(Config):
 
@@ -378,6 +403,7 @@ class ConfigManager:
         self._server_config.store(confparser)
         self._ui_config.store(confparser)
         self._id_manager_config.store(confparser)
+        self._discoverer_config.store(confparser)
 
         with open(self._cfg_file_name, 'w') as configfile:
             confparser.write(configfile)
@@ -390,4 +416,5 @@ class ConfigManager:
         self._server_config.load(confparser)
         self._ui_config.load(confparser)
         self._id_manager_config.load(confparser)
+        self._discoverer_config.load(confparser)
 
