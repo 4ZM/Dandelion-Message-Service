@@ -28,6 +28,7 @@ from dandelion.util import encode_int, encode_b64_bytes
 import hashlib
 import random
 import dandelion
+from oaep_encoder import OAEPEncoder
 
 class IdentityManager:
     def __init__(self, config):
@@ -142,6 +143,9 @@ class Identity:
                                                         dsa_key.x))
  
         self._rsa_key = Crypto.PublicKey.RSA.construct((rsa_key.n, rsa_key.e, rsa_key.d))
+
+        self._oaep_encoder = OAEPEncoder()
+
         self._fp = None # Lazy evaluation
 
     @property
@@ -193,8 +197,8 @@ class Identity:
         
         The plaintext message is a bytes string and the returned encrypted message is a bytes string.
         """
-
-        return self._rsa_key.encrypt(plaintext, b'n/a')[0] # no k value for RSA
+        encoded = self._oaep_encoder.encode(plaintext, keybits=RSA_KEY_SIZE)
+        return self._rsa_key.encrypt(encoded, b'n/a')[0] # no k value for RSA
 
     def __str__(self):
         """String conversion is user Base64 encoded fingerprint"""
@@ -233,7 +237,9 @@ class PrivateIdentity(Identity):
         
         The ciphertext and the returned plaintext are bytes strings.
         """
-        return self._rsa_key.decrypt(ciphertext)
+
+        encoded_msg = self._rsa_key.decrypt(ciphertext)
+        return self._oaep_encoder.decode(encoded_msg)
 
 class IdentityInfo:
     """A class that provides additional, local information about an 

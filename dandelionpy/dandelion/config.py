@@ -285,7 +285,7 @@ class IdentityConfig(Config):
     _MY_ID_DEFAULT = None
 
     def __init__(self):
-      self._my_id = IdentityConfig._MY_ID_DEFAULT
+        self._my_id = IdentityConfig._MY_ID_DEFAULT
 
     @property
     def my_id(self):
@@ -300,7 +300,7 @@ class IdentityConfig(Config):
             confparser.add_section(IdentityConfig._SECTION_NAME)
 
         if confparser.has_option(IdentityConfig._SECTION_NAME, IdentityConfig._MY_ID_NAME):
-          self._my_id = confparser.get(IdentityConfig._SECTION_NAME, IdentityConfig._MY_ID_NAME)
+            self._my_id = confparser.get(IdentityConfig._SECTION_NAME, IdentityConfig._MY_ID_NAME)
 
     def store(self, confparser):
         confparser.add_section(IdentityConfig._SECTION_NAME)
@@ -338,7 +338,6 @@ class ConfigManager:
         self._content_db.add_private_identity(self._identity, key)
         id_str = encode_b64_bytes(self._identity.fingerprint).decode()
         self._id_manager_config.my_id = id_str
-        print("My new ID:", id_str)
 
     @property
     def config_file(self):

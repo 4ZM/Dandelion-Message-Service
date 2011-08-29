@@ -19,6 +19,7 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 
 import unittest
 from dandelion.encryption import _append_padding,_strip_padding,symetric_decrypt,symetric_encrypt
+from oaep_encoder import OAEPEncoder, DecoderError
 
 class UtilTest(unittest.TestCase):
 
@@ -106,6 +107,30 @@ class UtilTest(unittest.TestCase):
         self.assertRaises(TypeError, _strip_padding, None)
         self.assertRaises(TypeError, _strip_padding, 1)
         self.assertRaises(ValueError, _strip_padding, b'')
+
+    def test_oaep(self):
+        encoder = OAEPEncoder()
+        data_str = b'some random string'
+
+        self.assertNotEqual(data_str, encoder.encode(data_str, salt=b'', keybits=2048))
+
+        enc1 = encoder.encode(data_str)
+        enc2 = encoder.encode(data_str)
+        dec1 = encoder.decode(enc1)
+        dec2 = encoder.decode(enc2)
+
+        self.assertEqual(data_str, dec1)
+        self.assertEqual(data_str, dec2)
+        self.assertNotEqual(enc1, enc2)
+
+        self.assertRaises(DecoderError, encoder.decode, data_str)
+        self.assertRaises(TypeError, encoder.decode, None)
+        self.assertRaises(TypeError, encoder.decode, 1337)
+        self.assertRaises(DecoderError, encoder.decode, "1337")
+
+        self.assertRaises(TypeError, encoder.encode, None)
+        self.assertRaises(TypeError, encoder.encode, "1337")
+        self.assertRaises(TypeError, encoder.encode, 1337)
 
 if __name__ == '__main__':
     unittest.main()
