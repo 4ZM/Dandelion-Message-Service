@@ -362,7 +362,6 @@ class ConfigManager:
         self._content_db.add_private_identity(self._identity)
         id_str = encode_b64_bytes(self._identity.fingerprint).decode()
         self._id_manager_config.my_id = id_str
-        print("My new ID:", id_str)
 
     @property
     def config_file(self):

@@ -22,12 +22,11 @@ import binascii
 import dandelion.identity
 import unittest
 
-
 class MessageTest(unittest.TestCase):
     """Unit test suite for the DMS Message class"""
 
     _sample_message = "A test message"
-    _sample_message_sha256 = "5f5cb37d292599ecdca99a5590b347ceb1d908a7f1491c3778e1b29e4863ca3a"
+    _sample_message_sha256 = b"5f5cb37d292599ecdca99a5590b347ceb1d908a7f1491c3778e1b29e4863ca3a"
 
     def test_globals(self):
         """Testing for sane message constants"""
@@ -49,6 +48,23 @@ class MessageTest(unittest.TestCase):
 
         self.assertFalse(msg.has_receiver)
         self.assertEqual(msg.receiver, None)
+
+        self.assertFalse(msg.has_timestamp)
+        self.assertEqual(msg.timestamp, None)
+
+    def test_construction_with_timestamp(self):
+        """Testing construction interface"""
+
+        msg_no_timestamp = Message(self._sample_message)
+        self.assertEqual(self._sample_message, msg_no_timestamp.text)
+
+        msg = Message(self._sample_message, timestamp=1337)
+        self.assertEqual(self._sample_message, msg.text)
+
+        self.assertNotEqual(msg.id, msg_no_timestamp.id)
+
+        self.assertTrue(msg.has_timestamp)
+        self.assertEqual(msg.timestamp, 1337)
 
     def test_construction_with_sender(self):
         """Testing message construction when specifying a sender"""
@@ -94,8 +110,11 @@ class MessageTest(unittest.TestCase):
     def test_construction_with_factory(self):
         txt = "plain_text"
         id = dandelion.identity.generate()
-        m = dandelion.message.create(txt, id)
+        ts = 1337
+        m = dandelion.message.create(txt, timestamp=ts, sender=id)
         self.assertEqual(m.text, txt)
+        self.assertTrue(m.has_timestamp)
+        self.assertEqual(m.timestamp, ts)
         self.assertFalse(m.has_receiver)
         self.assertTrue(m.has_sender)
         self.assertIsNone(m.receiver)

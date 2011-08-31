@@ -382,7 +382,7 @@ class TransactionTest(unittest.TestCase):
         id1 = dandelion.identity.generate()
         id2 = dandelion.identity.generate()
         server_db.add_identities([id1, id2])
-        server_db.add_messages([Message('fubar'), dandelion.message.create('foo', id1, id2), Message('bar')])
+        server_db.add_messages([Message('fubar'), dandelion.message.create('foo', None, id1, id2), Message('bar')])
 
         self.assertEqual(client_db.message_count, 0)
         self.assertEqual(client_db.identity_count, 0)

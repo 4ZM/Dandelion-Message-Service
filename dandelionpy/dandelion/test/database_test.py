@@ -130,7 +130,7 @@ class DatabaseTest(unittest.TestCase):
         # New message, new cookie
         id1 = dandelion.identity.generate()
         id2 = dandelion.identity.generate()
-        second_msg = dandelion.message.create('Another Single Message', id1, id2)
+        second_msg = dandelion.message.create('Another Single Message', sender=id1, receiver=id2)
         second_cookie = db.add_messages([second_msg])
         self.assertNotEqual(second_cookie, None)
         self.assertNotEqual(second_cookie, first_cookie)
@@ -174,7 +174,7 @@ class DatabaseTest(unittest.TestCase):
 
         id1 = dandelion.identity.generate()
         id2 = dandelion.identity.generate()
-        first_msg_list = [Message('A'), Message('B'),
+        first_msg_list = [Message('A'), Message('B'), Message('III', timestamp=3),
                           dandelion.message.create("W Sender", sender=id1),
                           dandelion.message.create("W Receiver", receiver=id2),
                           dandelion.message.create("W Sender And Receiver", sender=id1, receiver=id2)]
@@ -189,7 +189,7 @@ class DatabaseTest(unittest.TestCase):
         db.add_messages(first_msg_list)
         self.assertNotEqual(db.message_count, None)
         self.assertEqual(db.message_count, len(first_msg_list))
-        self.assertEqual([db.contains_message(m.id) for m in first_msg_list], [True, True, True, True, True])
+        self.assertEqual([db.contains_message(m.id) for m in first_msg_list], [True, True, True, True, True, True])
 
         # And for another message list? 
         second_msg_list = [Message('C'), Message('A')]
@@ -197,26 +197,26 @@ class DatabaseTest(unittest.TestCase):
 
         # Adding the second message list
         db.add_messages(second_msg_list)
-        self.assertEqual(db.message_count, 6)
-        self.assertEqual([db.contains_message(m.id) for m in first_msg_list], [True, True, True, True, True])
+        self.assertEqual(db.message_count, 7)
+        self.assertEqual([db.contains_message(m.id) for m in first_msg_list], [True, True, True, True, True, True])
         self.assertEqual([db.contains_message(m.id) for m in second_msg_list], [True, True])
 
         # Remove a list
         db.remove_messages(first_msg_list)
         self.assertEqual(db.message_count, 1)
-        self.assertEqual([db.contains_message(m.id) for m in first_msg_list], [False, False, False, False, False])
+        self.assertEqual([db.contains_message(m.id) for m in first_msg_list], [False, False, False, False, False, False])
         self.assertEqual([db.contains_message(m.id) for m in second_msg_list], [True, False])
 
         # Remove same message list 
         db.remove_messages(first_msg_list)
         self.assertEqual(db.message_count, 1)
-        self.assertEqual([db.contains_message(m.id) for m in first_msg_list], [False, False, False, False, False])
+        self.assertEqual([db.contains_message(m.id) for m in first_msg_list], [False, False, False, False, False, False])
         self.assertEqual([db.contains_message(m.id) for m in second_msg_list], [True, False])
 
         # Remove all messages
         db.remove_messages()
         self.assertEqual(db.message_count, 0)
-        self.assertEqual([db.contains_message(m.id) for m in first_msg_list], [False, False, False, False, False])
+        self.assertEqual([db.contains_message(m.id) for m in first_msg_list], [False, False, False, False, False, False])
         self.assertEqual([db.contains_message(m.id) for m in second_msg_list], [False, False])
 
     def test_get_messages(self):
@@ -231,7 +231,7 @@ class DatabaseTest(unittest.TestCase):
         id2 = dandelion.identity.generate()
         m1 = Message('M1')
         m2 = Message('M2')
-        m3 = dandelion.message.create('M3', id1, id2)
+        m3 = dandelion.message.create('M3', 1337, id1, id2)
 
         db.add_identities([id1])
         db.add_messages([m1, m2, m3])

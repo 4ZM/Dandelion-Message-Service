@@ -168,7 +168,8 @@ class ProtocolTest(unittest.TestCase):
 
         id1 = dandelion.identity.generate()
         id2 = dandelion.identity.generate()
-        msg1 = dandelion.message.create('M1', id1, id2)
+        ts = 1337
+        msg1 = dandelion.message.create('M1', ts, id1, id2)
         msg2 = Message('M2')
         msg3 = Message('M3')
 
@@ -263,10 +264,11 @@ class ProtocolTest(unittest.TestCase):
 
         id1 = dandelion.identity.generate()
         id2 = dandelion.identity.generate()
+        ts = 1337
         msg1 = Message('M1')
-        msg2 = dandelion.message.create('M2', id1, id2)
-        msg3 = dandelion.message.create('M3', id1)
-        msg4 = dandelion.message.create('M3', None, id2)
+        msg2 = dandelion.message.create('M2', ts, id1, id2)
+        msg3 = dandelion.message.create('M3', ts, id1)
+        msg4 = dandelion.message.create('M3', ts, None, id2)
 
         tc, msgids = dandelion.protocol.parse_message_id_list(dandelion.protocol.create_message_id_list(b'24', [msg1, msg2, msg3, msg4]))
         self.assertEqual(tc, b'24')
@@ -378,11 +380,11 @@ class ProtocolTest(unittest.TestCase):
 
         id1 = dandelion.identity.generate()
         id2 = dandelion.identity.generate()
-
+        ts = 1337
         m1 = Message('FUBAR')
         m2 = Message('f00')
         m3 = Message('13;@|37')
-        m4 = dandelion.message.create('fu', id1, id2)
+        m4 = dandelion.message.create('fu', ts, id1, id2)
         m1_txt_b64 = 'RlVCQVI='
         m2_txt_b64 = 'ZjAw'
         m3_txt_b64 = 'MTM7QHwzNw=='
@@ -420,9 +422,9 @@ class ProtocolTest(unittest.TestCase):
         id1 = dandelion.identity.generate()
         id2 = dandelion.identity.generate()
         m1 = dandelion.message.create('M1')
-        m2 = dandelion.message.create('M2', sender=id1)
-        m3 = dandelion.message.create('M3', receiver=id1)
-        m4 = dandelion.message.create('M4', receiver=id1, sender=id2)
+        m2 = dandelion.message.create('M2', timestamp=2, sender=id1)
+        m3 = dandelion.message.create('M3', timestamp=3, receiver=id1)
+        m4 = dandelion.message.create('M4', timestamp=4, receiver=id1, sender=id2)
 
         msg = dandelion.protocol.create_message_list([m1, m2, m3, m4])
         mout = dandelion.protocol.parse_message_list(msg)
