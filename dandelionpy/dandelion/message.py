@@ -139,5 +139,6 @@ def create(text, sender=None, receiver=None):
     else: # sender and receiver
         text = receiver.encrypt(text.encode())
         sig = sender.sign(text)
-        return Message(text, receiver_fp=receiver.fingerprint, sender_fp=sender.fingerprint, signature=sig)
+        encrypted_sender_fp = receiver.encrypt(sender.fingerprint)
+        return Message(text, receiver_fp=receiver.fingerprint, sender_fp=encrypted_sender_fp, signature=sig)
 

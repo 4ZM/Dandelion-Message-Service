@@ -29,7 +29,7 @@ class MessageTest(unittest.TestCase):
     """Unit test suite for the DMS Message class"""
 
     _sample_message = "A test message"
-    _sample_message_sha256 = "5f5cb37d292599ecdca99a5590b347ceb1d908a7f1491c3778e1b29e4863ca3a"
+    _sample_message_sha256 = b"5f5cb37d292599ecdca99a5590b347ceb1d908a7f1491c3778e1b29e4863ca3a"
 
     def test_globals(self):
         """Testing for sane message constants"""
@@ -100,10 +100,12 @@ class MessageTest(unittest.TestCase):
         self.assertTrue(m.signature, _id1.sign(txt))
 
         m = dandelion.message.create(txt, _id1, _id2)
-        self.assertNotEqual(m.text, txt)
+        self.assertNotEqual(m.text, txt) # Text should be encrypted
+        self.assertEqual(_id2.decrypt(m.text).decode(), txt)
         self.assertTrue(m.has_receiver)
         self.assertTrue(m.has_sender)
-        self.assertEqual(m.sender, _id1.fingerprint)
+        self.assertNotEqual(m.sender, _id1.fingerprint) # Sender should be encrypted
+        self.assertEqual(_id2.decrypt(m.sender), _id1.fingerprint)
         self.assertEqual(m.receiver, _id2.fingerprint)
         self.assertTrue(m.signature, _id1.sign(txt))
 
