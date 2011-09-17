@@ -20,6 +20,7 @@ along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 from dandelion.util import encode_b64_bytes
 import cmd
 import dandelion
+import time
 
 class CmdLine(cmd.Cmd):
     """Simple command processor example."""
@@ -151,16 +152,16 @@ class UI:
             receiver_ = None
 
         if sign and receiver_:
-            m = dandelion.message.create(msg, sender=self._identity, receiver=receiver_)
+            m = dandelion.message.create(msg, timestamp=int(time.time()), sender=self._identity, receiver=receiver_)
             self._db.add_messages([m])
         elif sign:
-            m = dandelion.message.create(msg, sender=self._identity)
+            m = dandelion.message.create(msg, timestamp=int(time.time()), sender=self._identity)
             self._db.add_messages([m])
         elif receiver_:
-            m = dandelion.message.create(msg, receiver=receiver_)
+            m = dandelion.message.create(msg, timestamp=int(time.time()), receiver=receiver_)
             self._db.add_messages([m])
         else:
-            m = dandelion.message.create(msg)
+            m = dandelion.message.create(msg, timestamp=int(time.time()))
             self._db.add_messages([m])
 
     def show_messages(self):

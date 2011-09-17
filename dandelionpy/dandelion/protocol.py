@@ -610,11 +610,13 @@ def _message2string(msg):
     """Serialize a message to a DMS string"""
 
     text = msg.text.encode() if isinstance(msg.text, str) else msg.text # Convert to bytes string
+    timestamp = '' if msg.timestamp is None else encode_b64_int(msg.timestamp).decode()
     receiver = b'' if msg.receiver is None else msg.receiver
     sender, signature = (b'',(b'',b'')) if msg.sender is None else (msg.sender, (encode_int(msg.signature[0]), encode_int(msg.signature[1])))
 
     return _SUB_FIELD_SEPARATOR.join([
               encode_b64_bytes(text).decode(),
+              timestamp,
               encode_b64_bytes(receiver).decode(),
               encode_b64_bytes(sender).decode(),
               encode_b64_bytes(signature[0]).decode(),
@@ -624,11 +626,11 @@ def _message2string(msg):
 def _string2message(mstr):
     """Parse the string and create a message"""
 
-    TEXT_INDEX, RECEIVER_INDEX, SENDER_INDEX, SIGNATURE_INDEX = (0,1,2,(3,4))
+    TEXT_INDEX, TIMESTAMP_INDEX, RECEIVER_INDEX, SENDER_INDEX, SIGNATURE_INDEX = (0,1,2,3,(4,5))
 
     mparts = mstr.split(_SUB_FIELD_SEPARATOR)
 
-    if len(mparts) != 5:
+    if len(mparts) != 6:
         raise ProtocolParseError
 
     if (mparts[SENDER_INDEX] != '' and mparts[SIGNATURE_INDEX[0]] == '' and mparts[SIGNATURE_INDEX[1]] == '') or \
@@ -637,11 +639,12 @@ def _string2message(mstr):
 
     receiver = None if mparts[RECEIVER_INDEX] == '' else decode_b64_bytes(mparts[RECEIVER_INDEX].encode())
     text = decode_b64_bytes(mparts[TEXT_INDEX].encode())
+    timestamp = None if mparts[TIMESTAMP_INDEX] == '' else decode_b64_int(mparts[TIMESTAMP_INDEX].encode())
     textstr = text.decode() if receiver is None else text # Decode unless encrypted
     sender = None if mparts[SENDER_INDEX] == '' else decode_b64_bytes(mparts[SENDER_INDEX].encode())
     signature = None if mparts[SIGNATURE_INDEX[0]] == '' else (decode_b64_int(mparts[SIGNATURE_INDEX[0]].encode()), decode_b64_int(mparts[SIGNATURE_INDEX[1]].encode()))
 
-    return Message(textstr, receiver, sender, signature)
+    return Message(textstr, timestamp, receiver, sender, signature)
 
 
 def _identity2string(identity):

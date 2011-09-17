@@ -153,6 +153,7 @@ class ContentDB:
     _CREATE_TABLE_MESSAGES = """CREATE TABLE IF NOT EXISTS messages
         (msgid TEXT PRIMARY KEY,
         msg TEXT NOT NULL,
+        timestamp INTEGER,
         receiver TEXT REFERENCES identities (fingerprint),
         sender TEXT REFERENCES identities (fingerprint),
         signature_r TEXT,
@@ -167,8 +168,8 @@ class ContentDB:
     _QUERY_REMOVE_SPECIFIC_IDENTITIES = """DELETE FROM identities WHERE fingerprint=?"""
     _QUERY_REMOVE_ALL_MESSAGES = """DELETE FROM messages"""
     _QUERY_REMOVE_SPECIFIC_MESSAGES = """DELETE FROM messages WHERE msgid=?"""
-    
-    _QUERY_ADD_MESSAGES ="""INSERT OR IGNORE INTO messages (msgid, msg, receiver, sender, signature_r, signature_s, cookieid) VALUES (?,?,?,?,?,?,?)"""
+
+    _QUERY_ADD_MESSAGES ="""INSERT OR IGNORE INTO messages (msgid, msg, timestamp, receiver, sender, signature_r, signature_s, cookieid) VALUES (?,?,?,?,?,?,?,?)"""
     _QUERY_ADD_IDENTITIES = """INSERT OR IGNORE INTO identities (fingerprint, dsa_y, dsa_g, dsa_p, dsa_q, rsa_n, rsa_e, nick, cookieid) VALUES (?,?,?,?,?,?,?,?,?)"""
 
     def __init__(self, db_file, id=None):
@@ -254,7 +255,7 @@ class ContentDB:
             raise TypeError
 
         cookie = self._add_content(self._QUERY_GET_MESSAGE_COUNT, self._QUERY_ADD_MESSAGES,
-                          [(self._encode_id(m.id), m.text,
+                          [(self._encode_id(m.id), m.text, m.timestamp,
                             None if not m.has_receiver else self._encode_id(m.receiver),
                             None if not m.has_sender else self._encode_id(m.sender),
                             None if not m.has_sender else self._encode_int(m.signature[0]),
@@ -326,19 +327,20 @@ class ContentDB:
                           (self._encode_id(time_cookie),)).fetchone()[0] == 0:
                     raise ValueError 
                 
-                c.execute("""SELECT msg, receiver, sender, signature_r, signature_s 
+                c.execute("""SELECT msg, timestamp, receiver, sender, signature_r, signature_s 
                              FROM messages JOIN time_cookies ON messages.cookieid = time_cookies.id
                              WHERE time_cookies.id > (SELECT id FROM time_cookies WHERE cookie = ?)""", 
                              (self._encode_id(time_cookie),)) 
             else: 
-                c.execute("""SELECT msg, receiver, sender, signature_r, signature_s FROM messages""")
+                c.execute("""SELECT msg, timestamp, receiver, sender, signature_r, signature_s FROM messages""")
 
             msgs = c.fetchall()
             current_tc = self._get_last_time_cookie(c)
             msgs = [Message(m[0],
-                    None if m[1] is None else self._decode_id(m[1]),
+                    m[1],
                     None if m[2] is None else self._decode_id(m[2]),
-                    None if m[3] is None else (self._decode_int(m[3]), self._decode_int(m[4]))) for m in msgs
+                    None if m[3] is None else self._decode_id(m[3]),
+                    None if m[4] is None else (self._decode_int(m[4]), self._decode_int(m[5]))) for m in msgs
                     if m is not None]
 
             if msgids is not None:

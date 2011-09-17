@@ -26,13 +26,16 @@ class Message:
     _ID_LENGTH_BYTES = 12
     MAX_TEXT_LENGTH = 140
 
-    def __init__(self, text, receiver_fp=None, sender_fp=None, signature=None):
+    def __init__(self, text, timestamp=None, receiver_fp=None, sender_fp=None, signature=None):
         """Create a message. Sender and receiver are optional.
         
         Typically, the factory method create will be used.
         """
 
         if text is None: # Must have content
+            raise ValueError
+
+        if timestamp is not None and not isinstance(timestamp, int):
             raise ValueError
 
         if receiver_fp is None and len(text) > Message.MAX_TEXT_LENGTH: # Limit only applies to plaintext data
@@ -56,6 +59,7 @@ class Message:
 
         self._id = None # Lazy evalutation
         self._text = text
+        self._timestamp = timestamp
         self._receiver_fp = receiver_fp
         self._sender_fp = sender_fp
         self._signature = signature
@@ -67,6 +71,9 @@ class Message:
         if self._id is None: # Lazy hashing
             h = hashlib.sha256()
             h.update(self._text if self._receiver_fp is not None else self._text.encode()) # Decode unless encrypted
+
+            if self._timestamp is not None:
+                h.update(dandelion.util.encode_int(self._timestamp))
 
             if self._receiver_fp is not None:
                 h.update(self._receiver_fp)
@@ -84,6 +91,12 @@ class Message:
     def text(self):
         """Message text string UTF-8 string or bytes if the message is encrypted"""
         return self._text
+
+    @property
+    def timestamp(self):
+        """Message time stamp - an optional number that the sender of the message can use."""
+        return self._timestamp
+
 
     @property
     def receiver(self):
@@ -107,6 +120,11 @@ class Message:
         return self._signature 
         
     @property
+    def has_timestamp(self):
+        """Returns true if the message has a time stamp"""
+        return self._timestamp is not None
+
+    @property
     def has_sender(self):
         """Returns true if the message has a sender"""
         return self._sender_fp is not None
@@ -126,19 +144,18 @@ class Message:
     def __ne__(self, other):
         return not self.__eq__(other)
 
-def create(text, sender=None, receiver=None):
+def create(text, timestamp=None, sender=None, receiver=None):
     """Factory method for Messages"""
 
     if sender is None and receiver is None:
-        return Message(text)
+        return Message(text, timestamp)
     elif sender is None and receiver is not None:
-        return Message(receiver.encrypt(text.encode()), receiver_fp=receiver.fingerprint)
+        return Message(receiver.encrypt(text.encode()), timestamp, receiver_fp=receiver.fingerprint)
     elif sender is not None and receiver is None:
         sig = sender.sign(text.encode())
-        return Message(text, sender_fp=sender.fingerprint, signature=sig)
+        return Message(text, timestamp, sender_fp=sender.fingerprint, signature=sig)
     else: # sender and receiver
         text = receiver.encrypt(text.encode())
         sig = sender.sign(text)
         encrypted_sender_fp = receiver.encrypt(sender.fingerprint)
-        return Message(text, receiver_fp=receiver.fingerprint, sender_fp=encrypted_sender_fp, signature=sig)
-
+        return Message(text, timestamp, receiver_fp=receiver.fingerprint, sender_fp=encrypted_sender_fp, signature=sig)

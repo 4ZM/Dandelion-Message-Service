@@ -22,7 +22,6 @@ from dandelion.network import Server
 from dandelion.synchronizer import Synchronizer
 from dandelion.discoverer import Discoverer
 from dandelion.ui import UI
-from dandelion.gui.gui import GUI
 import sys
 
 class DandelionApp:
@@ -52,7 +51,7 @@ class DandelionApp:
         self._ui.run()
 
     def run_gui(self):
-
+        from dandelion.gui.gui import GUI
         self._gui = GUI(self._config_manager.ui_config,
                         self._config_manager.content_db,
                         self._config_manager.identity,
@@ -68,9 +67,13 @@ class DandelionApp:
 def run():
     print("Dandelion starting...")
     app = DandelionApp('dandelion.conf')
-    app._server.start()
-    app._discoverer.start()
-    app._synchronizer.start()
+
+    if "--no-server" not in sys.argv:
+        app._server.start()
+
+    if "--no-discovery" not in sys.argv:
+        app._discoverer.start()
+        app._synchronizer.start()
 
     if "--no-gui" in sys.argv:
         app.run_ui()

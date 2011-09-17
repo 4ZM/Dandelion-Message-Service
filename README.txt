@@ -3,6 +3,8 @@
                     
 Dandelion is robust, distributed message passing designed to leverage the power of self organizing networks. 
 
+WARNING: Dandelion is currently under development - do not rely on it for secure or anonymous communication. Use it for testing purposes and non security critical application only.
+
 The message passing protocol can be implemented on any transport layer but we will start by implementing it utilizing Zeroconf service discovery and ad hoc wifi networks with link local addresses. Dandelion does not rely on any existing infrastructure like the Internet or mobile phone services - it is truly peer to peer. 
 
 By running Dandelion you get access to a distributed stream of messages posted by other users. There are three types of messages:
