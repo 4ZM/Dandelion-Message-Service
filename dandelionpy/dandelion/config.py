@@ -333,7 +333,7 @@ class IdentityConfig(Config):
 
 class ConfigManager:
 
-    def __init__(self, config_file='dandelion.conf'):
+    def __init__(self, config_file='dandelion.conf', user_password=None):
         self._cfg_file_name = config_file
         self._server_config = ServerConfig()
         self._synchronizer_config = SynchronizerConfig()
@@ -344,7 +344,8 @@ class ConfigManager:
         self.read_file()
 
         self._content_db = ContentDB(self._server_config.db_file)
-        key = b'a secret key'
+
+        key = user_password.encode()
 
         if self._id_manager_config.my_id is not None and not self._content_db.contains_identity(decode_b64_bytes(self._id_manager_config.my_id.encode())) :
             print("WARNING! Bad or non existing ID requested in config. Requested:", self._id_manager_config.my_id)
@@ -358,7 +359,7 @@ class ConfigManager:
                 return
             except ValueError:
                 pass
-            
+
         self._identity = dandelion.identity.generate()
         self._content_db.add_private_identity(self._identity, key)
         id_str = encode_b64_bytes(self._identity.fingerprint).decode()

@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Dandelion.  If not, see <http://www.gnu.org/licenses/>.
 """
-
+from getpass import getpass
 from dandelion.config import ConfigManager
 from dandelion.network import Server
 from dandelion.synchronizer import Synchronizer
@@ -26,8 +26,11 @@ import sys
 
 class DandelionApp:
 
-    def __init__(self, config_file=None):
-        self._config_manager = ConfigManager(config_file)
+    def __init__(self, config_file=None, args=None):
+
+        user_password = getpass()
+        
+        self._config_manager = ConfigManager(config_file, user_password)
 
         self._server = Server(self._config_manager.server_config,
                               self._config_manager.content_db,
@@ -38,6 +41,19 @@ class DandelionApp:
         self._synchronizer = Synchronizer(self._discoverer,
                                           self._config_manager.synchronizer_config,
                                           self._config_manager.content_db)
+
+        if "--no-server" not in args:
+            self._server.start()
+
+        if "--no-discovery" not in args:
+            self._discoverer.start()
+            self._synchronizer.start()
+
+        if "--no-gui" in args:
+            self.run_ui()
+        else:
+            self.run_gui()
+
 
     def run_ui(self):
 
@@ -66,19 +82,8 @@ class DandelionApp:
 
 def run():
     print("Dandelion starting...")
-    app = DandelionApp('dandelion.conf')
+    app = DandelionApp('dandelion.conf', sys.argv)
 
-    if "--no-server" not in sys.argv:
-        app._server.start()
-
-    if "--no-discovery" not in sys.argv:
-        app._discoverer.start()
-        app._synchronizer.start()
-
-    if "--no-gui" in sys.argv:
-        app.run_ui()
-    else:
-        app.run_gui()
 
     app.exit()
     print("bye")
